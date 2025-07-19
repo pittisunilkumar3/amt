@@ -61,6 +61,8 @@ if ($this->customlib->getRTL() != "") {
         <!--language css-->
         <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/0.8.2/css/flag-icon.min.css">
         <link rel="stylesheet" type="text/css" href="<?php echo base_url(); ?>backend/dist/css/bootstrap-select.min.css">
+        <!--SumoSelect css-->
+        <link rel="stylesheet" type="text/css" href="<?php echo base_url(); ?>assets1/vendor/bootstrap-multiselect/sumoselect.css">
         <!--print table mobile support-->
         <link href="<?php echo base_url(); ?>backend/dist/datatables/css/responsive.dataTables.min.css" rel="stylesheet">
         <link href="<?php echo base_url(); ?>backend/dist/datatables/css/rowReorder.dataTables.min.css" rel="stylesheet">
@@ -71,6 +73,8 @@ if ($this->customlib->getRTL() != "") {
         <script src="<?php echo base_url(); ?>backend/dist/js/jquery-ui.min.js"></script>
         <script src="<?php echo base_url(); ?>backend/js/school-custom.js"></script>
         <script src="<?php echo base_url(); ?>backend/js/sstoast.js"></script>
+        <!--SumoSelect js-->
+        <script src="<?php echo base_url(); ?>assets1/vendor/bootstrap-multiselect/jquery.sumoselect.js"></script>
 
         <!-- fullCalendar -->
         <link rel="stylesheet" href="<?php echo base_url() ?>backend/fullcalendar/dist/fullcalendar.min.css">

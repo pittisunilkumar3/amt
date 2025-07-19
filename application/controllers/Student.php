@@ -18,6 +18,7 @@ class Student extends Admin_Controller
         $this->load->library('smsgateway');
         $this->load->library('mailsmsconf');
         $this->load->library('encoding_lib');
+        $this->load->library("datatables"); // Load DataTables library for search functionality
         $this->load->model("classteacher_model");
         $this->load->model("student_model");
         $this->load->model("studentfeemasteradding_model");
@@ -2999,13 +3000,37 @@ class Student extends Admin_Controller
 
     public function dtstudentlist()
     {
+        // Enhanced error logging and debugging
+        error_log('=== STUDENT DATATABLE REQUEST STARTED ===');
+        error_log('POST data: ' . print_r($_POST, true));
+        error_log('Request method: ' . $_SERVER['REQUEST_METHOD']);
+
         $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
-        $class           = $this->input->post('class_id');
-        $section         = $this->input->post('section_id');
+        $class_id        = $this->input->post('class_id');
+        $section_id      = $this->input->post('section_id');
         $search_text     = $this->input->post('search_text');
         $search_type     = $this->input->post('srch_type');
+
+        // Enhanced debug logging
+        error_log('Student DataTable - Raw input: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+        log_message('debug', 'Student DataTable - Raw input: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+
+        // Handle both single and multi-select values properly
+        if (!is_array($class_id)) {
+            $class_id = !empty($class_id) ? array($class_id) : array();
+        }
+        if (!is_array($section_id)) {
+            $section_id = !empty($section_id) ? array($section_id) : array();
+        }
+
+        // Remove empty values from arrays
+        $class_id = array_filter($class_id, function($value) { return !empty($value); });
+        $section_id = array_filter($section_id, function($value) { return !empty($value); });
+
+        error_log('Student DataTable - Processed: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+        log_message('debug', 'Student DataTable - Processed: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+
         $classlist       = $this->class_model->get();
-        $classlist       = $classlist;
         $carray          = array();
         if (!empty($classlist)) {
             foreach ($classlist as $ckey => $cvalue) {
@@ -3015,16 +3040,28 @@ class Student extends Admin_Controller
 
         $sch_setting = $this->sch_setting_detail;
 
-        if ($search_type == "search_filter") {
+        try {
+            if ($search_type == "search_filter") {
+                error_log('Student DataTable - Calling searchdtByClassSection with class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+                $resultlist = $this->student_model->searchdtByClassSection($class_id, $section_id);
+            } elseif ($search_type == "search_full") {
+                error_log('Student DataTable - Calling searchFullText with search_text=' . $search_text);
+                $resultlist = $this->student_model->searchFullText($search_text, $carray);
+            }
 
-            $resultlist = $this->student_model->searchdtByClassSection($class, $section);
-        } elseif ($search_type == "search_full") {
+            error_log('Student DataTable - Model result length: ' . strlen($resultlist));
+            error_log('Student DataTable - Model result preview: ' . substr($resultlist, 0, 300) . '...');
 
-            $resultlist = $this->student_model->searchFullText($search_text, $carray);
+            $students = json_decode($resultlist);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                error_log('Student DataTable - JSON decode error: ' . json_last_error_msg());
+                throw new Exception('JSON decode failed: ' . json_last_error_msg());
+            }
+            error_log('Student DataTable - Decoded result: ' . print_r($students, true));
+        } catch (Exception $e) {
+            error_log('Student DataTable - Exception: ' . $e->getMessage());
+            $students = (object)array('data' => array(), 'draw' => 1, 'recordsTotal' => 0, 'recordsFiltered' => 0);
         }
-
-        $students = array();
-        $students = json_decode($resultlist);
 
         $dt_data = array();
         $fields  = $this->customfield_model->get_custom_fields('students', 1);
@@ -3088,16 +3125,22 @@ class Student extends Admin_Controller
             }
 
         }
+
         $sch_setting         = $this->sch_setting_detail;
         $student_detail_view = $this->load->view('student/_searchDetailView', array('sch_setting' => $sch_setting, 'students' => $students), true);
         $json_data           = array(
-            "draw"                => intval($students->draw),
-            "recordsTotal"        => intval($students->recordsTotal),
-            "recordsFiltered"     => intval($students->recordsFiltered),
+            "draw"                => intval(isset($students->draw) ? $students->draw : 1),
+            "recordsTotal"        => intval(isset($students->recordsTotal) ? $students->recordsTotal : 0),
+            "recordsFiltered"     => intval(isset($students->recordsFiltered) ? $students->recordsFiltered : 0),
             "data"                => $dt_data,
             "student_detail_view" => $student_detail_view,
         );
 
+        error_log('Student DataTable - Final JSON data: ' . print_r($json_data, true));
+        error_log('Student DataTable - Data rows count: ' . count($dt_data));
+
+        // Set proper JSON header
+        header('Content-Type: application/json');
         echo json_encode($json_data);
 
     }
@@ -3105,31 +3148,53 @@ class Student extends Admin_Controller
     //datatable function to check search parameter validation
     public function searchvalidation()
     {
-        $class_id   = $this->input->post('class_id');
-        $section_id = $this->input->post('section_id');
+        // Enhanced error logging and debugging
+        error_log('=== STUDENT SEARCH VALIDATION STARTED ===');
+        error_log('POST data: ' . print_r($_POST, true));
+        error_log('Request method: ' . $_SERVER['REQUEST_METHOD']);
+        error_log('Content type: ' . (isset($_SERVER['CONTENT_TYPE']) ? $_SERVER['CONTENT_TYPE'] : 'not set'));
 
+        // Handle multi-select values - convert to arrays if needed
+        $class_id    = $this->input->post('class_id');
+        $section_id  = $this->input->post('section_id');
         $srch_type   = $this->input->post('search_type');
         $search_text = $this->input->post('search_text');
 
-        if ($srch_type == 'search_filter') {
+        // Ensure arrays for multi-select values
+        if (!is_array($class_id)) {
+            $class_id = !empty($class_id) ? array($class_id) : array();
+        }
+        if (!is_array($section_id)) {
+            $section_id = !empty($section_id) ? array($section_id) : array();
+        }
 
-            $this->form_validation->set_rules('class_id', $this->lang->line('class'), 'trim|required|xss_clean');
-            if ($this->form_validation->run() == true) {
+        // Remove empty values from arrays
+        $class_id = array_filter($class_id, function($value) { return !empty($value); });
+        $section_id = array_filter($section_id, function($value) { return !empty($value); });
 
+        error_log('Student search validation - Processed: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+        log_message('debug', 'Student search validation - Processed: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+
+        try {
+            if ($srch_type == 'search_filter') {
+                // No mandatory validation - allow flexible report generation
                 $params = array('srch_type' => $srch_type, 'class_id' => $class_id, 'section_id' => $section_id);
                 $array  = array('status' => 1, 'error' => '', 'params' => $params);
+                error_log('Student search validation - Success response: ' . json_encode($array));
+                log_message('debug', 'Student search validation - Success response: ' . json_encode($array));
                 echo json_encode($array);
-
             } else {
-
-                $error             = array();
-                $error['class_id'] = form_error('class_id');
-                $array             = array('status' => 0, 'error' => $error);
+                // For full text search, no validation needed
+                $params = array('srch_type' => 'search_full', 'class_id' => $class_id, 'section_id' => $section_id, 'search_text' => $search_text);
+                $array  = array('status' => 1, 'error' => '', 'params' => $params);
+                error_log('Student search validation - Full text search response: ' . json_encode($array));
+                log_message('debug', 'Student search validation - Full text search response: ' . json_encode($array));
                 echo json_encode($array);
             }
-        } else {
-            $params = array('srch_type' => 'search_full', 'class_id' => $class_id, 'section_id' => $section_id, 'search_text' => $search_text);
-            $array  = array('status' => 1, 'error' => '', 'params' => $params);
+        } catch (Exception $e) {
+            error_log('Student search validation - Exception: ' . $e->getMessage());
+            log_message('error', 'Student search validation - Exception: ' . $e->getMessage());
+            $array = array('status' => 0, 'error' => array('general' => 'An error occurred during validation'));
             echo json_encode($array);
         }
 

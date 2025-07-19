@@ -11,6 +11,7 @@ class Student_model extends MY_Model
     public function __construct()
     {
         parent::__construct();
+        $this->load->library('datatables'); // Load DataTables library for search functionality
         $this->current_session = $this->setting_model->getCurrentSession();
         $this->current_date    = $this->setting_model->getDateYmd();
     }
@@ -2213,12 +2214,15 @@ class Student_model extends MY_Model
 
     public function searchdtByClassSection($class_id = null, $section_id = null)
     {
+        error_log('=== STUDENT MODEL METHOD STARTED ===');
+        error_log('Model input - class_id: ' . print_r($class_id, true));
+        error_log('Model input - section_id: ' . print_r($section_id, true));
+
         $userdata = $this->customlib->getUserData();
+        $class_section_array = $this->customlib->get_myClassSection();
 
-
-		if (($userdata["role_id"] == 2) && ($userdata["class_teacher"] == "yes") && (empty($class_section_array))) {
-            $class_section_array = $this->customlib->get_myClassSection();
-        }
+        error_log('User data: ' . print_r($userdata, true));
+        error_log('Class section array: ' . print_r($class_section_array, true));
 
         $i                    = 1;
         $custom_fields        = $this->customfield_model->get_custom_fields('students', 1);
@@ -2237,40 +2241,63 @@ class Student_model extends MY_Model
         $field_variable = (empty($field_var_array)) ? "" : "," . implode(',', $field_var_array);
         $field_name     = (empty($field_var_array_name)) ? "" : "," . implode(',', $field_var_array_name);
 
-        if ($class_id != null) {
-            $this->datatables->where('student_session.class_id', $class_id);
-        }
-        if ($section_id != null) {
-            $this->datatables->where('student_session.section_id', $section_id);
+        // DataTable setup - First establish table structure and joins
+        $this->datatables->select('classes.id AS `class_id`,student_session.id as student_session_id,students.id,classes.class,sections.id AS `section_id`,sections.section,students.id,students.admission_no, students.roll_no,students.admission_date,students.firstname,students.middlename,  students.lastname,students.image,students.mobileno,students.email ,students.state,students.city, students.pincode,students.religion,DATE(students.dob) as dob,students.current_address,    students.permanent_address,IFNULL(students.category_id, 0) as `category_id`,IFNULL(categories.category, "") as `category`,students.adhar_no,students.samagra_id,students.bank_account_no,students.bank_name, students.ifsc_code , students.guardian_name, students.guardian_relation,students.guardian_phone,students.guardian_address,students.is_active ,students.created_at ,students.updated_at,students.father_name,students.app_key,students.parent_app_key,students.rte,students.gender' . $field_variable)
+            ->searchable('students.admission_no,students.firstname,classes.class,students.father_name,students.dob,students.gender,categories.category,students.mobileno' . $field_variable)
+            ->orderable('students.admission_no,students.firstname,classes.class,students.father_name,students.dob,students.gender,categories.category,students.mobileno' . $field_name)
+            ->from('students')
+            ->join('student_session', 'student_session.student_id = students.id')
+            ->join('classes', 'student_session.class_id = classes.id')
+            ->join('sections', 'sections.id = student_session.section_id')
+            ->join('categories', 'students.category_id = categories.id', 'left')
+            ->where('student_session.session_id', $this->current_session)
+            ->where('students.is_active', 'yes')
+            ->sort('students.admission_no', 'asc');
+
+        // Apply filters AFTER joins are established
+        // Handle multi-select class filtering
+        if ($class_id != null && !empty($class_id)) {
+            if (is_array($class_id) && count($class_id) > 0) {
+                error_log('Student Model - Applying class filter with array: ' . print_r($class_id, true));
+                $this->datatables->where_in('student_session.class_id', $class_id);
+            } elseif (!is_array($class_id) && !empty($class_id)) {
+                error_log('Student Model - Applying class filter with single value: ' . $class_id);
+                $this->datatables->where('student_session.class_id', $class_id);
+            }
+        } else {
+            error_log('Student Model - No class filter applied (empty or null)');
         }
 
-        $this->datatables->select('classes.id AS `class_id`,student_session.id as student_session_id,students.id,classes.class,sections.id AS `section_id`,sections.section,students.id,students.admission_no, students.roll_no,students.admission_date,students.firstname,students.middlename,  students.lastname,students.image,students.mobileno,students.email ,students.state,students.city, students.pincode,students.religion,DATE(students.dob) as dob,students.current_address,    students.permanent_address,IFNULL(students.category_id, 0) as `category_id`,IFNULL(categories.category, "") as `category`,students.adhar_no,students.samagra_id,students.bank_account_no,students.bank_name, students.ifsc_code , students.guardian_name, students.guardian_relation,students.guardian_phone,students.guardian_address,students.is_active ,students.created_at ,students.updated_at,students.father_name,students.app_key,students.parent_app_key,students.rte,students.gender' . $field_variable);
-        $this->datatables->searchable('students.admission_no,students.firstname,classes.class,students.father_name,students.dob,students.gender,categories.category,students.mobileno' . $field_variable);
-        $this->datatables->join('student_session', 'student_session.student_id = students.id');
-        $this->datatables->join('classes', 'student_session.class_id = classes.id');
-        $this->datatables->join('sections', 'sections.id = student_session.section_id');
-        $this->datatables->join('categories', 'students.category_id = categories.id', 'left');
+        // Handle multi-select section filtering
+        if ($section_id != null && !empty($section_id)) {
+            if (is_array($section_id) && count($section_id) > 0) {
+                error_log('Student Model - Applying section filter with array: ' . print_r($section_id, true));
+                $this->datatables->where_in('student_session.section_id', $section_id);
+            } elseif (!is_array($section_id) && !empty($section_id)) {
+                error_log('Student Model - Applying section filter with single value: ' . $section_id);
+                $this->datatables->where('student_session.section_id', $section_id);
+            }
+        } else {
+            error_log('Student Model - No section filter applied (empty or null)');
+        }
 
-        if (!empty($class_section_array)) {
+        // Apply class-teacher restrictions if applicable
+        if (($userdata["role_id"] == 2) && ($userdata["class_teacher"] == "yes") && (!empty($class_section_array))) {
             $this->datatables->group_start();
             foreach ($class_section_array as $class_sectionkey => $class_sectionvalue) {
                 foreach ($class_sectionvalue as $class_sectionvaluekey => $class_sectionvaluevalue) {
-                    $this->datatables->or_group_start();
-                    $this->datatables->where('student_session.class_id', $class_sectionkey);
-                    $this->datatables->where('student_session.section_id', $class_sectionvaluevalue);
-                    $this->datatables->group_end();
-
+                    $query_string = "( student_session.class_id=" . $class_sectionkey . " and student_session.section_id=" . $class_sectionvaluevalue . " )";
+                    $this->datatables->or_where($query_string);
                 }
             }
             $this->datatables->group_end();
         }
 
-        $this->datatables->where('student_session.session_id', $this->current_session);
-        $this->datatables->where('students.is_active', "yes");
-        $this->datatables->orderable('students.admission_no,students.firstname,classes.class,students.father_name,students.dob,students.gender,categories.category,students.mobileno' . $field_name);
-        $this->datatables ->from('students');
-        $this->datatables->sort('students.admission_no', 'asc');
-        return $this->datatables->generate('json');
+        error_log('Student Model - About to generate DataTable JSON...');
+        $result = $this->datatables->generate('json');
+        error_log('Student Model - Generated JSON length: ' . strlen($result));
+        error_log('Student Model - Generated JSON preview: ' . substr($result, 0, 300) . '...');
+        return $result;
     }
 
     public function searchFullText($searchterm, $carray = null)
