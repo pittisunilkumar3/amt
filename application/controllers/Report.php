@@ -2304,27 +2304,172 @@ class Report extends Admin_Controller
             }
         }
 
-        $class_id   = $this->input->post("class_id");
-        $section_id = $this->input->post("section_id");
-
-        $this->form_validation->set_rules('class_id', $this->lang->line('class'), 'trim|required|xss_clean');
-        $this->form_validation->set_rules('section_id', $this->lang->line('section'), 'trim|required|xss_clean');
-
-        if ($this->form_validation->run() == false) {
-
-            $resultlist         = $this->student_model->studentGuardianDetails($carray);
-            $data["resultlist"] = "";
-        } else {
-
-            $resultlist         = $this->student_model->searchGuardianDetails($class_id, $section_id);
-            $data["resultlist"] = $resultlist;
-        }
+        $resultlist         = $this->student_model->studentGuardianDetails($carray);
+        $data["resultlist"] = "";
 
         $this->load->view("layout/header", $data);
         $this->load->view("reports/guardianReport", $data);
         $this->load->view("layout/footer", $data);
     }
-    
+
+    public function guardiansearchvalidation()
+    {
+        // Enhanced error logging and debugging
+        error_log('=== GUARDIAN SEARCH VALIDATION STARTED ===');
+        error_log('POST data: ' . print_r($_POST, true));
+        error_log('Request method: ' . $_SERVER['REQUEST_METHOD']);
+        error_log('Content type: ' . (isset($_SERVER['CONTENT_TYPE']) ? $_SERVER['CONTENT_TYPE'] : 'not set'));
+
+        // Handle multi-select values - convert to arrays if needed
+        $class_id    = $this->input->post('class_id');
+        $section_id  = $this->input->post('section_id');
+        $srch_type = $this->input->post('search_type');
+
+        // Enhanced debug logging
+        error_log('Guardian search validation - Raw input: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true) . ', search_type=' . $srch_type);
+        log_message('debug', 'Guardian search validation - Raw input: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true) . ', search_type=' . $srch_type);
+
+        // Convert single values to arrays for consistency
+        if (!is_array($class_id) && !empty($class_id)) {
+            $class_id = array($class_id);
+        }
+        if (!is_array($section_id) && !empty($section_id)) {
+            $section_id = array($section_id);
+        }
+
+        error_log('Guardian search validation - Processed: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+        log_message('debug', 'Guardian search validation - Processed: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+
+        try {
+            if ($srch_type == 'search_filter') {
+                // No mandatory validation - allow flexible report generation
+                $params = array('srch_type' => $srch_type, 'class_id' => $class_id, 'section_id' => $section_id);
+                $array  = array('status' => 1, 'error' => '', 'params' => $params);
+                error_log('Guardian search validation - Success response: ' . json_encode($array));
+                log_message('debug', 'Guardian search validation - Success response: ' . json_encode($array));
+
+                // Set proper JSON header
+                header('Content-Type: application/json');
+                echo json_encode($array);
+            } else {
+                // Handle other search types like the Student Report does
+                $params = array('srch_type' => 'search_full', 'class_id' => $class_id, 'section_id' => $section_id);
+                $array  = array('status' => 1, 'error' => '', 'params' => $params);
+                error_log('Guardian search validation - Full search response: ' . json_encode($array));
+                log_message('debug', 'Guardian search validation - Full search response: ' . json_encode($array));
+
+                // Set proper JSON header
+                header('Content-Type: application/json');
+                echo json_encode($array);
+            }
+        } catch (Exception $e) {
+            error_log('Guardian search validation - Exception: ' . $e->getMessage());
+            header('Content-Type: application/json');
+            echo json_encode(array('status' => 0, 'error' => array('general' => 'Server error occurred')));
+        }
+    }
+
+    public function dtguardianreportlist()
+    {
+        // Enhanced error logging and debugging
+        error_log('=== GUARDIAN DATATABLE REQUEST STARTED ===');
+        error_log('POST data: ' . print_r($_POST, true));
+        error_log('Request method: ' . $_SERVER['REQUEST_METHOD']);
+
+        $class_id   = $this->input->post('class_id');
+        $section_id = $this->input->post('section_id');
+        $sch_setting = $this->sch_setting_detail;
+
+        // Enhanced debug logging
+        error_log('Guardian DataTable - Raw input: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+        log_message('debug', 'Guardian DataTable - Raw input: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+
+        // Handle both single and multi-select values properly
+        if (!is_array($class_id)) {
+            $class_id = !empty($class_id) ? array($class_id) : array();
+        }
+        if (!is_array($section_id)) {
+            $section_id = !empty($section_id) ? array($section_id) : array();
+        }
+
+        // Remove empty values from arrays
+        $class_id = array_filter($class_id, function($value) { return !empty($value); });
+        $section_id = array_filter($section_id, function($value) { return !empty($value); });
+
+        error_log('Guardian DataTable - Processed: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+        log_message('debug', 'Guardian DataTable - Processed: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+
+        try {
+            error_log('Guardian DataTable - Calling model method...');
+            $result = $this->student_model->searchdatatablebyGuardianDetails($class_id, $section_id);
+            error_log('Guardian DataTable - Model result length: ' . strlen($result));
+            error_log('Guardian DataTable - Model result preview: ' . substr($result, 0, 200) . '...');
+            log_message('debug', 'Guardian DataTable - Model result: ' . $result);
+
+            $resultlist = json_decode($result);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                error_log('Guardian DataTable - JSON decode error: ' . json_last_error_msg());
+                throw new Exception('JSON decode failed: ' . json_last_error_msg());
+            }
+            error_log('Guardian DataTable - Decoded result: ' . print_r($resultlist, true));
+        } catch (Exception $e) {
+            error_log('Guardian DataTable - Exception: ' . $e->getMessage());
+            $resultlist = (object)array('data' => array(), 'draw' => 1, 'recordsTotal' => 0, 'recordsFiltered' => 0);
+        }
+
+        $dt_data = array();
+        if (!empty($resultlist->data)) {
+            foreach ($resultlist->data as $student) {
+                $row = array();
+                $row[] = $student->class . " (" . $student->section . ")";
+                $row[] = $student->admission_no;
+                $row[] = '<a href="' . base_url() . 'student/view/' . $student->id . '">' .
+                         $this->customlib->getFullName($student->firstname, $student->middlename, $student->lastname, $sch_setting->middlename, $sch_setting->lastname) . '</a>';
+
+                if ($sch_setting->mobile_no) {
+                    $row[] = $student->mobileno;
+                }
+                if ($sch_setting->guardian_name) {
+                    $row[] = $student->guardian_name;
+                }
+                if ($sch_setting->guardian_relation) {
+                    $row[] = $student->guardian_relation;
+                }
+                if ($sch_setting->guardian_phone) {
+                    $row[] = $student->guardian_phone;
+                }
+                if ($sch_setting->father_name) {
+                    $row[] = $student->father_name;
+                }
+                if ($sch_setting->father_phone) {
+                    $row[] = $student->father_phone;
+                }
+                if ($sch_setting->mother_name) {
+                    $row[] = $student->mother_name;
+                }
+                if ($sch_setting->mother_phone) {
+                    $row[] = $student->mother_phone;
+                }
+
+                $dt_data[] = $row;
+            }
+        }
+
+        $json_data = array(
+            "draw"            => intval($resultlist->draw),
+            "recordsTotal"    => intval($resultlist->recordsTotal),
+            "recordsFiltered" => intval($resultlist->recordsFiltered),
+            "data"            => $dt_data,
+        );
+
+        error_log('Guardian DataTable - Final JSON data: ' . print_r($json_data, true));
+        error_log('Guardian DataTable - Data rows count: ' . count($dt_data));
+
+        // Set proper JSON header
+        header('Content-Type: application/json');
+        echo json_encode($json_data);
+    }
+
     public function admissionreport()
     {
         if (!$this->rbac->hasPrivilege('student_history', 'can_view')) {

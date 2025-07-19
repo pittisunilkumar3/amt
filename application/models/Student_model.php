@@ -1536,7 +1536,21 @@ class Student_model extends MY_Model
         $this->db->join("sections", "student_session.section_id = sections.id");
         $this->db->where("students.is_active", "yes");
         $this->db->where('student_session.session_id', $this->current_session);
-        $this->db->where(array('student_session.class_id' => $class_id, 'student_session.section_id' => $section_id));
+
+        // Handle multi-select class filtering
+        if (!empty($class_id) && is_array($class_id)) {
+            $this->db->where_in('student_session.class_id', $class_id);
+        } elseif (!empty($class_id)) {
+            $this->db->where('student_session.class_id', $class_id);
+        }
+
+        // Handle multi-select section filtering
+        if (!empty($section_id) && is_array($section_id)) {
+            $this->db->where_in('student_session.section_id', $section_id);
+        } elseif (!empty($section_id)) {
+            $this->db->where('student_session.section_id', $section_id);
+        }
+
         $query = $this->db->get("students");
         return $query->result_array();
     }
@@ -1581,6 +1595,68 @@ class Student_model extends MY_Model
             ->sort('students.id')
             ->from('students');
         return $this->datatables->generate('json');
+    }
+
+    public function searchdatatablebyGuardianDetails($class_id, $section_id)
+    {
+        error_log('=== GUARDIAN MODEL METHOD STARTED ===');
+        error_log('Model input - class_id: ' . print_r($class_id, true));
+        error_log('Model input - section_id: ' . print_r($section_id, true));
+
+        $userdata = $this->customlib->getUserData();
+        $class_section_array = $this->customlib->get_myClassSection();
+
+        error_log('User data: ' . print_r($userdata, true));
+        error_log('Class section array: ' . print_r($class_section_array, true));
+
+        // Handle multi-select class filtering FIRST (like Student Report)
+        if ($class_id != null && !empty($class_id)) {
+            if (is_array($class_id) && count($class_id) > 0) {
+                $this->datatables->where_in('student_session.class_id', $class_id);
+            } elseif (!is_array($class_id)) {
+                $this->datatables->where('student_session.class_id', $class_id);
+            }
+        }
+
+        // Handle multi-select section filtering FIRST (like Student Report)
+        if ($section_id != null && !empty($section_id)) {
+            if (is_array($section_id) && count($section_id) > 0) {
+                $this->datatables->where_in('student_session.section_id', $section_id);
+            } elseif (!is_array($section_id)) {
+                $this->datatables->where('student_session.section_id', $section_id);
+            }
+        }
+
+        // Apply class-teacher restrictions if applicable (BEFORE DataTable setup)
+        if (($userdata["role_id"] == 2) && ($userdata["class_teacher"] == "yes") && (!empty($class_section_array))) {
+            $this->datatables->group_start();
+            foreach ($class_section_array as $class_sectionkey => $class_sectionvalue) {
+                foreach ($class_sectionvalue as $class_sectionvaluekey => $class_sectionvaluevalue) {
+                    $query_string = "( student_session.class_id=" . $class_sectionkey . " and student_session.section_id=" . $class_sectionvaluevalue . " )";
+                    $this->datatables->or_where($query_string);
+                }
+            }
+            $this->datatables->group_end();
+        }
+
+        // DataTable setup AFTER filtering (like Student Report)
+        $this->datatables->select('students.firstname,students.middlename,students.lastname,students.is_active, students.mobileno, students.father_phone, students.mother_phone, students.id, students.admission_no, students.father_name, students.mother_name, students.guardian_name, students.guardian_relation, students.guardian_phone, classes.class, sections.section')
+            ->searchable('students.admission_no,students.firstname,students.lastname,students.guardian_name,students.guardian_phone,students.father_name,students.mother_name')
+            ->orderable('classes.class,sections.section,students.admission_no,students.firstname,students.mobileno,students.guardian_name,students.guardian_relation,students.guardian_phone,students.father_name,students.father_phone,students.mother_name,students.mother_phone')
+            ->join('student_session', 'students.id = student_session.student_id')
+            ->join('classes', 'student_session.class_id = classes.id')
+            ->join('sections', 'student_session.section_id = sections.id')
+            ->where('student_session.session_id', $this->current_session)
+            ->where('students.is_active', 'yes')
+            ->group_by('students.id')
+            ->sort('students.admission_no', 'asc')
+            ->from('students');
+
+        error_log('Guardian Model - About to generate DataTable JSON...');
+        $result = $this->datatables->generate('json');
+        error_log('Guardian Model - Generated JSON length: ' . strlen($result));
+        error_log('Guardian Model - Generated JSON preview: ' . substr($result, 0, 300) . '...');
+        return $result;
     }
 
     public function admissionYear()
