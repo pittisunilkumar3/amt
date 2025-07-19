@@ -45,6 +45,8 @@ $this->load->view('layout/theme');
         <!--language css-->
         <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/0.8.2/css/flag-icon.min.css">
         <link rel="stylesheet" type="text/css" href="<?php echo base_url(); ?>backend/dist/css/bootstrap-select.min.css">
+        <!--SumoSelect css-->
+        <link rel="stylesheet" type="text/css" href="<?php echo base_url(); ?>assets1/vendor/bootstrap-multiselect/sumoselect.css">
         <script src="<?php echo base_url(); ?>backend/custom/jquery.min.js"></script>
         <script language="javascript" src="<?php echo base_url(); ?>backend/custom/jquery-2.2.4.js"></script>
         <script src="<?php echo base_url(); ?>backend/dist/js/moment.min.js"></script>
@@ -57,6 +59,8 @@ $this->load->view('layout/theme');
         <script src="<?php echo base_url(); ?>backend/js/school-custom.js"></script>
         <script src="<?php echo base_url(); ?>backend/js/school-admin-custom.js"></script>
         <script src="<?php echo base_url(); ?>backend/js/sstoast.js"></script>
+        <!--SumoSelect js-->
+        <script src="<?php echo base_url(); ?>assets1/vendor/bootstrap-multiselect/jquery.sumoselect.js"></script>
 
         <!-- fullCalendar -->
         <link rel="stylesheet" href="<?php echo base_url() ?>backend/fullcalendar/dist/fullcalendar.min.css">

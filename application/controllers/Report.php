@@ -2114,13 +2114,15 @@ class Report extends Admin_Controller
         $this->session->set_userdata('top_menu', 'Reports');
         $this->session->set_userdata('sub_menu', 'Reports/student_information');
         $this->session->set_userdata('subsub_menu', 'Reports/student_information/student_report');
-        $data['title']           = 'student fee'; 
+        $data['title']           = 'student fee';
         $genderList              = $this->customlib->getGender();
         $data['genderList']      = $genderList;
         $RTEstatusList           = $this->customlib->getRteStatus();
         $data['RTEstatusList']   = $RTEstatusList;
         $class                   = $this->class_model->get();
         $data['classlist']       = $class;
+        $category                = $this->category_model->get();
+        $data['categorylist']    = $category;
         $data['sch_setting']     = $this->sch_setting_detail;
         $data['adm_auto_insert'] = $this->sch_setting_detail->adm_auto_insert;
         $userdata                = $this->customlib->getUserData();
@@ -2134,30 +2136,39 @@ class Report extends Admin_Controller
     
     public function studentreportvalidation()
     {
+        // Handle multi-select values - convert to arrays if needed
         $class_id    = $this->input->post('class_id');
         $section_id  = $this->input->post('section_id');
         $category_id = $this->input->post('category_id');
         $gender      = $this->input->post('gender');
         $rte         = $this->input->post('rte');
 
+        // Convert single values to arrays for consistency
+        if (!is_array($class_id) && !empty($class_id)) {
+            $class_id = array($class_id);
+        }
+        if (!is_array($section_id) && !empty($section_id)) {
+            $section_id = array($section_id);
+        }
+        if (!is_array($category_id) && !empty($category_id)) {
+            $category_id = array($category_id);
+        }
+        if (!is_array($gender) && !empty($gender)) {
+            $gender = array($gender);
+        }
+        if (!is_array($rte) && !empty($rte)) {
+            $rte = array($rte);
+        }
+
         $srch_type = $this->input->post('search_type');
 
         if ($srch_type == 'search_filter') {
+            // Allow flexible report generation - no mandatory fields required
+            // Users can generate reports with any combination of filters
 
-            $this->form_validation->set_rules('class_id', $this->lang->line('class'), 'trim|required|xss_clean');
-            if ($this->form_validation->run() == true) {
-
-                $params = array('srch_type' => $srch_type, 'class_id' => $class_id, 'section_id' => $section_id, 'category_id' => $category_id, 'gender' => $gender, 'rte' => $rte);
-                $array  = array('status' => 1, 'error' => '', 'params' => $params);
-                echo json_encode($array);
-
-            } else {
-
-                $error             = array();
-                $error['class_id'] = form_error('class_id');
-                $array             = array('status' => 0, 'error' => $error);
-                echo json_encode($array);
-            }
+            $params = array('srch_type' => $srch_type, 'class_id' => $class_id, 'section_id' => $section_id, 'category_id' => $category_id, 'gender' => $gender, 'rte' => $rte);
+            $array  = array('status' => 1, 'error' => '', 'params' => $params);
+            echo json_encode($array);
         } else {
             $params = array('srch_type' => 'search_full', 'class_id' => $class_id, 'section_id' => $section_id);
             $array  = array('status' => 1, 'error' => '', 'params' => $params);
@@ -2174,6 +2185,33 @@ class Report extends Admin_Controller
         $gender          = $this->input->post('gender');
         $rte             = $this->input->post('rte');
         $sch_setting     = $this->sch_setting_detail;
+
+        // Handle both single and multi-select values properly
+        // When multiple values are selected, they come as arrays
+        // When single values are selected, they come as strings
+        // Convert single values to arrays for consistent processing
+        if (!is_array($class)) {
+            $class = !empty($class) ? array($class) : array();
+        }
+        if (!is_array($section)) {
+            $section = !empty($section) ? array($section) : array();
+        }
+        if (!is_array($category_id)) {
+            $category_id = !empty($category_id) ? array($category_id) : array();
+        }
+        if (!is_array($gender)) {
+            $gender = !empty($gender) ? array($gender) : array();
+        }
+        if (!is_array($rte)) {
+            $rte = !empty($rte) ? array($rte) : array();
+        }
+
+        // Remove empty values from arrays
+        $class = array_filter($class, function($value) { return !empty($value); });
+        $section = array_filter($section, function($value) { return !empty($value); });
+        $category_id = array_filter($category_id, function($value) { return !empty($value); });
+        $gender = array_filter($gender, function($value) { return !empty($value); });
+        $rte = array_filter($rte, function($value) { return !empty($value); });
 
         $result     = $this->student_model->searchdatatableByClassSectionCategoryGenderRte($class, $section, $category_id, $gender, $rte);
         $resultlist = json_decode($result);

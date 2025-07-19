@@ -846,20 +846,41 @@ class Student_model extends MY_Model
     public function searchdatatableByClassSectionCategoryGenderRte($class_id = null, $section_id = null, $category = null, $gender = null, $rte = null)
     {
 
-        if ($class_id != null) {
-            $this->datatables->where('student_session.class_id', $class_id);
+        // Handle both single values and arrays for multi-select
+        if ($class_id != null && !empty($class_id)) {
+            if (is_array($class_id) && count($class_id) > 0) {
+                $this->datatables->where_in('student_session.class_id', $class_id);
+            } elseif (!is_array($class_id)) {
+                $this->datatables->where('student_session.class_id', $class_id);
+            }
         }
-        if ($section_id != null) {
-            $this->datatables->where('student_session.section_id', $section_id);
+        if ($section_id != null && !empty($section_id)) {
+            if (is_array($section_id) && count($section_id) > 0) {
+                $this->datatables->where_in('student_session.section_id', $section_id);
+            } elseif (!is_array($section_id)) {
+                $this->datatables->where('student_session.section_id', $section_id);
+            }
         }
-        if ($category != null) {
-            $this->datatables->where('students.category_id', $category);
+        if ($category != null && !empty($category)) {
+            if (is_array($category) && count($category) > 0) {
+                $this->datatables->where_in('students.category_id', $category);
+            } elseif (!is_array($category)) {
+                $this->datatables->where('students.category_id', $category);
+            }
         }
-        if ($gender != null) {
-            $this->datatables->where('students.gender', $gender);
+        if ($gender != null && !empty($gender)) {
+            if (is_array($gender) && count($gender) > 0) {
+                $this->datatables->where_in('students.gender', $gender);
+            } elseif (!is_array($gender)) {
+                $this->datatables->where('students.gender', $gender);
+            }
         }
-        if ($rte != null) {
-            $this->datatables->where('students.rte', $rte);
+        if ($rte != null && !empty($rte)) {
+            if (is_array($rte) && count($rte) > 0) {
+                $this->datatables->where_in('students.rte', $rte);
+            } elseif (!is_array($rte)) {
+                $this->datatables->where('students.rte', $rte);
+            }
         }
 
         $this->datatables->select('classes.id AS `class_id`,student_session.id as student_session_id,students.id,classes.class,sections.id AS `section_id`,sections.section,students.id,students.admission_no , students.roll_no,students.admission_date,students.firstname,students.middlename,  students.lastname,students.image,    students.mobileno, students.email ,students.state ,   students.city , students.pincode ,     students.religion,     students.dob ,students.current_address,    students.permanent_address,students.category_id, categories.category,   students.adhar_no,students.samagra_id,students.bank_account_no,students.bank_name, students.ifsc_code , students.guardian_name , students.guardian_relation,students.guardian_phone,students.guardian_address,students.is_active ,students.created_at ,students.updated_at,students.father_name,students.rte,students.gender')

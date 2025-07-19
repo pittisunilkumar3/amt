@@ -19,9 +19,8 @@
                                 <?php echo $this->customlib->getCSRF(); ?>
                                 <div class="col-sm-6 col-md-3">
                                     <div class="form-group">
-                                        <label><?php echo $this->lang->line('class'); ?></label><small class="req"> *</small>
-                                        <select autofocus="" id="class_id" name="class_id" class="form-control" >
-                                            <option value=""><?php echo $this->lang->line('select'); ?></option>
+                                        <label><?php echo $this->lang->line('class'); ?></label>
+                                        <select id="class_id" name="class_id[]" class="form-control multiselect-dropdown" multiple>
                                             <?php
 foreach ($classlist as $class) {
     ?>
@@ -40,10 +39,9 @@ $count++;
                                 <div class="col-sm-6 col-md-3">
                                     <div class="form-group">
                                         <label><?php echo $this->lang->line('section'); ?></label>
-                                        <select  id="section_id" name="section_id" class="form-control" >
-                                            <option value=""><?php echo $this->lang->line('select'); ?></option>
+                                        <select id="section_id" name="section_id[]" class="form-control multiselect-dropdown" multiple>
                                         </select>
-                                        <span class="text-danger"><?php echo form_error('section_id'); ?></span>
+                                        <span class="text-danger" id="error_section_id"></span>
                                     </div>
                                 </div>
                                 <?php if ($sch_setting->category) {
@@ -51,8 +49,7 @@ $count++;
                                     <div class="col-sm-3 col-md-2">
                                         <div class="form-group">
                                             <label><?php echo $this->lang->line('category'); ?></label>
-                                            <select  id="category_id" name="category_id" class="form-control" >
-                                                <option value=""><?php echo $this->lang->line('select'); ?></option>
+                                            <select id="category_id" name="category_id[]" class="form-control multiselect-dropdown" multiple>
                                                 <?php
 foreach ($categorylist as $category) {
         ?>
@@ -65,14 +62,14 @@ $count++;
     }
     ?>
                                             </select>
+                                            <span class="text-danger" id="error_category_id"></span>
                                         </div>
                                     </div>
                                 <?php }?>
                                 <div class="col-sm-3 col-md-2">
                                     <div class="form-group">
                                         <label><?php echo $this->lang->line('gender'); ?></label>
-                                        <select class="form-control" name="gender">
-                                            <option value=""><?php echo $this->lang->line('select'); ?></option>
+                                        <select id="gender" name="gender[]" class="form-control multiselect-dropdown" multiple>
                                             <?php
 foreach ($genderList as $key => $value) {
     ?>
@@ -84,6 +81,7 @@ foreach ($genderList as $key => $value) {
 }
 ?>
                                         </select>
+                                        <span class="text-danger" id="error_gender"></span>
                                     </div>
                                 </div>
                                 <?php if ($sch_setting->rte) {
@@ -91,8 +89,7 @@ foreach ($genderList as $key => $value) {
                                     <div class="col-sm-3 col-md-2">
                                         <div class="form-group">
                                             <label><?php echo $this->lang->line('rte'); ?></label>
-                                            <select  id="rte" name="rte" class="form-control" >
-                                                <option value=""><?php echo $this->lang->line('select'); ?></option>
+                                            <select id="rte" name="rte[]" class="form-control multiselect-dropdown" multiple>
                                                 <?php
 foreach ($RTEstatusList as $k => $rte) {
         ?>
@@ -106,6 +103,7 @@ $count++;
     }
     ?>
                                             </select>
+                                            <span class="text-danger" id="error_rte"></span>
                                         </div>
                                     </div>
                                 <?php }?>
@@ -164,102 +162,402 @@ if ($sch_setting->local_identification_no) {
 </section>
 </div>
 
-<script type="text/javascript">
-    function getSectionByClass(class_id, section_id) {
-        if (class_id != "" && section_id != "") {
-            $('#section_id').html("");
-            var base_url = '<?php echo base_url() ?>';
-            var div_data = '<option value=""><?php echo $this->lang->line('select'); ?></option>';
-            $.ajax({
-                type: "GET",
-                url: base_url + "sections/getByClass",
-                data: {'class_id': class_id},
-                dataType: "json",
-                success: function (data) {
-                    $.each(data, function (i, obj)
-                    {
-                        var sel = "";
-                        if (section_id == obj.section_id) {
-                            sel = "selected";
-                        }
-                        div_data += "<option value=" + obj.section_id + " " + sel + ">" + obj.section + "</option>";
-                    });
-                    $('#section_id').append(div_data);
-                }
-            });
-        }
+<style>
+/* Multi-select dropdown enhancements */
+.SumoSelect {
+    width: 100% !important;
+}
+
+.SumoSelect > .CaptionCont {
+    border: 1px solid #d2d6de;
+    border-radius: 3px;
+    background-color: #fff;
+    min-height: 34px;
+    padding: 6px 12px;
+}
+
+.SumoSelect > .CaptionCont > span {
+    line-height: 1.42857143;
+    color: #555;
+    padding-right: 20px;
+}
+
+.SumoSelect > .CaptionCont > span.placeholder {
+    color: #999;
+    font-style: italic;
+}
+
+.SumoSelect.open > .CaptionCont,
+.SumoSelect:focus > .CaptionCont,
+.SumoSelect:hover > .CaptionCont {
+    border-color: #66afe9;
+    box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
+}
+
+.SumoSelect .optWrapper {
+    border: 1px solid #d2d6de;
+    border-radius: 3px;
+    box-shadow: 0 6px 12px rgba(0,0,0,.175);
+    background-color: #fff;
+    z-index: 9999;
+}
+
+.SumoSelect .optWrapper ul.options {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.SumoSelect .optWrapper ul.options li {
+    padding: 8px 12px;
+    border-bottom: 1px solid #f4f4f4;
+}
+
+.SumoSelect .optWrapper ul.options li:hover {
+    background-color: #f5f5f5;
+}
+
+.SumoSelect .optWrapper ul.options li.selected {
+    background-color: #337ab7;
+    color: #fff;
+}
+
+.SumoSelect .search-txt {
+    border: 1px solid #d2d6de;
+    border-radius: 3px;
+    padding: 6px 12px;
+    margin: 5px;
+    width: calc(100% - 10px);
+}
+
+/* Responsive design improvements */
+@media (max-width: 768px) {
+    .col-sm-6.col-md-3,
+    .col-sm-3.col-md-2 {
+        margin-bottom: 15px;
     }
 
-    $(document).ready(function () {
-        var class_id = $('#class_id').val();
-        var section_id = '<?php echo set_value('section_id') ?>';
-        getSectionByClass(class_id, section_id);
-        $(document).on('change', '#class_id', function (e) {
-            $('#section_id').html("");
-            var class_id = $(this).val();
-            var base_url = '<?php echo base_url() ?>';
-            var div_data = '<option value=""><?php echo $this->lang->line('select'); ?></option>';
-            $.ajax({
-                type: "GET",
-                url: base_url + "sections/getByClass",
-                data: {'class_id': class_id},
-                dataType: "json",
-                success: function (data) {
-                    $.each(data, function (i, obj)
-                    {
-                        div_data += "<option value=" + obj.section_id + ">" + obj.section + "</option>";
-                    });
-                    $('#section_id').append(div_data);
-                }
-            });
-        });
-    });
-</script>
+    .SumoSelect > .CaptionCont {
+        min-height: 40px;
+        padding: 8px 12px;
+    }
 
-<script>
-$(document).ready(function() {
-    emptyDatatable('student-list','data');
-});
+    .form-group label {
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+}
+
+@media (max-width: 480px) {
+    .col-sm-6.col-md-3,
+    .col-sm-3.col-md-2 {
+        width: 100%;
+        float: none;
+    }
+}
+
+/* Loading state improvements */
+.btn[data-loading-text] {
+    position: relative;
+}
+
+.btn[data-loading-text].loading {
+    color: transparent;
+}
+
+.btn[data-loading-text].loading:after {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    margin-left: -8px;
+    margin-top: -8px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    border-top-color: #ffffff;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Error message styling */
+.text-danger {
+    font-size: 12px;
+    margin-top: 5px;
+    display: block;
+}
+
+/* Form alignment improvements */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+/* Select all/clear all button styling */
+.SumoSelect .select-all {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    padding: 8px 12px;
+    font-weight: 600;
+    color: #495057;
+    cursor: pointer;
+    display: block !important;
+}
+
+.SumoSelect .select-all:hover {
+    background-color: #e9ecef;
+}
+
+/* Ensure Select All option is visible */
+.SumoSelect .optWrapper .options li.opt {
+    display: list-item !important;
+    padding: 6px 12px;
+    cursor: pointer;
+}
+
+.SumoSelect .optWrapper .options li.opt:hover {
+    background-color: #f5f5f5;
+}
+
+/* Select All specific styling */
+.SumoSelect .optWrapper .options li.opt.select-all {
+    background-color: #e3f2fd;
+    border-bottom: 1px solid #bbdefb;
+    font-weight: 600;
+    color: #1976d2;
+}
+
+.SumoSelect .optWrapper .options li.opt.select-all:hover {
+    background-color: #bbdefb;
+}
+
+/* Loading state for dropdowns */
+.SumoSelect.loading > .CaptionCont {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.SumoSelect.loading > .CaptionCont:after {
+    content: "";
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    margin-top: -8px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    border-top-color: #337ab7;
+    animation: spin 1s linear infinite;
+}
+
+/* Alert message styling */
+.alert {
+    margin-bottom: 20px;
+    border-radius: 4px;
+}
+
+.alert-success {
+    background-color: #dff0d8;
+    border-color: #d6e9c6;
+    color: #3c763d;
+}
+
+.alert-danger {
+    background-color: #f2dede;
+    border-color: #ebccd1;
+    color: #a94442;
+}
+
+.alert .fa {
+    margin-right: 8px;
+}
+</style>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        console.log('Document ready, jQuery version:', $.fn.jquery);
+        console.log('Found multiselect dropdowns:', $('.multiselect-dropdown').length);
+
+        // Check if SumoSelect is available
+        if (typeof $.fn.SumoSelect === 'undefined') {
+            console.error('SumoSelect plugin not loaded!');
+            return;
+        }
+
+        // Initialize SumoSelect for all multi-select dropdowns
+        $('.multiselect-dropdown').SumoSelect({
+            placeholder: 'Select Options',
+            csvDispCount: 3,
+            captionFormat: '{0} Selected',
+            captionFormatAllSelected: 'All Selected ({0})',
+            selectAll: true,
+            search: true,
+            searchText: 'Search...',
+            noMatch: 'No matches found "{0}"',
+            okCancelInMulti: true,
+            isClickAwayOk: true,
+            locale: ['OK', 'Cancel', 'Select All'],
+            up: false,
+            showTitle: true
+        });
+
+        // Initialize section dropdown on page load if class is pre-selected
+        var preSelectedClass = $('#class_id').val();
+        if (preSelectedClass && preSelectedClass.length > 0) {
+            $('#class_id').trigger('change');
+        }
+
+        // Handle class dropdown changes for section population
+        $(document).on('change', '#class_id', function (e) {
+            var sectionDropdown = $('#section_id')[0];
+            if (sectionDropdown && sectionDropdown.sumo) {
+                sectionDropdown.sumo.removeAll();
+            }
+
+            var class_ids = $(this).val();
+            var base_url = '<?php echo base_url() ?>';
+
+            if (class_ids && class_ids.length > 0) {
+                var requests = [];
+                var allSections = [];
+                var addedSections = {};
+
+                // Get sections for all selected classes
+                $.each(class_ids, function(index, class_id) {
+                    requests.push(
+                        $.ajax({
+                            type: "GET",
+                            url: base_url + "sections/getByClass",
+                            data: {'class_id': class_id},
+                            dataType: "json",
+                            success: function(data) {
+                                if (data && Array.isArray(data)) {
+                                    $.each(data, function(i, obj) {
+                                        // Avoid duplicate sections
+                                        if (!addedSections[obj.section_id]) {
+                                            allSections.push({
+                                                value: obj.section_id,
+                                                text: obj.section
+                                            });
+                                            addedSections[obj.section_id] = true;
+                                        }
+                                    });
+                                }
+                            }
+                        })
+                    );
+                });
+
+                // Wait for all requests to complete
+                $.when.apply($, requests).done(function() {
+                    // Add sections to dropdown
+                    if (sectionDropdown && sectionDropdown.sumo && allSections.length > 0) {
+                        $.each(allSections, function(index, section) {
+                            sectionDropdown.sumo.add(section.value, section.text);
+                        });
+                        // Refresh the dropdown to ensure proper display
+                        sectionDropdown.sumo.reload();
+                    }
+                });
+            }
+        });
+
+        // Initialize empty datatable
+        emptyDatatable('student-list','data');
+    });
 </script>
 
 <script type="text/javascript">
 $(document).ready(function(){
-$(document).on('submit','#reportform',function(e){
-    e.preventDefault(); // avoid to execute the actual submit of the form.
-    var $this = $(this).find("button[type=submit]:focus");
-    var form = $(this);
-    var url = form.attr('action');
-    var form_data = form.serializeArray();
-    form_data.push({name: 'search_type', value: $this.attr('value')});
+    $(document).on('submit','#reportform',function(e){
+        e.preventDefault(); // avoid to execute the actual submit of the form.
+        var $this = $(this).find("button[type=submit]:focus");
+        var form = $(this);
+        var url = form.attr('action');
 
-    $.ajax({
-           url: url,
-           type: "POST",
-           dataType:'JSON',
-           data: form_data, // serializes the form's elements.
-              beforeSend: function () {
+        // Use standard form serialization - works with both single and multi-select
+        var form_data = form.serializeArray();
+        form_data.push({name: 'search_type', value: $this.attr('value')});
+
+        $.ajax({
+            url: url,
+            type: "POST",
+            dataType:'JSON',
+            data: form_data,
+            beforeSend: function () {
                 $('[id^=error]').html("");
                 $this.button('loading');
-
-               },
-              success: function(response) { // your success handler
-
+            },
+            success: function(response) { // your success handler
                 if(!response.status){
                     $.each(response.error, function(key, value) {
-                    $('#error_' + key).html(value);
+                        $('#error_' + key).html(value);
                     });
                 }else{
-
-                   initDatatable('student-list','report/dtstudentreportlist',response.params,[],100);
+                    $('[id^=error]').html("");
+                    initDatatable('student-list','report/dtstudentreportlist',response.params,[],100);
                 }
-              },
-             error: function() { // your error handler
-                 $this.button('reset');
-             },
-             complete: function() {
-             $this.button('reset');
-             }
-         });
+            },
+            error: function(xhr, status, error) { // your error handler
+                console.error('AJAX Error:', status, error);
+                showErrorMessage('Network error occurred. Please check your connection and try again.');
+            },
+            complete: function() {
+                $this.button('reset');
+            }
         });
     });
+
+    // Helper functions for user feedback
+    function showSuccessMessage(message) {
+        $('.alert').remove(); // Remove any existing alerts
+        var alertHtml = '<div class="alert alert-success alert-dismissible" role="alert">' +
+                       '<button type="button" class="close" data-dismiss="alert" aria-label="Close">' +
+                       '<span aria-hidden="true">&times;</span></button>' +
+                       '<i class="fa fa-check-circle"></i> ' + message +
+                       '</div>';
+        $('.box-body').prepend(alertHtml);
+
+        // Auto-hide after 5 seconds
+        setTimeout(function() {
+            $('.alert-success').fadeOut();
+        }, 5000);
+    }
+
+    function showErrorMessage(message) {
+        $('.alert').remove(); // Remove any existing alerts
+        var alertHtml = '<div class="alert alert-danger alert-dismissible" role="alert">' +
+                       '<button type="button" class="close" data-dismiss="alert" aria-label="Close">' +
+                       '<span aria-hidden="true">&times;</span></button>' +
+                       '<i class="fa fa-exclamation-triangle"></i> ' + message +
+                       '</div>';
+        $('.box-body').prepend(alertHtml);
+
+        // Auto-hide after 8 seconds
+        setTimeout(function() {
+            $('.alert-danger').fadeOut();
+        }, 8000);
+    }
+
+    // Enhanced loading state for SumoSelect dropdowns
+    function showDropdownLoading(selector) {
+        $(selector).prop('disabled', true);
+        $(selector).next('.SumoSelect').addClass('loading');
+    }
+
+    function hideDropdownLoading(selector) {
+        $(selector).prop('disabled', false);
+        $(selector).next('.SumoSelect').removeClass('loading');
+    }
+});
 </script>
