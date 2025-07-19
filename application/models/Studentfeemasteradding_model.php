@@ -752,24 +752,45 @@ class Studentfeemasteradding_model extends MY_Model
         $this->db->join('classes', 'classes.id= student_session.class_id');
         $this->db->join('sections', 'sections.id= student_session.section_id');
         $this->db->join('students', 'students.id=student_session.student_id');
-        if ($feetype_id != null) {
-            $this->db->where('fee_groups_feetypeadding.feetype_id', $feetype_id);
+        // Handle both single values and arrays for multi-select functionality - feetype_id
+        if ($feetype_id != null && !empty($feetype_id)) {
+            if (is_array($feetype_id) && count($feetype_id) > 0) {
+                $this->db->where_in('fee_groups_feetypeadding.feetype_id', $feetype_id);
+            } elseif (!is_array($feetype_id)) {
+                $this->db->where('fee_groups_feetypeadding.feetype_id', $feetype_id);
+            }
         }
-        if ($session_id != null) {
-            $this->db->where('fee_groups_feetypeadding.session_id', $session_id);
-            $this->db->where('student_session.session_id', $session_id);
+        // Handle both single values and arrays for multi-select functionality - session_id
+        if ($session_id != null && !empty($session_id)) {
+            if (is_array($session_id) && count($session_id) > 0) {
+                $this->db->where_in('fee_groups_feetypeadding.session_id', $session_id);
+                $this->db->where_in('student_session.session_id', $session_id);
+            } elseif (!is_array($session_id)) {
+                $this->db->where('fee_groups_feetypeadding.session_id', $session_id);
+                $this->db->where('student_session.session_id', $session_id);
+            }
         } else {
             $this->db->where('fee_groups_feetypeadding.session_id', $this->current_session);
             $this->db->where('student_session.session_id', $this->current_session);
         }
         $this->db->order_by('student_fees_depositeadding.id', 'desc');
 
-        if ($class_id != null) {
-            $this->db->where('student_session.class_id', $class_id);
+        // Handle both single values and arrays for multi-select functionality - class_id
+        if ($class_id != null && !empty($class_id)) {
+            if (is_array($class_id) && count($class_id) > 0) {
+                $this->db->where_in('student_session.class_id', $class_id);
+            } elseif (!is_array($class_id)) {
+                $this->db->where('student_session.class_id', $class_id);
+            }
         }
 
-        if ($section_id != null) {
-            $this->db->where('student_session.section_id', $section_id);
+        // Handle both single values and arrays for multi-select functionality - section_id
+        if ($section_id != null && !empty($section_id)) {
+            if (is_array($section_id) && count($section_id) > 0) {
+                $this->db->where_in('student_session.section_id', $section_id);
+            } elseif (!is_array($section_id)) {
+                $this->db->where('student_session.section_id', $section_id);
+            }
         }
 
         $query = $this->db->get();
@@ -978,7 +999,16 @@ class Studentfeemasteradding_model extends MY_Model
             $find = date('Y-m-d', $i);
             foreach ($ar as $row_key => $row_value) {
                 if (isset($row_value->received_by)) {
-                    if ($row_value->date == $find && $row_value->received_by == $receivedBy) {
+                    $match = false;
+
+                    // Handle both single values and arrays for multi-select functionality - received_by
+                    if (is_array($receivedBy)) {
+                        $match = in_array($row_value->received_by, $receivedBy);
+                    } else {
+                        $match = ($row_value->received_by == $receivedBy);
+                    }
+
+                    if ($row_value->date == $find && $match) {
                         $array[] = $row_value;
                     }
                 }

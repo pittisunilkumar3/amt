@@ -52,7 +52,8 @@ class Studentfee extends Admin_Controller
     {
         $search_type = $this->input->post('search_type');
         if ($search_type == "class_search") {
-            $this->form_validation->set_rules('class_id', $this->lang->line('class'), 'required|trim|xss_clean');
+            // Remove required validation for flexible filtering - allow empty class selection
+            $this->form_validation->set_rules('class_id', $this->lang->line('class'), 'trim|xss_clean');
         } elseif ($search_type == "keyword_search") {
             $this->form_validation->set_rules('search_text', $this->lang->line('keyword'), 'required|trim|xss_clean');
             $data = array('search_text' => 'dummy');

@@ -710,11 +710,20 @@ class Student_model extends MY_Model
             ->where('student_session.session_id', $this->current_session)
             ->where('students.is_active', "yes")
             ->sort('students.admission_no', 'asc');
-        if ($class_id != null) {
-            $this->datatables->where('student_session.class_id', $class_id);
+        // Handle both single values and arrays for multi-select functionality
+        if ($class_id != null && !empty($class_id)) {
+            if (is_array($class_id) && count($class_id) > 0) {
+                $this->datatables->where_in('student_session.class_id', $class_id);
+            } elseif (!is_array($class_id)) {
+                $this->datatables->where('student_session.class_id', $class_id);
+            }
         }
-        if ($section_id != null) {
-            $this->datatables->where('student_session.section_id', $section_id);
+        if ($section_id != null && !empty($section_id)) {
+            if (is_array($section_id) && count($section_id) > 0) {
+                $this->datatables->where_in('student_session.section_id', $section_id);
+            } elseif (!is_array($section_id)) {
+                $this->datatables->where('student_session.section_id', $section_id);
+            }
         }
 
         $this->datatables->from('students');
