@@ -132,7 +132,7 @@ class Feesdiscountapproval extends Admin_Controller
                     $approvebtn = "<span style='margin-right:3px; cursor:pointer;' class='label label-success approve-btn' data-toggle='modal' data-target='#confirm-approved' data-studentid='" . $student['fdaid'] . "'>Approve</span>";
                     $disapprovebtn = "<span style='cursor:pointer;' class='label label-danger disapprove-btn' data-studentid='" . $student['fdaid'] . "' data-toggle='modal' data-target='#confirm-delete'>Disapprove</span>";
                 } elseif ($student['approval_status'] == 1) { // Approved
-                    $revertbtn = "<li class='btn btn-default btn-xs' data-toggle='modal' data-target='#confirm-retrive' title='" . $this->lang->line('revert') . "' data-studentid='" . $student['fdaid'] . "' data-paymentid='" . $student['payment_id'] . "'><i class='fa fa-undo'></i></li>";
+                    $revertbtn = "<button class='btn btn-default btn-xs' data-toggle='modal' data-target='#confirm-retrive' title='" . $this->lang->line('revert') . "' data-studentid='" . $student['fdaid'] . "' data-paymentid='" . $student['payment_id'] . "'><i class='fa fa-undo'></i></button>";
                 }
 
                 $row = array();
@@ -268,50 +268,94 @@ class Feesdiscountapproval extends Admin_Controller
 
     public function dismissapprovalsingle()
     {
+        try {
+            $studentid = $this->input->post('dataa');
 
-        $studentid           = $this->input->post('dataa');
-        // $certificate_id      = $this->input->post('certificate_id');
+            // Validate input
+            if (empty($studentid)) {
+                $response = array('status' => 'fail', 'message' => 'Student ID is required');
+                echo json_encode($response);
+                return;
+            }
 
-        $update_result = $this->feediscount_model->updateapprovalstatus($studentid, 2);
+            // Log the request
+            error_log("Dismissing approval for student ID: " . $studentid);
 
-        if ($update_result) {
-            $response = array('status' => 'success');
-        } else {
-            $response = array('status' => 'fail');
+            // Update approval status to rejected (2)
+            $update_result = $this->feediscount_model->updateapprovalstatus($studentid, 2);
+
+            if ($update_result) {
+                error_log("Successfully dismissed approval for student ID: " . $studentid);
+                $response = array('status' => 'success', 'message' => 'Discount request rejected successfully');
+            } else {
+                error_log("Failed to dismiss approval for student ID: " . $studentid);
+                $response = array('status' => 'fail', 'message' => 'Failed to update approval status');
+            }
+
+        } catch (Exception $e) {
+            error_log("Error in dismissapprovalsingle: " . $e->getMessage());
+            $response = array('status' => 'fail', 'message' => 'An error occurred while processing the request');
         }
+
         // Send the response
         echo json_encode($response);
-        
     }
 
 
     public function retrive()
     {
+        try {
+            $studentid = $this->input->post('dataa');
+            $paymentid = $this->input->post('certificate_id');
 
-        $studentid           = $this->input->post('dataa');
-        $paymentid      = $this->input->post('certificate_id');
+            // Validate input
+            if (empty($studentid)) {
+                $response = array('status' => 'fail', 'message' => 'Student ID is required');
+                echo json_encode($response);
+                return;
+            }
 
-        $update_result = $this->feediscount_model->updateapprovalstatus($studentid, 0);
+            // Log the request
+            error_log("Reverting approval for student ID: " . $studentid . ", Payment ID: " . $paymentid);
 
-        $dataa = array(
-            'id'=>$studentid,
-            'payment_id'=> $paymentid,
-        );
-        $update_resultt = $this->feediscount_model->updatepaymentid($dataa);
-        if(!empty($paymentid)){
-            $parts = explode('/', $paymentid);
-            $this->deleteFee($parts[0],$parts[1]);
-        }
+            // Update approval status to pending (0)
+            $update_result = $this->feediscount_model->updateapprovalstatus($studentid, 0);
 
-        if ($update_result) {
-            $response = array('status' => 'success');
-        } else {
-            $response = array('status' => 'fail');
+            if (!$update_result) {
+                error_log("Failed to update approval status for student ID: " . $studentid);
+                $response = array('status' => 'fail', 'message' => 'Failed to update approval status');
+                echo json_encode($response);
+                return;
+            }
+
+            // Update payment ID
+            $dataa = array(
+                'id' => $studentid,
+                'payment_id' => $paymentid,
+            );
+            $update_resultt = $this->feediscount_model->updatepaymentid($dataa);
+
+            // Delete fee record if payment ID exists
+            if (!empty($paymentid)) {
+                $parts = explode('/', $paymentid);
+                if (count($parts) >= 2) {
+                    $this->deleteFee($parts[0], $parts[1]);
+                    error_log("Deleted fee record for invoice: " . $parts[0] . "/" . $parts[1]);
+                } else {
+                    error_log("Invalid payment ID format: " . $paymentid);
+                }
+            }
+
+            error_log("Successfully reverted approval for student ID: " . $studentid);
+            $response = array('status' => 'success', 'message' => 'Discount approval reverted successfully');
+
+        } catch (Exception $e) {
+            error_log("Error in retrive: " . $e->getMessage());
+            $response = array('status' => 'fail', 'message' => 'An error occurred while reverting the approval');
         }
 
         // Send the response
         echo json_encode($response);
-        
     }
 
     public function deleteFee($invoice_id,$sub_invoice)
@@ -329,45 +373,79 @@ class Feesdiscountapproval extends Admin_Controller
     
     public function approvalsingle()
     {
-        $studentid = $this->input->post('dataa');
-        // $certificate_id = $this->input->post('certificate_id');
+        try {
+            $studentid = $this->input->post('dataa');
 
-        // Update the approval status in the database using your model
-        $update_result = $this->feediscount_model->updateapprovalstatus($studentid, 1);
-        $approval_data = $this->feediscount_model->getapproval($studentid);
+            // Validate input
+            if (empty($studentid)) {
+                $response = array('status' => 'fail', 'message' => 'Student ID is required');
+                echo json_encode($response);
+                return;
+            }
 
-        $staff_record = $this->staff_model->get($this->customlib->getStaffID());
+            // Log the request
+            error_log("Approving discount for student ID: " . $studentid);
 
-        $collected_by             = $this->customlib->getAdminSessionUserName() . "(" . $staff_record['employee_id'] . ")";
-        $json_array               = array(
-            'amount'          => convertCurrencyFormatToBaseAmount(0),
-            'amount_discount' => convertCurrencyFormatToBaseAmount($approval_data['amount']),
-            'amount_fine'     => convertCurrencyFormatToBaseAmount(0),
-            'date'            => $approval_data['date'],
-            'description'     => $approval_data['description'],
-            'collected_by'    => $collected_by,
-            'payment_mode'    => 'Cash',
-            'received_by'     => $staff_record['id'],
-        );
+            // Update the approval status in the database using your model
+            $update_result = $this->feediscount_model->updateapprovalstatus($studentid, 1);
 
-        $data = array(
-            'fee_category'           => 'fees',
-            'student_fees_master_id' => $approval_data['student_fees_master_id'],
-            'fee_groups_feetype_id'  => $approval_data['fee_groups_feetype_id'],
-            'amount_detail'          => $json_array,
-        );
+            if (!$update_result) {
+                error_log("Failed to update approval status for student ID: " . $studentid);
+                $response = array('status' => 'fail', 'message' => 'Failed to update approval status');
+                echo json_encode($response);
+                return;
+            }
 
-        $inserted_id        = $this->studentfeemaster_model->fee_deposit($data,'','');
-        $receipt_data1           = json_decode($inserted_id);
-        $dataa = array(
-            'id'=>$studentid,
-            'payment_id'=> $receipt_data1->invoice_id . '/' . $receipt_data1->sub_invoice_id,
-        );
-        $update_resultt = $this->feediscount_model->updatepaymentid($dataa);
-        if ($update_result) {
-            $response = array('status' => 'success');
-        } else {
-            $response = array('status' => 'fail');
+            $approval_data = $this->feediscount_model->getapproval($studentid);
+
+            if (empty($approval_data)) {
+                error_log("No approval data found for student ID: " . $studentid);
+                $response = array('status' => 'fail', 'message' => 'Approval data not found');
+                echo json_encode($response);
+                return;
+            }
+
+            $staff_record = $this->staff_model->get($this->customlib->getStaffID());
+
+            $collected_by = $this->customlib->getAdminSessionUserName() . "(" . $staff_record['employee_id'] . ")";
+            $json_array = array(
+                'amount'          => convertCurrencyFormatToBaseAmount(0),
+                'amount_discount' => convertCurrencyFormatToBaseAmount($approval_data['amount']),
+                'amount_fine'     => convertCurrencyFormatToBaseAmount(0),
+                'date'            => $approval_data['date'],
+                'description'     => $approval_data['description'],
+                'collected_by'    => $collected_by,
+                'payment_mode'    => 'Cash',
+                'received_by'     => $staff_record['id'],
+            );
+
+            $data = array(
+                'fee_category'           => 'fees',
+                'student_fees_master_id' => $approval_data['student_fees_master_id'],
+                'fee_groups_feetype_id'  => $approval_data['fee_groups_feetype_id'],
+                'amount_detail'          => $json_array,
+            );
+
+            $inserted_id = $this->studentfeemaster_model->fee_deposit($data,'','');
+            $receipt_data1 = json_decode($inserted_id);
+
+            if ($receipt_data1 && isset($receipt_data1->invoice_id)) {
+                $dataa = array(
+                    'id' => $studentid,
+                    'payment_id' => $receipt_data1->invoice_id . '/' . $receipt_data1->sub_invoice_id,
+                );
+                $update_resultt = $this->feediscount_model->updatepaymentid($dataa);
+
+                error_log("Successfully approved discount for student ID: " . $studentid);
+                $response = array('status' => 'success', 'message' => 'Discount approved successfully');
+            } else {
+                error_log("Failed to create fee deposit for student ID: " . $studentid);
+                $response = array('status' => 'fail', 'message' => 'Failed to create fee deposit');
+            }
+
+        } catch (Exception $e) {
+            error_log("Error in approvalsingle: " . $e->getMessage());
+            $response = array('status' => 'fail', 'message' => 'An error occurred while processing the approval');
         }
 
         // Send the response

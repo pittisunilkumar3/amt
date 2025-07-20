@@ -571,17 +571,31 @@ $language_name = $language["short_code"];
                                                         <div class="pull-right">
 
                                                             <?php if ($this->rbac->hasPrivilege('collect_fees', 'can_add')) { ?>
+                                                                <?php
+                                                                // Check if there's a pending discount request for this specific fee
+                                                                $pending_key = $fee_value->fee_groups_feetype_id . '_' . $fee->id;
+                                                                $has_pending_discount = isset($pending_discount_lookup) && isset($pending_discount_lookup[$pending_key]);
+                                                                $discount_button_class = $has_pending_discount ? 'btn btn-xs btn-warning disabled' : 'btn btn-xs btn-default myCollectFeeBtn';
+                                                                $discount_button_title = $has_pending_discount ? $this->lang->line('discount_req') . ' - Pending Approval' : $this->lang->line('discount_req');
+                                                                $discount_button_disabled = $has_pending_discount ? 'disabled="disabled"' : '';
+                                                                $discount_modal_target = $has_pending_discount ? '' : 'data-toggle="modal" data-target="#myFeesdiscountModal"';
+                                                                ?>
                                                                 <button type="button"
                                                                     data-student_session_id="<?php echo $fee->student_session_id; ?>"
                                                                     data-student_fees_master_id="<?php echo $fee->id; ?>"
                                                                     data-fee_groups_feetype_id="<?php echo $fee_value->fee_groups_feetype_id; ?>"
                                                                     data-group="<?php echo ($fee_value->is_system) ? $this->lang->line($fee_value->name) . " (" . $this->lang->line($fee_value->type) . ")" : $fee_value->name . " (" . $fee_value->type . ")"; ?>"
                                                                     data-type="<?php echo ($fee_value->is_system) ? $this->lang->line($fee_value->type) : $fee_value->code; ?>"
-                                                                    class="btn btn-xs btn-default myCollectFeeBtn <?php echo $display_none; ?>"
-                                                                    title="<?php echo $this->lang->line('discount_req'); ?>"
-                                                                    data-toggle="modal" data-target="#myFeesdiscountModal"
-                                                                    data-fee-category="fees" data-trans_fee_id="0"><i
-                                                                        class="fa fa-percent"></i></button>
+                                                                    class="<?php echo $discount_button_class; ?> <?php echo $display_none; ?>"
+                                                                    title="<?php echo $discount_button_title; ?>"
+                                                                    <?php echo $discount_modal_target; ?>
+                                                                    <?php echo $discount_button_disabled; ?>
+                                                                    data-fee-category="fees" data-trans_fee_id="0">
+                                                                    <i class="fa fa-percent"></i>
+                                                                    <?php if ($has_pending_discount): ?>
+                                                                        <small style="font-size: 8px; display: block; line-height: 1;">PENDING</small>
+                                                                    <?php endif; ?>
+                                                                </button>
 
                                                                 <button type="button"
                                                                     data-student_session_id="<?php echo $fee->student_session_id; ?>"

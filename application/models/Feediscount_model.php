@@ -400,15 +400,21 @@ class Feediscount_model extends MY_Model
      //     return "success";
      // }
  
-     // public function updateapprovalstatus($fees_discount_id, $student_session_id, $approvalstatus)
-     // {
-     //     $data = array('approval_status' => $approvalstatus);
-     //     $this->db->where('fees_discount_id', $fees_discount_id);
-     //     $this->db->where('student_session_id', $student_session_id);
- 
-     //     // Perform the update and return true if successful, false otherwise
-     //     return $this->db->update('fees_discount_approval', $data);
-     // }
+     public function updateapprovalstatus($param1, $param2, $param3 = null) {
+         $data = array('approval_status' => ($param3 !== null ? $param3 : $param2));
+
+         if ($param3 !== null) {
+             // 3-parameter call: updateapprovalstatus($fees_discount_id, $student_session_id, $approvalstatus)
+             $this->db->where('fees_discount_id', $param1);
+             $this->db->where('student_session_id', $param2);
+         } else {
+             // 2-parameter call: updateapprovalstatus($studentid, $approvalstatus)
+             $this->db->where('id', $param1);
+         }
+
+         // Perform the update and return true if successful, false otherwise
+         return $this->db->update('fees_discount_approval', $data);
+     }
  
  
  
@@ -434,33 +440,33 @@ class Feediscount_model extends MY_Model
  
  
  
-    //  public function updateApprovalStatus($certificateId, $studentId, $approvalStatus) {
-    //      // Ensure the parameters are valid
-    //      if (empty($certificateId) || empty($studentId)) {
-    //          return false;
-    //      }
-     
-    //      // Prepare data for update
-    //      $data = array('approval_status' => $approvalStatus);
-     
-    //      // Set update conditions
-    //      $this->db->where('fees_discount_id', $certificateId);
-    //      $this->db->where('student_session_id', $studentId);
-     
-    //      // Perform the update
-    //      $updateResult = $this->db->update('fees_discount_approval', $data);
-     
-    //      // Check for errors
-    //      if (!$updateResult) {
-    //          // Capture and log the database error
-    //          $dbError = $this->db->error();
-    //          error_log("Database error: " . $dbError['message']);
-    //          return false;
-    //      }
-     
-    //      // Return true if update was successful
-    //      return true;
-    //  }
+     // public function updateApprovalStatus($certificateId, $studentId, $approvalStatus) {
+     //     // Ensure the parameters are valid
+     //     if (empty($certificateId) || empty($studentId)) {
+     //         return false;
+     //     }
+
+     //     // Prepare data for update
+     //     $data = array('approval_status' => $approvalStatus);
+
+     //     // Set update conditions
+     //     $this->db->where('fees_discount_id', $certificateId);
+     //     $this->db->where('student_session_id', $studentId);
+
+     //     // Perform the update
+     //     $updateResult = $this->db->update('fees_discount_approval', $data);
+
+     //     // Check for errors
+     //     if (!$updateResult) {
+     //         // Capture and log the database error
+     //         $dbError = $this->db->error();
+     //         error_log("Database error: " . $dbError['message']);
+     //         return false;
+     //     }
+
+     //     // Return true if update was successful
+     //     return true;
+     // }
      
     public function getapproval($id){
 
@@ -472,33 +478,33 @@ class Feediscount_model extends MY_Model
      }
  
      
-     public function updateApprovalStatus($studentId, $approvalStatus) {
-         // Ensure the parameters are valid
-         if (empty($studentId)) {
-             return false;
-         }
-     
-         // Prepare data for update
-         $data = array('approval_status' => $approvalStatus);
-     
-         // Set update conditions
-        //  $this->db->where('fees_discount_id', $certificateId);
-         $this->db->where('id', $studentId);
-     
-         // Perform the update
-         $updateResult = $this->db->update('fees_discount_approval', $data);
-     
-         // Check for errors
-         if (!$updateResult) {
-             // Capture and log the database error
-             $dbError = $this->db->error();
-             error_log("Database error: " . $dbError['message']);
-             return false;
-         }
-     
-         // Return true if update was successful
-         return true;
-     }
+     // public function updateApprovalStatus($studentId, $approvalStatus) {
+     //     // Ensure the parameters are valid
+     //     if (empty($studentId)) {
+     //         return false;
+     //     }
+
+     //     // Prepare data for update
+     //     $data = array('approval_status' => $approvalStatus);
+
+     //     // Set update conditions
+     //    //  $this->db->where('fees_discount_id', $certificateId);
+     //     $this->db->where('id', $studentId);
+
+     //     // Perform the update
+     //     $updateResult = $this->db->update('fees_discount_approval', $data);
+
+     //     // Check for errors
+     //     if (!$updateResult) {
+     //         // Capture and log the database error
+     //         $dbError = $this->db->error();
+     //         error_log("Database error: " . $dbError['message']);
+     //         return false;
+     //     }
+
+     //     // Return true if update was successful
+     //     return true;
+     // }
      
      
      
@@ -563,13 +569,66 @@ class Feediscount_model extends MY_Model
 
 
      public function updatepaymentid($data){
-        
+
         if (isset($data['id'])) {
             $this->db->where('id', $data['id']);
             $this->db->update('fees_discount_approval', $data);
         }
-        
+
      }
- 
+
+     /**
+      * Check if a student has pending discount requests for specific fee items
+      * @param int $student_session_id
+      * @param int $fee_groups_feetype_id (optional)
+      * @param int $student_fees_master_id (optional)
+      * @return array|bool Returns array of pending requests or false if none
+      */
+     public function checkPendingDiscountRequests($student_session_id, $fee_groups_feetype_id = null, $student_fees_master_id = null) {
+         $this->db->select('*');
+         $this->db->from('fees_discount_approval');
+         $this->db->where('student_session_id', $student_session_id);
+         $this->db->where('approval_status', 0); // 0 = pending
+         $this->db->where('is_active', 1);
+
+         if ($fee_groups_feetype_id !== null) {
+             $this->db->where('fee_groups_feetype_id', $fee_groups_feetype_id);
+         }
+
+         if ($student_fees_master_id !== null) {
+             $this->db->where('student_fees_master_id', $student_fees_master_id);
+         }
+
+         $query = $this->db->get();
+
+         if ($query->num_rows() > 0) {
+             return $query->result_array();
+         }
+
+         return false;
+     }
+
+     /**
+      * Get all pending discount requests for a student
+      * @param int $student_session_id
+      * @return array
+      */
+     public function getStudentPendingDiscounts($student_session_id) {
+         try {
+             $this->db->select('fda.*');
+             $this->db->from('fees_discount_approval fda');
+             $this->db->where('fda.student_session_id', $student_session_id);
+             $this->db->where('fda.approval_status', 0); // 0 = pending
+             $this->db->where('fda.is_active', 1);
+             $this->db->order_by('fda.created_at', 'DESC');
+
+             $query = $this->db->get();
+             return $query->result_array();
+         } catch (Exception $e) {
+             error_log('Error in getStudentPendingDiscounts: ' . $e->getMessage());
+             return array();
+         }
+     }
+
 
 }

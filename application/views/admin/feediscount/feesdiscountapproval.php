@@ -400,36 +400,11 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
 <script>
 
         $(document).ready(function () {
+            // Old event handlers removed to prevent conflicts
+            // New event handlers are defined below using $(document).on() for dynamic content
 
-            $('.disapprove-btn').on('click', function () {
-                var studentID = $(this).data('studentid');
-                // var certificateId = $("#certificate_id").val();
-                
-                $('#confirm-delete').on('show.bs.modal', function (e) {
-                    $('#main_invoicee',this).val(studentID);
-                    // $('#sub_invoice',this).val(certificateId);
-                });
-            });
-
-            
-            $('.approve-btn').on('click', function () {
-                var studentID = $(this).data('studentid');
-                
-                $('#confirm-approved').on('show.bs.modal', function (e) {
-                    $('#main_invoice',this).val(studentID);
-                    // $('#sub_invoice',this).val(certificateId);
-                });
-            });
-
-            $('.btn-xs').on('click', function () {
-                var studentID = $(this).data('studentid');
-                var paymentid = $(this).data('paymentid');
-                
-                $('#confirm-retrive').on('show.bs.modal', function (e) {
-                    $('#main_invoic',this).val(studentID);
-                    $('#sub_invoic',this).val(paymentid);
-                });
-            });
+            // Old revert event handler removed to prevent conflicts
+            // New event handler is defined below using $(document).on() for dynamic content
 
             
             
@@ -438,16 +413,37 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
         $('#confirm-delete').on('click', '.btn-ok', function (e) {
             var $modalDiv = $(e.delegateTarget);
             var studentID = $('#main_invoicee').val();
-            // var certificateId = $('#sub_invoice').val();
+
+            console.log('🔴 Disapproval button clicked, Student ID:', studentID);
+
+            if (!studentID) {
+                alert('Error: Student ID not found');
+                return;
+            }
+
             $modalDiv.addClass('modalloading');
 
             $.ajax({
                 url: '<?php echo site_url("admin/feesdiscountapproval/dismissapprovalsingle") ?>',
                 type: 'post',
-                dataType: "html",
+                dataType: "json",
                 data: {'dataa': studentID},
                 success: function (response) {
-                    location.reload();
+                    console.log('✅ Disapproval response:', response);
+                    $modalDiv.removeClass('modalloading');
+
+                    if (response.status === 'success') {
+                        $('#confirm-delete').modal('hide');
+                        location.reload();
+                    } else {
+                        alert('Failed to disapprove discount: ' + (response.message || 'Unknown error'));
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('❌ Disapproval AJAX error:', status, error);
+                    console.error('Response:', xhr.responseText);
+                    $modalDiv.removeClass('modalloading');
+                    alert('Network error occurred while disapproving. Please try again.');
                 }
             });
         });
@@ -455,16 +451,37 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
         $('#confirm-approved').on('click', '.approved-btn-ok', function (e) {
             var $modalDiv = $(e.delegateTarget);
             var studentID = $('#main_invoice').val();
-            // var certificateId = $('#sub_invoice').val();
+
+            console.log('🟢 Approval button clicked, Student ID:', studentID);
+
+            if (!studentID) {
+                alert('Error: Student ID not found');
+                return;
+            }
+
             $modalDiv.addClass('modalloading');
 
             $.ajax({
                 url: '<?php echo site_url("admin/feesdiscountapproval/approvalsingle") ?>',
                 type: 'post',
-                dataType: "html",
+                dataType: "json",
                 data: {'dataa': studentID},
                 success: function (response) {
-                    location.reload();
+                    console.log('✅ Approval response:', response);
+                    $modalDiv.removeClass('modalloading');
+
+                    if (response.status === 'success') {
+                        $('#confirm-approved').modal('hide');
+                        location.reload();
+                    } else {
+                        alert('Failed to approve discount: ' + (response.message || 'Unknown error'));
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('❌ Approval AJAX error:', status, error);
+                    console.error('Response:', xhr.responseText);
+                    $modalDiv.removeClass('modalloading');
+                    alert('Network error occurred while approving. Please try again.');
                 }
             });
         });
@@ -473,15 +490,37 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
             var $modalDiv = $(e.delegateTarget);
             var studentID = $('#main_invoic').val();
             var certificateId = $('#sub_invoic').val();
+
+            console.log('🔄 Revert button clicked, Student ID:', studentID, 'Payment ID:', certificateId);
+
+            if (!studentID) {
+                alert('Error: Student ID not found');
+                return;
+            }
+
             $modalDiv.addClass('modalloading');
 
             $.ajax({
                 url: '<?php echo site_url("admin/feesdiscountapproval/retrive") ?>',
                 type: 'post',
-                dataType: "html",
-                data: {'dataa': studentID,'certificate_id':certificateId},
+                dataType: "json",
+                data: {'dataa': studentID,'certificate_id': certificateId},
                 success: function (response) {
-                    location.reload();
+                    console.log('✅ Revert response:', response);
+                    $modalDiv.removeClass('modalloading');
+
+                    if (response.status === 'success') {
+                        $('#confirm-retrive').modal('hide');
+                        location.reload();
+                    } else {
+                        alert('Failed to revert discount: ' + (response.message || 'Unknown error'));
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('❌ Revert AJAX error:', status, error);
+                    console.error('Response:', xhr.responseText);
+                    $modalDiv.removeClass('modalloading');
+                    alert('Network error occurred while reverting. Please try again.');
                 }
             });
         });
@@ -908,28 +947,38 @@ $(document).ready(function(){
     // Handle dynamic event binding for DataTable buttons
     $(document).on('click', '.approve-btn', function () {
         var studentID = $(this).data('studentid');
+        console.log('🟢 Approve button clicked (DataTable), Student ID:', studentID);
 
-        $('#confirm-approved').on('show.bs.modal', function (e) {
-            $('#main_invoice',this).val(studentID);
-        });
+        // Set the student ID in the modal
+        $('#main_invoice').val(studentID);
+
+        // Show the modal
+        $('#confirm-approved').modal('show');
     });
 
     $(document).on('click', '.disapprove-btn', function () {
         var studentID = $(this).data('studentid');
+        console.log('🔴 Disapprove button clicked (DataTable), Student ID:', studentID);
 
-        $('#confirm-delete').on('show.bs.modal', function (e) {
-            $('#main_invoicee',this).val(studentID);
-        });
+        // Set the student ID in the modal
+        $('#main_invoicee').val(studentID);
+
+        // Show the modal
+        $('#confirm-delete').modal('show');
     });
 
     $(document).on('click', '.btn-xs[data-target="#confirm-retrive"]', function () {
         var studentID = $(this).data('studentid');
         var paymentid = $(this).data('paymentid');
 
-        $('#confirm-retrive').on('show.bs.modal', function (e) {
-            $('#main_invoic',this).val(studentID);
-            $('#sub_invoic',this).val(paymentid);
-        });
+        console.log('🔄 Revert button clicked (DataTable), Student ID:', studentID, 'Payment ID:', paymentid);
+
+        // Set the values in the modal
+        $('#main_invoic').val(studentID);
+        $('#sub_invoic').val(paymentid);
+
+        // Show the modal
+        $('#confirm-retrive').modal('show');
     });
 
     // Handle checkbox selection in DataTable

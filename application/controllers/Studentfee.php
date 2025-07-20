@@ -525,6 +525,27 @@ class Studentfee extends Admin_Controller
         $data['additional_fees_by_session'] = $additional_fees_by_session;
         $student_discount_fee  = $this->feediscount_model->getStudentFeesDiscount($id);
 
+        // Check for pending discount requests for this student
+        try {
+            $pending_discounts = $this->feediscount_model->getStudentPendingDiscounts($student_session_id);
+            $data['pending_discounts'] = $pending_discounts;
+
+            // Create a lookup array for quick checking if a specific fee has pending discount
+            $pending_discount_lookup = array();
+            if (!empty($pending_discounts)) {
+                foreach ($pending_discounts as $pending) {
+                    $key = $pending['fee_groups_feetype_id'] . '_' . $pending['student_fees_master_id'];
+                    $pending_discount_lookup[$key] = $pending;
+                }
+            }
+            $data['pending_discount_lookup'] = $pending_discount_lookup;
+        } catch (Exception $e) {
+            // If there's an error with discount functionality, continue without it
+            error_log('Discount functionality error: ' . $e->getMessage());
+            $data['pending_discounts'] = array();
+            $data['pending_discount_lookup'] = array();
+        }
+
         $data['transport_fees']         = $transport_fees;
         $data['student_discount_fee']   = $student_discount_fee;
         $data['student_due_fee']        = $student_due_fee;
