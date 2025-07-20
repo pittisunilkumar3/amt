@@ -3616,33 +3616,67 @@ class Student_model extends MY_Model
         $this->db->join('fee_session_groups','student_fees_master.fee_session_group_id=fee_session_groups.id');
         $this->db->join('fee_groups','fee_groups.id=fee_session_groups.fee_groups_id');
 
-        // Only filter by session if a specific session is selected
-        if ($session_id != null && $session_id != '') {
-            $this->db->where('fees_discount_approval.session_id', $session_id);
+        // Handle session filtering (multi-select or single)
+        if ($session_id != null && !empty($session_id)) {
+            if (is_array($session_id)) {
+                // Remove empty values from array
+                $session_id = array_filter($session_id, function($value) {
+                    return $value !== '' && $value !== null;
+                });
+                if (!empty($session_id)) {
+                    $this->db->where_in('fees_discount_approval.session_id', $session_id);
+                }
+            } else if ($session_id != '') {
+                $this->db->where('fees_discount_approval.session_id', $session_id);
+            }
         }
         // If no session is selected, show all sessions (no session filter applied)
 
         $this->db->where('students.is_active', "yes");
 
-
-
-        if($statuss!=null){
-            if($statuss =="approved"){
-                $this->db->where('approval_status',1);
-            }
-            if($statuss =="rejected"){
-                $this->db->where('approval_status',2);
-            }
-            if($statuss =="pending"){
-                $this->db->where('approval_status',0);
+        // Handle status filtering (multi-select)
+        if ($statuss != null && !empty($statuss)) {
+            if (is_array($statuss)) {
+                $status_conditions = array();
+                foreach ($statuss as $status) {
+                    if ($status == "approved") {
+                        $status_conditions[] = 1;
+                    } elseif ($status == "rejected") {
+                        $status_conditions[] = 2;
+                    } elseif ($status == "pending") {
+                        $status_conditions[] = 0;
+                    }
+                }
+                if (!empty($status_conditions)) {
+                    $this->db->where_in('approval_status', $status_conditions);
+                }
+            } else {
+                if ($statuss == "approved") {
+                    $this->db->where('approval_status', 1);
+                } elseif ($statuss == "rejected") {
+                    $this->db->where('approval_status', 2);
+                } elseif ($statuss == "pending") {
+                    $this->db->where('approval_status', 0);
+                }
             }
         }
 
-        if ($class_id != null) {
-            $this->db->where('student_session.class_id', $class_id);
+        // Handle class filtering (multi-select)
+        if ($class_id != null && !empty($class_id)) {
+            if (is_array($class_id)) {
+                $this->db->where_in('student_session.class_id', $class_id);
+            } else {
+                $this->db->where('student_session.class_id', $class_id);
+            }
         }
-        if ($section_id != null) {
-            $this->db->where('student_session.section_id', $section_id);
+
+        // Handle section filtering (multi-select)
+        if ($section_id != null && !empty($section_id)) {
+            if (is_array($section_id)) {
+                $this->db->where_in('student_session.section_id', $section_id);
+            } else {
+                $this->db->where('student_session.section_id', $section_id);
+            }
         }
 
 

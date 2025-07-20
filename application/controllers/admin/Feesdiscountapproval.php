@@ -73,32 +73,33 @@ class Feesdiscountapproval extends Admin_Controller
             $section     = $this->input->post('section_id');
             $disstatus   = $this->input->post('progress_id');
             $session_id  = $this->input->post('session_id');
-            // $search      = $this->input->post('search');
             $certificate = $this->input->post('certificate_id');
-            // if (isset($search)) {
-                $this->form_validation->set_rules('class_id', $this->lang->line('class'), 'trim|required|xss_clean');
-                // $this->form_validation->set_rules('certificate_id', $this->lang->line('certificate'), 'trim|required|xss_clean');
-                if ($this->form_validation->run() == false) {
 
-                } else {
+            // No mandatory field validation - allow flexible search
+            $data['class_id']          = $this->input->post('class_id');
+            $data['section_id']        = $this->input->post('section_id');
+            $data['session_id']        = $this->input->post('session_id');
+            $certificate               = $this->input->post('certificate_id');
 
-            //         $data['searchby']          = "filter";
-                    $data['class_id']          = $this->input->post('class_id');
-                    $data['section_id']        = $this->input->post('section_id');
-                    $data['session_id']        = $this->input->post('session_id');
-                    $certificate               = $this->input->post('certificate_id');
+            $certificateResult         = $this->feediscount_model->get($certificate);
+            $data['certificateResult'] = $certificateResult;
 
-                    $certificateResult         = $this->feediscount_model->get($certificate);
-                    $data['certificateResult'] = $certificateResult;
+            $resultlist                = $this->student_model->searchByClassSectionAnddiscountStatus($class,$certificate, $section,$disstatus, $session_id);
+            $data['resultlist']        = $resultlist;
 
-                    $resultlist                = $this->student_model->searchByClassSectionAnddiscountStatus($class,$certificate, $section,$disstatus, $session_id);
-                    $data['resultlist']        = $resultlist;
-
-            //         $data['discountstat']      = $disstatus;
-                    $title                     = $this->classsection_model->getDetailbyClassSection($data['class_id'], $data['section_id']);
-                    $data['title']             = $this->lang->line('std_dtl_for') . ' ' . $title['class'] . "(" . $title['section'] . ")";
+            // Generate title based on selected filters
+            if (!empty($class) && !empty($section)) {
+                if (is_array($class)) {
+                    $class = $class[0]; // Use first class for title
                 }
-            // }
+                if (is_array($section)) {
+                    $section = $section[0]; // Use first section for title
+                }
+                $title = $this->classsection_model->getDetailbyClassSection($class, $section);
+                $data['title'] = $this->lang->line('std_dtl_for') . ' ' . $title['class'] . "(" . $title['section'] . ")";
+            } else {
+                $data['title'] = 'Fees Discount Approval Results';
+            }
             $data['sch_setting'] = $this->sch_setting_detail;
             $this->load->view('layout/header', $data);
             $this->load->view('admin/feediscount/feesdiscountapproval', $data);
@@ -316,6 +317,34 @@ class Feesdiscountapproval extends Admin_Controller
         exit();
     }
 
+    /**
+     * AJAX method to get sections for multiple selected classes
+     */
+    public function getClassSections()
+    {
+        $class_ids = $this->input->post('class_ids');
+
+        if (empty($class_ids)) {
+            echo json_encode(array());
+            return;
+        }
+
+        // Ensure class_ids is an array
+        if (!is_array($class_ids)) {
+            $class_ids = array($class_ids);
+        }
+
+        $result = array();
+
+        foreach ($class_ids as $class_id) {
+            if (!empty($class_id)) {
+                $sections = $this->section_model->getClassBySection($class_id);
+                $result[$class_id] = $sections;
+            }
+        }
+
+        echo json_encode($result);
+    }
 }
 
 

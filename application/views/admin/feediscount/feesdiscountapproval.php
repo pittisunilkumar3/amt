@@ -2,6 +2,161 @@
 $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
 ?>
 
+<style>
+/* Multi-select dropdown enhancements */
+.SumoSelect {
+    width: 100% !important;
+}
+
+.SumoSelect > .CaptionCont {
+    border: 1px solid #d2d6de;
+    border-radius: 3px;
+    background-color: #fff;
+    min-height: 34px;
+    padding: 6px 12px;
+}
+
+.SumoSelect > .CaptionCont > span {
+    line-height: 1.42857143;
+    color: #555;
+    padding-right: 20px;
+}
+
+.SumoSelect > .CaptionCont > span.placeholder {
+    color: #999;
+    font-style: italic;
+}
+
+.SumoSelect.open > .CaptionCont,
+.SumoSelect:focus > .CaptionCont,
+.SumoSelect:hover > .CaptionCont {
+    border-color: #66afe9;
+    box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
+}
+
+.SumoSelect .optWrapper {
+    border: 1px solid #d2d6de;
+    border-radius: 3px;
+    box-shadow: 0 6px 12px rgba(0,0,0,.175);
+    background-color: #fff;
+    z-index: 9999;
+}
+
+.SumoSelect .optWrapper ul.options {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.SumoSelect .optWrapper ul.options li {
+    padding: 8px 12px;
+    border-bottom: 1px solid #f4f4f4;
+}
+
+.SumoSelect .optWrapper ul.options li:hover {
+    background-color: #f5f5f5;
+}
+
+.SumoSelect .optWrapper ul.options li.selected {
+    background-color: #337ab7;
+    color: #fff;
+}
+
+.SumoSelect .search-txt {
+    border: 1px solid #d2d6de;
+    border-radius: 3px;
+    padding: 6px 12px;
+    margin: 5px;
+    width: calc(100% - 10px);
+}
+
+/* Select all/clear all button styling */
+.SumoSelect .select-all {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    padding: 8px 12px;
+    font-weight: 600;
+    color: #495057;
+    cursor: pointer;
+    display: block !important;
+}
+
+.SumoSelect .select-all:hover {
+    background-color: #e9ecef;
+}
+
+/* Ensure Select All option is visible */
+.SumoSelect .optWrapper .options li.opt {
+    display: list-item !important;
+    padding: 6px 12px;
+    cursor: pointer;
+}
+
+.SumoSelect .optWrapper .options li.opt:hover {
+    background-color: #f5f5f5;
+}
+
+/* Select All specific styling */
+.SumoSelect .optWrapper .options li.opt.select-all {
+    background-color: #e3f2fd;
+    border-bottom: 1px solid #bbdefb;
+    font-weight: 600;
+    color: #1976d2;
+}
+
+.SumoSelect .optWrapper .options li.opt.select-all:hover {
+    background-color: #bbdefb;
+}
+
+/* Loading state for dropdowns */
+.SumoSelect.loading > .CaptionCont {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.SumoSelect.loading > .CaptionCont:after {
+    content: "";
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    margin-top: -8px;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #ccc;
+    border-top-color: #337ab7;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive design improvements */
+@media (max-width: 768px) {
+    .col-sm-3 {
+        margin-bottom: 15px;
+    }
+
+    .SumoSelect > .CaptionCont {
+        min-height: 40px;
+        padding: 8px 12px;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+}
+
+@media (max-width: 480px) {
+    .SumoSelect > .CaptionCont {
+        min-height: 44px;
+        padding: 10px 12px;
+    }
+}
+</style>
+
 
 
 
@@ -39,38 +194,38 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
 
                                 <div class="col-sm-3">
                                     <div class="form-group">
-                                        <label><?php echo $this->lang->line('class'); ?></label><small class="req"> *</small>
-                                        <select autofocus="" id="class_id" name="class_id" class="form-control" >
-                                            <option value=""><?php echo $this->lang->line('select'); ?></option>
+                                        <label><?php echo $this->lang->line('class'); ?></label>
+                                        <select id="class_id" name="class_id[]" class="form-control multiselect-dropdown" multiple>
                                             <?php
+                                            if (isset($classlist) && !empty($classlist)) {
                                                 foreach ($classlist as $class) {
                                                     ?>
-                                                <option value="<?php echo $class['id'] ?>" <?php if (set_value('class_id') == $class['id']) {
-                                                    echo "selected=selected";
+                                                    <option value="<?php echo $class['id'] ?>" <?php if (set_value('class_id') == $class['id']) {
+                                                        echo "selected=selected";
+                                                    }
+                                                    ?>><?php echo $class['class'] ?></option>
+                                                    <?php
                                                 }
-                                                ?>><?php echo $class['class'] ?></option>
-                                                <?php
                                             }
                                             ?>
                                         </select>
-                                        <span class="text-danger"><?php echo form_error('class_id'); ?></span>
+                                        <span class="text-danger" id="error_class_id"></span>
                                     </div>
                                 </div>
 
                                 <div class="col-sm-3">
                                     <div class="form-group">
                                         <label><?php echo $this->lang->line('section'); ?></label>
-                                        <select  id="section_id" name="section_id" class="form-control" >
-                                            <option value=""><?php echo $this->lang->line('select'); ?></option>
+                                        <select id="section_id" name="section_id[]" class="form-control multiselect-dropdown" multiple>
                                         </select>
-                                        <span class="text-danger"><?php echo form_error('section_id'); ?></span>
+                                        <span class="text-danger" id="error_section_id"></span>
                                     </div>
                                 </div>
 
                                 <div class="col-sm-3">
                                     <div class="form-group">
                                         <label><?php echo $this->lang->line('session'); ?></label>
-                                        <select id="session_id" name="session_id" class="form-control">
+                                        <select id="session_id" name="session_id[]" class="form-control multiselect-dropdown" multiple>
                                             <option value="">All Sessions</option>
                                             <?php
                                             if (isset($sessionlist)) {
@@ -85,7 +240,7 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                                             }
                                             ?>
                                         </select>
-                                        <span class="text-danger"><?php echo form_error('session_id'); ?></span>
+                                        <span class="text-danger" id="error_session_id"></span>
                                     </div>
                                 </div>
 
@@ -116,22 +271,21 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                                 <div class="col-sm-3">
                                     <div class="form-group">
                                         <label><?php echo $this->lang->line('discount_status'); ?></label>
-                                            <select class="form-control" name="progress_id" id="progress_id">
-                                                    <option value=""><?php echo $this->lang->line('select'); ?></option>
-                                                    <?php
-                                                        foreach ($progresslist as $key => $value) {
-                                                            ?>
-                                                        <option value="<?php echo $key; ?>"
-                                                            <?php
-                                                                if (set_value('progress_id') == $key) {echo "selected";}
-                                                            ?>>
-                                                            <?php echo $value; ?>
-                                                        </option>
-                                                    <?php
-                                                }
+                                        <select class="form-control multiselect-dropdown" name="progress_id[]" id="progress_id" multiple>
+                                            <?php
+                                            foreach ($progresslist as $key => $value) {
                                                 ?>
-                                            </select>
-                                        <span class="text-danger"><?php echo form_error('discountstatus'); ?></span>
+                                                <option value="<?php echo $key; ?>"
+                                                    <?php
+                                                    if (set_value('progress_id') == $key) {echo "selected";}
+                                                    ?>>
+                                                    <?php echo $value; ?>
+                                                </option>
+                                                <?php
+                                            }
+                                            ?>
+                                        </select>
+                                        <span class="text-danger" id="error_progress_id"></span>
                                     </div>
                                 </div>
 
@@ -756,6 +910,116 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
         });
 
     });
+
+    // Multi-select dropdown initialization
+    $(document).ready(function () {
+        // Check if SumoSelect is available
+        console.log('Initializing multi-select dropdowns...');
+
+        if (typeof $.fn.SumoSelect === 'undefined') {
+            console.error('❌ SumoSelect plugin not loaded!');
+            return;
+        }
+
+        // Initialize SumoSelect for all multi-select dropdowns
+        $('.multiselect-dropdown').SumoSelect({
+            placeholder: 'Select Options',
+            csvDispCount: 3,
+            captionFormat: '{0} Selected',
+            captionFormatAllSelected: 'All Selected ({0})',
+            selectAll: true,
+            search: true,
+            searchText: 'Search...',
+            noMatch: 'No matches found',
+            okCancelInMulti: true,
+            isClickAwayOk: true
+        });
+
+        // Handle class selection change to populate sections
+        $('#class_id').on('sumo:closed', function() {
+            var class_ids = $(this).val();
+            console.log('Selected classes:', class_ids);
+
+            // Clear section dropdown
+            $('#section_id').html('');
+
+            // Refresh SumoSelect to clear previous selections
+            if ($('#section_id')[0].sumo) {
+                $('#section_id')[0].sumo.reload();
+            }
+
+            if (class_ids && class_ids.length > 0) {
+                var base_url = '<?php echo base_url() ?>';
+
+                // Show loading state
+                showDropdownLoading('#section_id');
+
+                $.ajax({
+                    url: base_url + "admin/ajax/getClassSections",
+                    type: "POST",
+                    data: {class_ids: class_ids},
+                    dataType: "json",
+                    success: function (data) {
+                        console.log('Sections data received:', data);
+
+                        var allSections = [];
+
+                        // Collect all sections from all selected classes
+                        $.each(data, function(class_id, sections) {
+                            $.each(sections, function(i, section) {
+                                // Avoid duplicates
+                                var exists = allSections.some(function(s) {
+                                    return s.value === section.section_id;
+                                });
+
+                                if (!exists) {
+                                    allSections.push({
+                                        value: section.section_id,
+                                        text: section.section
+                                    });
+                                }
+                            });
+                        });
+
+                        // Sort sections alphabetically
+                        allSections.sort(function(a, b) {
+                            return a.text.localeCompare(b.text);
+                        });
+
+                        // Populate section dropdown
+                        var div_data = '';
+                        $.each(allSections, function(i, section) {
+                            div_data += "<option value='" + section.value + "'>" + section.text + "</option>";
+                        });
+                        $('#section_id').html(div_data);
+
+                        // Refresh SumoSelect after adding options
+                        if ($('#section_id')[0].sumo) {
+                            $('#section_id')[0].sumo.reload();
+                        }
+
+                        console.log('Sections loaded for selected classes:', allSections.length);
+                        hideDropdownLoading('#section_id');
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error loading sections:', error);
+                        hideDropdownLoading('#section_id');
+                    }
+                });
+            }
+        });
+    });
+
+    // Helper functions for loading states
+    function showDropdownLoading(selector) {
+        $(selector).prop('disabled', true);
+        $(selector).next('.SumoSelect').addClass('loading');
+    }
+
+    function hideDropdownLoading(selector) {
+        $(selector).prop('disabled', false);
+        $(selector).next('.SumoSelect').removeClass('loading');
+    }
 
 
 </script>
