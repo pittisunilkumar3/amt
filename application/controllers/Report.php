@@ -440,61 +440,276 @@ class Report extends Admin_Controller
         $this->session->set_userdata('top_menu', 'Reports');
         $this->session->set_userdata('sub_menu', 'Reports/student_information');
         $this->session->set_userdata('subsub_menu', 'Reports/student_information/sibling_report');
-        $data['title']           = 'Add Fees Type';
+        $data['title']           = 'Sibling Report';
         $data['searchlist']      = $this->search_type;
         $data['sch_setting']     = $this->sch_setting_detail;
         $data['adm_auto_insert'] = $this->sch_setting_detail->adm_auto_insert;
-        $searchterm              = '';
-        $condition               = array();
-        $class                   = $this->class_model->get('', $classteacher = 'yes');
+        $userdata                = $this->customlib->getUserData();
+        $carray                  = array();
+
+        $class                   = $this->class_model->get();
         $data['classlist']       = $class;
 
+        if (!empty($data["classlist"])) {
+            foreach ($data["classlist"] as $ckey => $cvalue) {
+                $carray[] = $cvalue["id"];
+            }
+        }
+
+        // Handle traditional POST form submission (for backward compatibility)
+        $searchterm              = '';
+        $condition               = array();
         $data['class_id']     = $class_id     = $this->input->post('class_id');
         $data['section_id']   = $section_id   = $this->input->post('section_id');
         $data['section_list'] = $this->section_model->getClassBySection($this->input->post('class_id'));
 
+        // Convert single values to arrays for new multi-select support
+        $class_id_array = null;
+        $section_id_array = null;
+
         if (isset($_POST['class_id']) && $_POST['class_id'] != '') {
-            $condition['classes.id'] = $_POST['class_id'];
+            $class_id_array = is_array($_POST['class_id']) ? $_POST['class_id'] : array($_POST['class_id']);
+            $condition['classes.id'] = $_POST['class_id']; // Keep for legacy support
         }
 
         if (isset($_POST['section_id']) && $_POST['section_id'] != '') {
-            $condition['sections.id'] = $_POST['section_id'];
+            $section_id_array = is_array($_POST['section_id']) ? $_POST['section_id'] : array($_POST['section_id']);
+            $condition['sections.id'] = $_POST['section_id']; // Keep for legacy support
         }
 
-        $this->form_validation->set_rules('class_id', $this->lang->line('class'), 'trim|required|xss_clean');
-        $this->form_validation->set_rules('section_id', $this->lang->line('section'), 'trim|required|xss_clean');
-
-        if ($this->form_validation->run() == false) {
-            $data['resultlist'] = array();
-        } else {
-            $data['sibling_list'] = $this->student_model->sibling_reportsearch($searchterm, $carray = null, $condition);
+        // Check if this is a form submission
+        if ($this->input->post('search')) {
+            // Use updated model methods with proper parameter structure
+            // Pass class_id_array as $carray for class teacher restrictions and as $class_id for filtering
+            $data['sibling_list'] = $this->student_model->sibling_reportsearch($searchterm, $class_id_array, $condition, $class_id_array, $section_id_array);
 
             $sibling_parent = array();
-
             foreach ($data['sibling_list'] as $value) {
-
                 $sibling_parent[] = $value['parent_id'];
             }
 
-            $data['resultlist'] = $this->student_model->sibling_report($searchterm, $carray = null);
-            $sibling            = array();
+            $data['resultlist'] = $this->student_model->sibling_report($searchterm, $class_id_array, $condition, $class_id_array, $section_id_array);
+            $sibling = array();
 
             foreach ($data['resultlist'] as $value) {
-
                 if (in_array($value['parent_id'], $sibling_parent)) {
-
                     $sibling[$value['parent_id']][] = $value;
-
                 }
-
             }
             $data['resultlist'] = $sibling;
+        } else {
+            // Initialize empty data for initial page load
+            $data['resultlist'] = array();
         }
 
         $this->load->view('layout/header', $data);
         $this->load->view('reports/sibling_report', $data);
         $this->load->view('layout/footer', $data);
-    }    
+    }
+
+    public function siblingsearchvalidation()
+    {
+        // Enhanced error logging and debugging
+        error_log('=== SIBLING SEARCH VALIDATION STARTED ===');
+        error_log('POST data: ' . print_r($_POST, true));
+        error_log('Request method: ' . $_SERVER['REQUEST_METHOD']);
+        error_log('Content type: ' . (isset($_SERVER['CONTENT_TYPE']) ? $_SERVER['CONTENT_TYPE'] : 'not set'));
+
+        // Handle multi-select values - convert to arrays if needed
+        $class_id    = $this->input->post('class_id');
+        $section_id  = $this->input->post('section_id');
+        $srch_type = $this->input->post('search_type');
+
+        // Enhanced debug logging
+        error_log('Sibling search validation - Raw input: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true) . ', search_type=' . $srch_type);
+        log_message('debug', 'Sibling search validation - Raw input: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true) . ', search_type=' . $srch_type);
+
+        // Convert single values to arrays for consistency
+        if (!is_array($class_id) && !empty($class_id)) {
+            $class_id = array($class_id);
+        }
+        if (!is_array($section_id) && !empty($section_id)) {
+            $section_id = array($section_id);
+        }
+
+        error_log('Sibling search validation - Processed: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+        log_message('debug', 'Sibling search validation - Processed: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+
+        try {
+            if ($srch_type == 'search_filter') {
+                // No mandatory validation - allow flexible report generation
+                $params = array('srch_type' => $srch_type, 'class_id' => $class_id, 'section_id' => $section_id);
+                $array  = array('status' => 1, 'error' => '', 'params' => $params);
+                error_log('Sibling search validation - Success response: ' . json_encode($array));
+                log_message('debug', 'Sibling search validation - Success response: ' . json_encode($array));
+
+                // Set proper JSON header
+                header('Content-Type: application/json');
+                echo json_encode($array);
+            } else {
+                // Handle other search types like the Guardian Report does
+                $params = array('srch_type' => 'search_full', 'class_id' => $class_id, 'section_id' => $section_id);
+                $array  = array('status' => 1, 'error' => '', 'params' => $params);
+                error_log('Sibling search validation - Full search response: ' . json_encode($array));
+                log_message('debug', 'Sibling search validation - Full search response: ' . json_encode($array));
+
+                // Set proper JSON header
+                header('Content-Type: application/json');
+                echo json_encode($array);
+            }
+        } catch (Exception $e) {
+            error_log('Sibling search validation - Exception: ' . $e->getMessage());
+            header('Content-Type: application/json');
+            echo json_encode(array('status' => 0, 'error' => array('general' => 'Server error occurred')));
+        }
+    }
+
+    public function dtsiblingreportlist()
+    {
+        // Enhanced error logging and debugging
+        error_log('=== SIBLING DATATABLE REQUEST STARTED ===');
+        error_log('POST data: ' . print_r($_POST, true));
+        error_log('Request method: ' . $_SERVER['REQUEST_METHOD']);
+
+        $class_id   = $this->input->post('class_id');
+        $section_id = $this->input->post('section_id');
+        $sch_setting = $this->sch_setting_detail;
+
+        // Enhanced debug logging
+        error_log('Sibling DataTable - Raw input: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+        log_message('debug', 'Sibling DataTable - Raw input: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+
+        // Handle both single and multi-select values properly
+        if (!is_array($class_id)) {
+            $class_id = !empty($class_id) ? array($class_id) : array();
+        }
+        if (!is_array($section_id)) {
+            $section_id = !empty($section_id) ? array($section_id) : array();
+        }
+
+        // Remove empty values from arrays
+        $class_id = array_filter($class_id, function($value) { return !empty($value); });
+        $section_id = array_filter($section_id, function($value) { return !empty($value); });
+
+        error_log('Sibling DataTable - Processed: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+        log_message('debug', 'Sibling DataTable - Processed: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+
+        try {
+            error_log('Sibling DataTable - Calling existing model methods...');
+
+            // Prepare condition array for section filtering (legacy support)
+            $condition = array();
+            if (!empty($section_id)) {
+                if (is_array($section_id) && count($section_id) == 1) {
+                    $condition['sections.id'] = $section_id[0];
+                } elseif (!is_array($section_id)) {
+                    $condition['sections.id'] = $section_id;
+                }
+                // For multiple sections, we'll rely on the new section_id parameter
+            }
+
+            // Use existing sibling_reportsearch method with proper parameters
+            // $carray should contain class IDs for class teacher restrictions
+            $sibling_list = $this->student_model->sibling_reportsearch('', $class_id, $condition, $class_id, $section_id);
+            $sibling_parent = array();
+
+            foreach ($sibling_list as $value) {
+                $sibling_parent[] = $value['parent_id'];
+            }
+
+            error_log('Found sibling parent IDs: ' . print_r($sibling_parent, true));
+
+            // Use existing sibling_report method with proper parameters
+            $resultlist = $this->student_model->sibling_report('', $class_id, $condition, $class_id, $section_id);
+            $sibling = array();
+
+            // Group students by parent_id (only those with siblings)
+            foreach ($resultlist as $value) {
+                if (in_array($value['parent_id'], $sibling_parent)) {
+                    $sibling[$value['parent_id']][] = $value;
+                }
+            }
+
+            // Convert grouped data to DataTable format (array of arrays like Guardian Report)
+            $dt_data = array();
+            foreach ($sibling as $parent_id => $students) {
+                if (count($students) > 1) { // Only include families with multiple children
+                    $row = array();
+
+                    // Use first student's parent info
+                    $first_student = $students[0];
+
+                    if ($sch_setting->father_name) {
+                        $row[] = $first_student['father_name'];
+                    }
+                    if ($sch_setting->mother_name) {
+                        $row[] = $first_student['mother_name'];
+                    }
+                    if ($sch_setting->guardian_name) {
+                        $row[] = $first_student['guardian_name'];
+                    }
+                    if ($sch_setting->guardian_phone) {
+                        $row[] = $first_student['guardian_phone'];
+                    }
+
+                    // Build student names and classes
+                    $student_names = array();
+                    $student_classes = array();
+                    $admission_dates = array();
+
+                    foreach ($students as $student) {
+                        $full_name = $this->customlib->getFullName($student['firstname'], $student['middlename'], $student['lastname'], $sch_setting->middlename, $sch_setting->lastname);
+                        $student_names[] = '<a href="' . base_url() . 'student/view/' . $student['id'] . '">' . $full_name . ' (' . $student['admission_no'] . ')</a>';
+                        $student_classes[] = $student['class'] . ' (' . $student['section'] . ')';
+
+                        if ($sch_setting->admission_date && !empty($student['admission_date']) && $student['admission_date'] != '0000-00-00') {
+                            $admission_dates[] = date($this->customlib->getSchoolDateFormat(), $this->customlib->dateyyyymmddTodateformat($student['admission_date']));
+                        } else {
+                            $admission_dates[] = '';
+                        }
+                    }
+
+                    $row[] = implode('<br/>', $student_names);
+                    $row[] = implode('<br/>', $student_classes);
+
+                    if ($sch_setting->admission_date) {
+                        $row[] = implode('<br/>', $admission_dates);
+                    }
+
+                    $dt_data[] = $row;
+                }
+            }
+
+            // Return DataTable JSON response in the same format as Guardian Report
+            $json_data = array(
+                "draw"            => intval($this->input->post('draw')),
+                "recordsTotal"    => count($dt_data),
+                "recordsFiltered" => count($dt_data),
+                "data"            => $dt_data,
+            );
+
+            error_log('Sibling DataTable - Final JSON data: ' . print_r($json_data, true));
+            error_log('Sibling DataTable - Data rows count: ' . count($dt_data));
+
+            // Set proper JSON header and output result
+            header('Content-Type: application/json');
+            echo json_encode($json_data);
+
+        } catch (Exception $e) {
+            error_log('Sibling DataTable - Exception: ' . $e->getMessage());
+            error_log('Sibling DataTable - Stack trace: ' . $e->getTraceAsString());
+
+            // Return empty DataTable response on error
+            header('Content-Type: application/json');
+            echo json_encode(array(
+                'draw' => intval($this->input->post('draw')),
+                'recordsTotal' => 0,
+                'recordsFiltered' => 0,
+                'data' => array(),
+                'error' => 'Server error occurred'
+            ));
+        }
+    }
 
     public function studentbookissuereport()
     {
@@ -3193,5 +3408,125 @@ class Report extends Admin_Controller
         );
         echo json_encode($json_data);
     }
-    
+
+    public function dtclasssubjectreport()
+    {
+        // Enhanced error logging and debugging
+        error_log('=== CLASS SUBJECT DATATABLE REQUEST STARTED ===');
+        error_log('POST data: ' . print_r($_POST, true));
+        error_log('Request method: ' . $_SERVER['REQUEST_METHOD']);
+
+        $sch_setting = $this->sch_setting_detail;
+        $class_id    = $this->input->post("class_id");
+        $section_id  = $this->input->post("section_id");
+
+        // Enhanced debug logging
+        error_log('Class Subject DataTable - Raw input: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+
+        // Handle multi-select arrays - ensure they are arrays
+        if (!is_array($class_id)) {
+            $class_id = !empty($class_id) ? array($class_id) : array();
+        }
+        if (!is_array($section_id)) {
+            $section_id = !empty($section_id) ? array($section_id) : array();
+        }
+
+        // Filter out empty values
+        $class_id = array_filter($class_id, function($value) { return !empty($value); });
+        $section_id = array_filter($section_id, function($value) { return !empty($value); });
+
+        error_log('Class Subject DataTable - Processed: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+
+        try {
+            error_log('Class Subject DataTable - Calling model method...');
+            // Get subjects for all selected class/section combinations
+            $resultlist = $this->subjecttimetable_model->getSubjectByClassandSection($class_id, $section_id);
+            error_log('Class Subject DataTable - Model result count: ' . count($resultlist));
+            error_log('Class Subject DataTable - Model result preview: ' . print_r(array_slice($resultlist, 0, 2), true));
+        } catch (Exception $e) {
+            error_log('Class Subject DataTable - Exception: ' . $e->getMessage());
+            error_log('Class Subject DataTable - Exception trace: ' . $e->getTraceAsString());
+            $resultlist = array();
+        }
+
+        $dt_data = array();
+        if (!empty($resultlist)) {
+            // Group subjects by subject_id to match the original display logic
+            $subjects = array();
+            foreach ($resultlist as $value) {
+                $subjects[$value->subject_id][] = $value;
+            }
+
+            foreach ($subjects as $subject_group) {
+                $row = array();
+                $first_subject = $subject_group[0];
+
+                // Class
+                $row[] = $first_subject->class_name;
+
+                // Section
+                $row[] = $first_subject->section_name;
+
+                // Subject (with code if available)
+                $subject_display = $first_subject->subject_name;
+                if (!empty($first_subject->code)) {
+                    $subject_display .= ' (' . $first_subject->code . ')';
+                }
+                $row[] = $subject_display;
+
+                // Teachers (with class teacher indication)
+                $teachers_html = '';
+                foreach ($subject_group as $teacher) {
+                    $class_teacher = '';
+                    if ($teacher->class_teacher == $teacher->staff_id) {
+                        $class_teacher = ' <span class="label label-success">' . $this->lang->line('class_teacher') . '</span>';
+                    }
+                    $teachers_html .= $teacher->name . " " . $teacher->surname . " (" . $teacher->employee_id . ")" . $class_teacher . "<br>";
+                }
+                $row[] = $teachers_html;
+
+                // Time schedules
+                $time_html = '';
+                foreach ($subject_group as $teacher) {
+                    $time_html .= $this->lang->line(strtolower($teacher->day)) . " " . $teacher->time_from . " To " . $teacher->time_to . "<br>";
+                }
+                $row[] = $time_html;
+
+                // Room numbers
+                $room_html = '';
+                foreach ($subject_group as $teacher) {
+                    $room_html .= $teacher->room_no . "<br>";
+                }
+                $row[] = $room_html;
+
+                $dt_data[] = $row;
+            }
+        }
+
+        // For DataTable server-side processing, we need to handle pagination parameters
+        $draw = intval($this->input->post('draw'));
+        $start = intval($this->input->post('start'));
+        $length = intval($this->input->post('length'));
+
+        $total_records = count($dt_data);
+
+        // Apply pagination
+        if ($length > 0) {
+            $dt_data = array_slice($dt_data, $start, $length);
+        }
+
+        $json_data = array(
+            "draw"            => $draw,
+            "recordsTotal"    => $total_records,
+            "recordsFiltered" => $total_records,
+            "data"            => $dt_data,
+        );
+
+        error_log('Class Subject DataTable - Final JSON data rows count: ' . count($dt_data));
+
+        // Set proper JSON header
+        header('Content-Type: application/json');
+        echo json_encode($json_data);
+    }
+
 }

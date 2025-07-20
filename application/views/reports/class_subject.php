@@ -348,7 +348,7 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                                 echo $this->lang->line('class_subject_report');
                                 $this->customlib->get_postmessage();
                                 ?></div>
-                            <table class="table table-striped table-bordered table-hover example">
+                            <table class="table table-striped table-bordered table-hover record-list" data-export-title="<?php echo $this->lang->line('class_subject_report'); ?>">
                                 <thead class="header">
                                     <tr>
                                         <th><?php echo $this->lang->line('class'); ?></th>
@@ -433,6 +433,14 @@ $(document).ready(function () {
     var preSelectedClass = $('#class_id').val();
     if (preSelectedClass && preSelectedClass.length > 0) {
         $('#class_id').trigger('change');
+    }
+
+    // Initialize empty DataTable
+    if (typeof emptyDatatable === 'function') {
+        emptyDatatable('record-list','data');
+        console.log('✅ Empty DataTable initialized for class subject report');
+    } else {
+        console.error('❌ emptyDatatable function not found');
     }
 
     // Handle class dropdown changes for section population

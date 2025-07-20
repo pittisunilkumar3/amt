@@ -67,6 +67,28 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                                     </div>
                                 </div>
 
+                                <div class="col-sm-3">
+                                    <div class="form-group">
+                                        <label><?php echo $this->lang->line('session'); ?></label>
+                                        <select id="session_id" name="session_id" class="form-control">
+                                            <option value="">All Sessions</option>
+                                            <?php
+                                            if (isset($sessionlist)) {
+                                                foreach ($sessionlist as $session) {
+                                                    ?>
+                                                    <option value="<?php echo $session['id'] ?>" <?php if (set_value('session_id') == $session['id']) {
+                                                        echo "selected=selected";
+                                                    }
+                                                    ?>><?php echo $session['session'] ?></option>
+                                                    <?php
+                                                }
+                                            }
+                                            ?>
+                                        </select>
+                                        <span class="text-danger"><?php echo form_error('session_id'); ?></span>
+                                    </div>
+                                </div>
+
                                 <!-- <div class="col-sm-3">
                                     <div class="form-group">
                                         <label>Discount Type</label><small class="req"> *</small>
@@ -99,21 +121,19 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                                                     <?php
                                                         foreach ($progresslist as $key => $value) {
                                                             ?>
-                                                        <option value="<?php echo $key; ?>" 
+                                                        <option value="<?php echo $key; ?>"
                                                             <?php
                                                                 if (set_value('progress_id') == $key) {echo "selected";}
                                                             ?>>
                                                             <?php echo $value; ?>
                                                         </option>
-                                                    <?php 
+                                                    <?php
                                                 }
                                                 ?>
                                             </select>
                                         <span class="text-danger"><?php echo form_error('discountstatus'); ?></span>
                                     </div>
                                 </div>
-
-
 
                                 <div class="col-sm-12">
                                     <div class="form-group">

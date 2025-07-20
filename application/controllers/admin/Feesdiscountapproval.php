@@ -14,6 +14,7 @@ class Feesdiscountapproval extends Admin_Controller
         $this->load->model('staff_model');
         $this->load->model('addaccount_model');
         $this->load->model('studentfee_model');
+        $this->load->model('session_model');
     }
 
     public function index()
@@ -33,10 +34,14 @@ class Feesdiscountapproval extends Admin_Controller
         $class                   = $this->class_model->get();
         $data['classlist']       = $class;
 
+        // Load session data for dropdown
+        $sessionlist             = $this->session_model->get();
+        $data['sessionlist']     = $sessionlist;
+
         $this->load->view('layout/header', $data);
         $this->load->view('admin/feediscount/feesdiscountapproval', $data);
         $this->load->view('layout/footer', $data);
-        
+
     }
 
 
@@ -54,6 +59,10 @@ class Feesdiscountapproval extends Admin_Controller
         $certificateList         = $this->feediscount_model->get();
         $data['certificateList'] = $certificateList;
 
+        // Load session data for dropdown
+        $sessionlist             = $this->session_model->get();
+        $data['sessionlist']     = $sessionlist;
+
         $button                  = $this->input->post('search');
         if ($this->input->server('REQUEST_METHOD') == "GET") {
             $this->load->view('layout/header', $data);
@@ -63,6 +72,7 @@ class Feesdiscountapproval extends Admin_Controller
             $class       = $this->input->post('class_id');
             $section     = $this->input->post('section_id');
             $disstatus   = $this->input->post('progress_id');
+            $session_id  = $this->input->post('session_id');
             // $search      = $this->input->post('search');
             $certificate = $this->input->post('certificate_id');
             // if (isset($search)) {
@@ -75,12 +85,13 @@ class Feesdiscountapproval extends Admin_Controller
             //         $data['searchby']          = "filter";
                     $data['class_id']          = $this->input->post('class_id');
                     $data['section_id']        = $this->input->post('section_id');
+                    $data['session_id']        = $this->input->post('session_id');
                     $certificate               = $this->input->post('certificate_id');
 
                     $certificateResult         = $this->feediscount_model->get($certificate);
                     $data['certificateResult'] = $certificateResult;
 
-                    $resultlist                = $this->student_model->searchByClassSectionAnddiscountStatus($class,$certificate, $section,$disstatus);
+                    $resultlist                = $this->student_model->searchByClassSectionAnddiscountStatus($class,$certificate, $section,$disstatus, $session_id);
                     $data['resultlist']        = $resultlist;
 
             //         $data['discountstat']      = $disstatus;

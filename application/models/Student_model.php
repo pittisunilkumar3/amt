@@ -1076,7 +1076,7 @@ class Student_model extends MY_Model
         return $query->result_array();
     }
 
-    public function sibling_report($searchterm, $carray = null, $condition = null)
+    public function sibling_report($searchterm, $carray = null, $condition = null, $class_id = null, $section_id = null)
     {
         $userdata        = $this->customlib->getUserData();
         $i               = 1;
@@ -1092,14 +1092,7 @@ class Student_model extends MY_Model
         }
 
         $field_variable = implode(',', $field_var_array);
-        if (($userdata["role_id"] == 2) && ($userdata["class_teacher"] == "yes")) {
-            if (!empty($carray)) {
 
-                $this->db->where_in("student_session.class_id", $carray);
-            } else {
-                $this->db->where_in("student_session.class_id", "");
-            }
-        }
         $this->db->select('classes.id AS `class_id`,students.id,classes.class,sections.id AS `section_id`,sections.section,students.id,students.admission_no, students.roll_no,students.admission_date,students.firstname,students.middlename,students.lastname,students.image,   students.mobileno,students.email,students.state,students.city,students.pincode,students.religion,students.dob ,students.current_address,students.permanent_address,IFNULL(students.category_id, 0) as `category_id`,IFNULL(categories.category, "") as `category`,      students.adhar_no,students.samagra_id,students.bank_account_no,students.bank_name, students.ifsc_code ,students.father_name,students.mother_name,students.guardian_name, students.guardian_relation,students.guardian_phone,students.guardian_address,students.is_active ,students.created_at ,students.updated_at,students.gender,students.rte,student_session.session_id,students.parent_id,' . $field_variable)->from('students');
         $this->db->join('student_session', 'student_session.student_id = students.id');
         $this->db->join('classes', 'student_session.class_id = classes.id');
@@ -1107,16 +1100,49 @@ class Student_model extends MY_Model
         $this->db->join('categories', 'students.category_id = categories.id', 'left');
         $this->db->where('student_session.session_id', $this->current_session);
         $this->db->where('students.is_active', 'yes');
+
+        // Handle class filtering - prioritize multi-select class_id over carray
+        $class_filter_applied = false;
+        if ($class_id != null && !empty($class_id)) {
+            if (is_array($class_id) && count($class_id) > 0) {
+                $this->db->where_in('student_session.class_id', $class_id);
+                $class_filter_applied = true;
+            } elseif (!is_array($class_id)) {
+                $this->db->where('student_session.class_id', $class_id);
+                $class_filter_applied = true;
+            }
+        }
+
+        // Apply class teacher restrictions only if no specific class filter was applied
+        if (!$class_filter_applied && ($userdata["role_id"] == 2) && ($userdata["class_teacher"] == "yes")) {
+            if (!empty($carray)) {
+                $this->db->where_in("student_session.class_id", $carray);
+            } else {
+                $this->db->where_in("student_session.class_id", "");
+            }
+        }
+
+        // Handle multi-select section filtering
+        if ($section_id != null && !empty($section_id)) {
+            if (is_array($section_id) && count($section_id) > 0) {
+                $this->db->where_in('student_session.section_id', $section_id);
+            } elseif (!is_array($section_id)) {
+                $this->db->where('student_session.section_id', $section_id);
+            }
+        }
+
+        // Legacy condition support for backward compatibility
         if ($condition != null) {
             $this->db->where($condition);
         }
+
         $this->db->group_by('students.admission_no');
         $this->db->order_by('students.id');
         $query = $this->db->get();
         return $query->result_array();
     }
 
-    public function sibling_reportsearch($searchterm, $carray = null, $condition = null)
+    public function sibling_reportsearch($searchterm, $carray = null, $condition = null, $class_id = null, $section_id = null)
     {
         $userdata        = $this->customlib->getUserData();
         $i               = 1;
@@ -1132,13 +1158,7 @@ class Student_model extends MY_Model
         }
 
         $field_variable = implode(',', $field_var_array);
-        if (($userdata["role_id"] == 2) && ($userdata["class_teacher"] == "yes")) {
-            if (!empty($carray)) {
-                $this->db->where_in("student_session.class_id", $carray);
-            } else {
-                $this->db->where_in("student_session.class_id", "");
-            }
-        }
+
         $this->db->select('students.parent_id')->from('students');
         $this->db->join('student_session', 'student_session.student_id = students.id');
         $this->db->join('classes', 'student_session.class_id = classes.id');
@@ -1146,11 +1166,44 @@ class Student_model extends MY_Model
         $this->db->join('categories', 'students.category_id = categories.id', 'left');
         $this->db->where('student_session.session_id', $this->current_session);
         $this->db->where('students.is_active', 'yes');
+
+        // Handle class filtering - prioritize multi-select class_id over carray
+        $class_filter_applied = false;
+        if ($class_id != null && !empty($class_id)) {
+            if (is_array($class_id) && count($class_id) > 0) {
+                $this->db->where_in('student_session.class_id', $class_id);
+                $class_filter_applied = true;
+            } elseif (!is_array($class_id)) {
+                $this->db->where('student_session.class_id', $class_id);
+                $class_filter_applied = true;
+            }
+        }
+
+        // Apply class teacher restrictions only if no specific class filter was applied
+        if (!$class_filter_applied && ($userdata["role_id"] == 2) && ($userdata["class_teacher"] == "yes")) {
+            if (!empty($carray)) {
+                $this->db->where_in("student_session.class_id", $carray);
+            } else {
+                $this->db->where_in("student_session.class_id", "");
+            }
+        }
+
+        // Handle multi-select section filtering
+        if ($section_id != null && !empty($section_id)) {
+            if (is_array($section_id) && count($section_id) > 0) {
+                $this->db->where_in('student_session.section_id', $section_id);
+            } elseif (!is_array($section_id)) {
+                $this->db->where('student_session.section_id', $section_id);
+            }
+        }
+
+        // Legacy condition support for backward compatibility
         if ($condition != null) {
             $this->db->where($condition);
         }
+
         $this->db->group_by('students.parent_id');
-        $this->db->group_by('students.admission_no');
+        $this->db->having('COUNT(students.id) > 1'); // Only parents with more than one child (siblings)
         $this->db->order_by('students.father_name');
         $query = $this->db->get();
         return $query->result_array();
@@ -1684,6 +1737,8 @@ class Student_model extends MY_Model
         error_log('Guardian Model - Generated JSON preview: ' . substr($result, 0, 300) . '...');
         return $result;
     }
+
+
 
     public function admissionYear()
     {
@@ -3524,7 +3579,7 @@ class Student_model extends MY_Model
     // }
 
 
-     public function searchByClassSectionAnddiscountStatus($class_id,$certifid,$section_id = null,$statuss=null)
+     public function searchByClassSectionAnddiscountStatus($class_id,$certifid,$section_id = null,$statuss=null,$session_id=null)
     {
 
 
@@ -3561,7 +3616,12 @@ class Student_model extends MY_Model
         $this->db->join('fee_session_groups','student_fees_master.fee_session_group_id=fee_session_groups.id');
         $this->db->join('fee_groups','fee_groups.id=fee_session_groups.fee_groups_id');
 
-        $this->db->where('fees_discount_approval.session_id', $this->current_session);
+        // Only filter by session if a specific session is selected
+        if ($session_id != null && $session_id != '') {
+            $this->db->where('fees_discount_approval.session_id', $session_id);
+        }
+        // If no session is selected, show all sessions (no session filter applied)
+
         $this->db->where('students.is_active', "yes");
 
 
