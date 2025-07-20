@@ -2684,6 +2684,7 @@ $lang['mini_statement']="Mini Statement";
 $lang['other_fees_collection_report']="Other Fees Collection Report";
 
 $lang['total_fee_collection_report']="Total Fee Collection Report";
+$lang['fee_collection_report_column_wise']="Fee Collection Report Column Wise";
 
 
 

@@ -2162,5 +2162,74 @@ $module=$this->module_model->getPermissionByModulename('transport');
         // $this->log($message, $record_id, $action);
     }
 
+    public function getFeeCollectionReportColumnwise($start_date, $end_date, $feetype_id = null, $received_by = null, $group = null, $class_id = null, $section_id = null, $session_id = null)
+    {
+        try {
+            // For now, return the same data as the original getFeeCollectionReport but process it differently
+            $original_data = $this->getFeeCollectionReport($start_date, $end_date, $feetype_id, $received_by, $group, $class_id, $section_id, $session_id);
+
+            // Process the data for column-wise display
+            $return_array = array();
+            if (!empty($original_data)) {
+                foreach ($original_data as $record) {
+                    $student_key = $record['student_session_id'];
+
+                    if (!isset($return_array[$student_key])) {
+                        $return_array[$student_key] = array(
+                            'student_session_id' => $record['student_session_id'],
+                            'admission_no' => $record['admission_no'],
+                            'firstname' => $record['firstname'],
+                            'middlename' => isset($record['middlename']) ? $record['middlename'] : '',
+                            'lastname' => $record['lastname'],
+                            'class' => $record['class'],
+                            'section' => $record['section'],
+                            'fee_types' => array()
+                        );
+                    }
+
+                    $fee_type_key = $record['type'];
+                    if (!isset($return_array[$student_key]['fee_types'][$fee_type_key])) {
+                        $return_array[$student_key]['fee_types'][$fee_type_key] = 0;
+                    }
+
+                    $return_array[$student_key]['fee_types'][$fee_type_key] += $record['amount'];
+                }
+            }
+
+            return $return_array;
+        } catch (Exception $e) {
+            log_message('error', 'getFeeCollectionReportColumnwise Error: ' . $e->getMessage());
+            return array();
+        }
+    }
+
+    public function getFeeTypesForColumnwise($start_date, $end_date, $feetype_id = null, $class_id = null, $section_id = null, $session_id = null)
+    {
+        try {
+            // Get data from the original method and extract unique fee types
+            $original_data = $this->getFeeCollectionReport($start_date, $end_date, $feetype_id, null, null, $class_id, $section_id, $session_id);
+
+            $fee_types = array();
+            $unique_types = array();
+
+            if (!empty($original_data)) {
+                foreach ($original_data as $record) {
+                    if (!in_array($record['type'], $unique_types)) {
+                        $unique_types[] = $record['type'];
+                        $fee_types[] = array(
+                            'type' => $record['type'],
+                            'id' => isset($record['feetype_id']) ? $record['feetype_id'] : $record['type']
+                        );
+                    }
+                }
+            }
+
+            return $fee_types;
+        } catch (Exception $e) {
+            log_message('error', 'getFeeTypesForColumnwise Error: ' . $e->getMessage());
+            return array();
+        }
+    }
+
 
 }
