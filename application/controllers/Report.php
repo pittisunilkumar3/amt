@@ -307,21 +307,80 @@ class Report extends Admin_Controller
         $data['search_type'] = '';
         $data['class_id']    = $class_id    = $this->input->post('class_id');
         $data['section_id']  = $section_id  = $this->input->post('section_id');
-        $this->form_validation->set_rules('class_id', $this->lang->line('class'), 'trim|required|xss_clean');
-        $this->form_validation->set_rules('section_id', $this->lang->line('section'), 'trim|required|xss_clean');
-        if ($this->form_validation->run() == false) {
-            $data['subjects'] = array();
-        } else {
-            $data['section_list'] = $this->section_model->getClassBySection($this->input->post('class_id'));
 
-            $data['resultlist'] = $this->subjecttimetable_model->getSubjectByClassandSection($class_id, $section_id);
+        // Initialize section list - get all sections for initial load
+        $data['section_list'] = array();
 
-            $subject = array();
-            foreach ($data['resultlist'] as $value) {
-                $subject[$value->subject_id][] = $value;
+        // For initial page load, get all sections from all classes
+        if (empty($class_id)) {
+            // Get all sections for all classes
+            $all_classes = $data['classlist'];
+            foreach ($all_classes as $class) {
+                $sections = $this->section_model->getClassBySection($class['id']);
+                if (!empty($sections)) {
+                    $data['section_list'] = array_merge($data['section_list'], $sections);
+                }
             }
+            // Remove duplicates based on section_id
+            $unique_sections = array();
+            $added_section_ids = array();
+            foreach ($data['section_list'] as $section) {
+                if (!in_array($section['section_id'], $added_section_ids)) {
+                    $unique_sections[] = $section;
+                    $added_section_ids[] = $section['section_id'];
+                }
+            }
+            $data['section_list'] = $unique_sections;
+        } else {
+            if (is_array($class_id)) {
+                // For multi-select, get sections for all selected classes
+                foreach ($class_id as $single_class_id) {
+                    $sections = $this->section_model->getClassBySection($single_class_id);
+                    if (!empty($sections)) {
+                        $data['section_list'] = array_merge($data['section_list'], $sections);
+                    }
+                }
+                // Remove duplicates based on section_id
+                $unique_sections = array();
+                $added_section_ids = array();
+                foreach ($data['section_list'] as $section) {
+                    if (!in_array($section['section_id'], $added_section_ids)) {
+                        $unique_sections[] = $section;
+                        $added_section_ids[] = $section['section_id'];
+                    }
+                }
+                $data['section_list'] = $unique_sections;
+            } else {
+                $data['section_list'] = $this->section_model->getClassBySection($class_id);
+            }
+        }
 
-            $data['subjects'] = $subject;
+        // Only process form data if this is a POST request
+        if ($this->input->server('REQUEST_METHOD') == 'POST') {
+            // Remove required validation for flexible filtering - allow empty class/section selection
+            $this->form_validation->set_rules('class_id', $this->lang->line('class'), 'trim|xss_clean');
+            $this->form_validation->set_rules('section_id', $this->lang->line('section'), 'trim|xss_clean');
+
+            if ($this->form_validation->run() == false) {
+                $data['subjects'] = array();
+            } else {
+                // Handle multi-select arrays for class_id and section_id
+                $class_ids = $this->input->post('class_id');
+                $section_ids = $this->input->post('section_id');
+
+                // Get subjects for all selected class/section combinations
+                $data['resultlist'] = $this->subjecttimetable_model->getSubjectByClassandSection($class_ids, $section_ids);
+
+                $subject = array();
+                foreach ($data['resultlist'] as $value) {
+                    $subject[$value->subject_id][] = $value;
+                }
+
+                $data['subjects'] = $subject;
+            }
+        } else {
+            // For GET requests (initial page load), show empty results
+            $data['subjects'] = array();
         }
 
         $this->load->view('layout/header', $data);
@@ -869,7 +928,53 @@ class Report extends Admin_Controller
         $data['section_id']      = $section_id      = $this->input->post('section_id');
         $condition1              = "";
         $condition2              = "";
-        // $data['section_list']    = $this->section_model->getClassBySection($this->input->post('class_id'));
+
+        // Initialize section list - get all sections for initial load
+        $data['section_list'] = array();
+
+        // For initial page load, get all sections from all classes
+        if (empty($class_id)) {
+            // Get all sections for all classes
+            $all_classes = $data['classlist'];
+            foreach ($all_classes as $class) {
+                $sections = $this->section_model->getClassBySection($class['id']);
+                if (!empty($sections)) {
+                    $data['section_list'] = array_merge($data['section_list'], $sections);
+                }
+            }
+            // Remove duplicates based on section_id
+            $unique_sections = array();
+            $added_section_ids = array();
+            foreach ($data['section_list'] as $section) {
+                if (!in_array($section['section_id'], $added_section_ids)) {
+                    $unique_sections[] = $section;
+                    $added_section_ids[] = $section['section_id'];
+                }
+            }
+            $data['section_list'] = $unique_sections;
+        } else {
+            if (is_array($class_id)) {
+                // For multi-select, get sections for all selected classes
+                foreach ($class_id as $single_class_id) {
+                    $sections = $this->section_model->getClassBySection($single_class_id);
+                    if (!empty($sections)) {
+                        $data['section_list'] = array_merge($data['section_list'], $sections);
+                    }
+                }
+                // Remove duplicates based on section_id
+                $unique_sections = array();
+                $added_section_ids = array();
+                foreach ($data['section_list'] as $section) {
+                    if (!in_array($section['section_id'], $added_section_ids)) {
+                        $unique_sections[] = $section;
+                        $added_section_ids[] = $section['section_id'];
+                    }
+                }
+                $data['section_list'] = $unique_sections;
+            } else {
+                $data['section_list'] = $this->section_model->getClassBySection($class_id);
+            }
+        }
 
         $data['search_type']  = '';
         $data['filter_label'] = '';
@@ -887,17 +992,306 @@ class Report extends Admin_Controller
         $data['sch_setting']     = $this->sch_setting_detail;
         $data['adm_auto_insert'] = $this->sch_setting_detail->adm_auto_insert;
 
-        $this->form_validation->set_rules('class_id', $this->lang->line('class'), 'trim|required|xss_clean');
-        $this->form_validation->set_rules('section_id', $this->lang->line('section'), 'trim|required|xss_clean');
-        if ($this->form_validation->run() == false) {
-            $data['resultlist'] = array();
+        // Only process form data if this is a POST request
+        if ($this->input->server('REQUEST_METHOD') == 'POST') {
+            // Remove required validation for flexible filtering - allow empty class/section selection
+            $this->form_validation->set_rules('class_id', $this->lang->line('class'), 'trim|xss_clean');
+            $this->form_validation->set_rules('section_id', $this->lang->line('section'), 'trim|xss_clean');
+
+            if ($this->form_validation->run() == false) {
+                $data['resultlist'] = array();
+            } else {
+                // Handle multi-select arrays for class_id and section_id
+                $class_ids = $this->input->post('class_id');
+                $section_ids = $this->input->post('section_id');
+
+                $condition1 = '';
+
+                // Build condition for class_id (handle both arrays and single values)
+                if (!empty($class_ids)) {
+                    if (is_array($class_ids)) {
+                        $class_ids_clean = array_map('intval', $class_ids);
+                        $condition1 .= " classes.id IN (" . implode(',', $class_ids_clean) . ")";
+                    } else {
+                        $condition1 .= " classes.id = " . intval($class_ids);
+                    }
+                }
+
+                // Build condition for section_id (handle both arrays and single values)
+                if (!empty($section_ids)) {
+                    if (!empty($condition1)) {
+                        $condition1 .= " AND ";
+                    }
+                    if (is_array($section_ids)) {
+                        $section_ids_clean = array_map('intval', $section_ids);
+                        $condition1 .= " sections.id IN (" . implode(',', $section_ids_clean) . ")";
+                    } else {
+                        $condition1 .= " sections.id = " . intval($section_ids);
+                    }
+                }
+
+                $data['resultlist'] = $this->student_model->student_profile($condition1, $condition2);
+            }
         } else {
-            $condition1         = " classes.id='" . $this->input->post('class_id') . "' and sections.id='" . $this->input->post('section_id') . "'";
-            $data['resultlist'] = $this->student_model->student_profile($condition1, $condition2);
+            // For GET requests (initial page load), show empty results
+            $data['resultlist'] = array();
         }
+
         $this->load->view('layout/header', $data);
         $this->load->view('reports/student_profile', $data);
         $this->load->view('layout/footer', $data);
+    }
+
+    public function searchstudentprofilevalidation()
+    {
+        // Enhanced debugging for validation method
+        error_log('=== STUDENT PROFILE VALIDATION STARTED ===');
+        error_log('POST data: ' . print_r($_POST, true));
+        error_log('Request method: ' . $_SERVER['REQUEST_METHOD']);
+
+        // Handle multi-select values - convert to arrays if needed
+        $class_id   = $this->input->post('class_id');
+        $section_id = $this->input->post('section_id');
+        $search_type = $this->input->post('search_type');
+
+        error_log('Raw input - class_id: ' . print_r($class_id, true));
+        error_log('Raw input - section_id: ' . print_r($section_id, true));
+        error_log('Raw input - search_type: ' . print_r($search_type, true));
+
+        // Convert single values to arrays for consistency
+        if (!is_array($class_id) && !empty($class_id)) {
+            $class_id = array($class_id);
+        }
+        if (!is_array($section_id) && !empty($section_id)) {
+            $section_id = array($section_id);
+        }
+
+        error_log('Processed input - class_id: ' . print_r($class_id, true));
+        error_log('Processed input - section_id: ' . print_r($section_id, true));
+
+        // Remove required validation for flexible filtering - allow empty class and section selection
+        // Skip form validation for array inputs as CodeIgniter doesn't handle them well
+        $validation_needed = false;
+
+        // Skip form validation for multi-select arrays and proceed directly
+        $params = array('class_id' => $class_id, 'section_id' => $section_id, 'search_type' => $search_type);
+        error_log('Validation success - params: ' . print_r($params, true));
+        $array  = array('status' => 1, 'error' => '', 'params' => $params);
+        echo json_encode($array);
+    }
+
+    public function dtstudentprofilereportlist()
+    {
+        // Enhanced error logging and debugging
+        error_log('=== STUDENT PROFILE DATATABLE REQUEST STARTED ===');
+        error_log('POST data: ' . print_r($_POST, true));
+        error_log('Request method: ' . $_SERVER['REQUEST_METHOD']);
+
+        $class_id   = $this->input->post('class_id');
+        $section_id = $this->input->post('section_id');
+        $search_type = $this->input->post('search_type');
+
+        // Enhanced debug logging
+        error_log('Student Profile DataTable - Raw input: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true) . ', search_type=' . print_r($search_type, true));
+        log_message('debug', 'Student Profile DataTable - Raw input: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true) . ', search_type=' . print_r($search_type, true));
+
+        // Handle both single and multi-select values properly
+        if (!is_array($class_id)) {
+            $class_id = !empty($class_id) ? array($class_id) : array();
+        }
+        if (!is_array($section_id)) {
+            $section_id = !empty($section_id) ? array($section_id) : array();
+        }
+
+        // Remove empty values from arrays
+        $class_id = array_filter($class_id, function($value) { return !empty($value); });
+        $section_id = array_filter($section_id, function($value) { return !empty($value); });
+
+        error_log('Student Profile DataTable - Processed: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true) . ', search_type=' . print_r($search_type, true));
+        log_message('debug', 'Student Profile DataTable - Processed: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true) . ', search_type=' . print_r($search_type, true));
+
+        try {
+            error_log('Student Profile DataTable - Calling model method...');
+            $result = $this->student_model->searchdatatablebyStudentProfileDetails($class_id, $section_id, $search_type);
+            error_log('Student Profile DataTable - Model result length: ' . strlen($result));
+            error_log('Student Profile DataTable - Model result preview: ' . substr($result, 0, 200) . '...');
+            log_message('debug', 'Student Profile DataTable - Model result: ' . $result);
+
+            $resultlist = json_decode($result);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                error_log('Student Profile DataTable - JSON decode error: ' . json_last_error_msg());
+                throw new Exception('JSON decode failed: ' . json_last_error_msg());
+            }
+
+            $sch_setting = $this->sch_setting_detail;
+            $adm_auto_insert = $this->sch_setting_detail->adm_auto_insert;
+
+            // Process data to match table structure like Guardian Report does
+            $dt_data = array();
+            if (!empty($resultlist->data)) {
+                foreach ($resultlist->data as $student) {
+                    $row = array();
+
+                    // Add columns in the same order as the table headers
+                    if (!$adm_auto_insert) {
+                        $row[] = $student->admission_no;
+                    }
+                    if ($sch_setting->roll_no) {
+                        $row[] = $student->roll_no;
+                    }
+                    $row[] = $student->class;
+                    $row[] = $student->section;
+                    $row[] = $student->firstname;
+                    if ($sch_setting->middlename) {
+                        $row[] = $student->middlename;
+                    }
+                    if ($sch_setting->lastname) {
+                        $row[] = $student->lastname;
+                    }
+                    $row[] = $student->gender;
+                    $row[] = $student->dob ? date($this->customlib->getSchoolDateFormat(), $this->customlib->dateyyyymmddTodateformat($student->dob)) : '';
+
+                    // Add more columns based on school settings
+                    if ($sch_setting->category) {
+                        $row[] = $student->category;
+                    }
+                    if ($sch_setting->religion) {
+                        $row[] = $student->religion;
+                    }
+                    if ($sch_setting->cast) {
+                        $row[] = $student->cast;
+                    }
+                    if ($sch_setting->mobile_no) {
+                        $row[] = $student->mobileno;
+                    }
+                    if ($sch_setting->student_email) {
+                        $row[] = $student->email;
+                    }
+                    if ($sch_setting->admission_date) {
+                        $row[] = $student->admission_date ? date($this->customlib->getSchoolDateFormat(), $this->customlib->dateyyyymmddTodateformat($student->admission_date)) : '';
+                    }
+                    if ($sch_setting->is_blood_group) {
+                        $row[] = $student->blood_group;
+                    }
+                    if ($sch_setting->is_student_house) {
+                        $row[] = $student->house_name;
+                    }
+                    if ($sch_setting->student_height) {
+                        $row[] = $student->height;
+                    }
+                    if ($sch_setting->student_weight) {
+                        $row[] = $student->weight;
+                    }
+                    if ($sch_setting->measurement_date) {
+                        $row[] = $student->measurement_date ? date($this->customlib->getSchoolDateFormat(), $this->customlib->dateyyyymmddTodateformat($student->measurement_date)) : '';
+                    }
+
+                    $row[] = $student->fees_discount;
+
+                    if ($sch_setting->father_name) {
+                        $row[] = $student->father_name;
+                    }
+                    if ($sch_setting->father_phone) {
+                        $row[] = $student->father_phone;
+                    }
+                    if ($sch_setting->father_occupation) {
+                        $row[] = $student->father_occupation;
+                    }
+                    if ($sch_setting->mother_name) {
+                        $row[] = $student->mother_name;
+                    }
+                    if ($sch_setting->mother_phone) {
+                        $row[] = $student->mother_phone;
+                    }
+                    if ($sch_setting->mother_occupation) {
+                        $row[] = $student->mother_occupation;
+                    }
+
+                    if ($sch_setting->guardian_name) {
+                        $row[] = $student->guardian_is;
+                        $row[] = $student->guardian_name;
+                    }
+                    if ($sch_setting->guardian_relation) {
+                        $row[] = $student->guardian_relation;
+                    }
+                    if ($sch_setting->guardian_phone) {
+                        $row[] = $student->guardian_phone;
+                    }
+                    if ($sch_setting->guardian_occupation) {
+                        $row[] = $student->guardian_occupation;
+                    }
+                    if ($sch_setting->guardian_email) {
+                        $row[] = $student->guardian_email;
+                    }
+                    if ($sch_setting->guardian_address) {
+                        $row[] = $student->guardian_address;
+                    }
+                    if ($sch_setting->current_address) {
+                        $row[] = $student->current_address;
+                    }
+                    if ($sch_setting->permanent_address) {
+                        $row[] = $student->permanent_address;
+                    }
+                    if ($sch_setting->route_list) {
+                        $row[] = ''; // transport route not in current select
+                    }
+                    if ($sch_setting->hostel_id) {
+                        $row[] = ''; // hostel details not in current select
+                    }
+                    $row[] = ''; // room_no not in current select
+
+                    if ($sch_setting->bank_account_no) {
+                        $row[] = $student->bank_account_no;
+                    }
+                    if ($sch_setting->bank_name) {
+                        $row[] = $student->bank_name;
+                    }
+                    if ($sch_setting->ifsc_code) {
+                        $row[] = $student->ifsc_code;
+                    }
+                    if ($sch_setting->national_identification_no) {
+                        $row[] = $student->adhar_no;
+                    }
+                    if ($sch_setting->local_identification_no) {
+                        $row[] = $student->samagra_id;
+                    }
+                    if ($sch_setting->rte) {
+                        $row[] = $student->rte;
+                    }
+                    if ($sch_setting->previous_school_details) {
+                        $row[] = $student->previous_school;
+                    }
+                    if ($sch_setting->student_note) {
+                        $row[] = $student->note;
+                    }
+
+                    $dt_data[] = $row;
+                }
+            }
+
+            $json_data = array(
+                "draw"            => intval($resultlist->draw),
+                "recordsTotal"    => intval($resultlist->recordsTotal),
+                "recordsFiltered" => intval($resultlist->recordsFiltered),
+                "data"            => $dt_data,
+            );
+
+            error_log('Student Profile DataTable - Final JSON data rows count: ' . count($dt_data));
+
+            // Set proper JSON header
+            header('Content-Type: application/json');
+            echo json_encode($json_data);
+        } catch (Exception $e) {
+            error_log('Student Profile DataTable - Exception: ' . $e->getMessage());
+            // Return empty DataTable response on error
+            $empty_response = array(
+                "draw" => intval($this->input->post('draw')),
+                "recordsTotal" => 0,
+                "recordsFiltered" => 0,
+                "data" => array()
+            );
+            echo json_encode($empty_response);
+        }
     }
 
     public function staff_report()
@@ -2507,7 +2901,8 @@ class Report extends Admin_Controller
         $class_id = $this->input->post('class_id');
         $year     = $this->input->post('year');
 
-        $this->form_validation->set_rules('class_id', $this->lang->line('class'), 'trim|required|xss_clean');
+        // Remove required validation for flexible filtering - allow empty class selection
+        $this->form_validation->set_rules('class_id', $this->lang->line('class'), 'trim|xss_clean');
         if ($this->form_validation->run() == false) {
             $error = array();
 
@@ -2527,6 +2922,11 @@ class Report extends Admin_Controller
         $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
         $class_id        = $this->input->post('class_id');
         $year            = $this->input->post('year');
+
+        // Handle multi-select arrays - convert to comma-separated strings for model
+        if (is_array($class_id)) {
+            $class_id = implode(',', array_map('intval', $class_id));
+        }
 
         $sch_setting = $this->sch_setting_detail;
         $result      = $this->student_model->searchdatatablebyAdmissionDetails($class_id, $year);
@@ -2604,11 +3004,21 @@ class Report extends Admin_Controller
     
      public function searchloginvalidation()
     {
+        // Handle multi-select values - convert to arrays if needed
         $class_id   = $this->input->post('class_id');
         $section_id = $this->input->post('section_id');
 
-        $this->form_validation->set_rules('class_id', $this->lang->line('class'), 'trim|required|xss_clean');
-        $this->form_validation->set_rules('section_id', $this->lang->line('section'), 'trim|required|xss_clean');
+        // Convert single values to arrays for consistency
+        if (!is_array($class_id) && !empty($class_id)) {
+            $class_id = array($class_id);
+        }
+        if (!is_array($section_id) && !empty($section_id)) {
+            $section_id = array($section_id);
+        }
+
+        // Remove required validation for flexible filtering - allow empty class and section selection
+        $this->form_validation->set_rules('class_id', $this->lang->line('class'), 'trim|xss_clean');
+        $this->form_validation->set_rules('section_id', $this->lang->line('section'), 'trim|xss_clean');
 
         if ($this->form_validation->run() == false) {
             $error = array();
@@ -2631,6 +3041,15 @@ class Report extends Admin_Controller
         $sch_setting = $this->sch_setting_detail;
         $class_id    = $this->input->post("class_id");
         $section_id  = $this->input->post("section_id");
+
+        // Handle multi-select arrays - convert to comma-separated strings for model
+        if (is_array($class_id)) {
+            $class_id = implode(',', array_map('intval', $class_id));
+        }
+        if (is_array($section_id)) {
+            $section_id = implode(',', array_map('intval', $section_id));
+        }
+
         $result      = $this->student_model->getdtforlogincredential($class_id, $section_id);
         $resultlist  = json_decode($result);
         $dt_data     = array();
@@ -2686,11 +3105,54 @@ class Report extends Admin_Controller
         $this->load->view("layout/footer");
     }
 
+    public function searchparentloginvalidation()
+    {
+        // Handle multi-select values - convert to arrays if needed
+        $class_id   = $this->input->post('class_id');
+        $section_id = $this->input->post('section_id');
+
+        // Convert single values to arrays for consistency
+        if (!is_array($class_id) && !empty($class_id)) {
+            $class_id = array($class_id);
+        }
+        if (!is_array($section_id) && !empty($section_id)) {
+            $section_id = array($section_id);
+        }
+
+        // Remove required validation for flexible filtering - allow empty class and section selection
+        $this->form_validation->set_rules('class_id', $this->lang->line('class'), 'trim|xss_clean');
+        $this->form_validation->set_rules('section_id', $this->lang->line('section'), 'trim|xss_clean');
+
+        if ($this->form_validation->run() == false) {
+            $error = array();
+
+            $error['class_id']   = form_error('class_id');
+            $error['section_id'] = form_error('section_id');
+
+            $array = array('status' => 0, 'error' => $error);
+            echo json_encode($array);
+        } else {
+
+            $params = array('class_id' => $class_id, 'section_id' => $section_id);
+            $array  = array('status' => 1, 'error' => '', 'params' => $params);
+            echo json_encode($array);
+        }
+    }
+
     public function dtparentcredentialreportlist()
     {
         $sch_setting = $this->sch_setting_detail;
         $class_id    = $this->input->post("class_id");
         $section_id  = $this->input->post("section_id");
+
+        // Handle multi-select arrays - convert to comma-separated strings for model
+        if (is_array($class_id)) {
+            $class_id = implode(',', array_map('intval', $class_id));
+        }
+        if (is_array($section_id)) {
+            $section_id = implode(',', array_map('intval', $section_id));
+        }
+
         $result      = $this->student_model->getdtforlogincredential($class_id, $section_id);
         $resultlist  = json_decode($result);
         $dt_data     = array();

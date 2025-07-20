@@ -148,12 +148,25 @@ class Subjecttimetable_model extends MY_Model
     public function getSubjectByClassandSection($class_id, $section_id)
     {
         $condition = '';
-        if ($class_id != '') {
-            $condition .= " and `subject_timetable`.`class_id` = " . $class_id . "";
+
+        // Handle both single values and arrays for multi-select functionality - class_id
+        if ($class_id != null && !empty($class_id)) {
+            if (is_array($class_id) && count($class_id) > 0) {
+                $class_ids = implode(',', array_map('intval', $class_id));
+                $condition .= " and `subject_timetable`.`class_id` IN (" . $class_ids . ")";
+            } elseif (!is_array($class_id)) {
+                $condition .= " and `subject_timetable`.`class_id` = " . intval($class_id);
+            }
         }
 
-        if ($section_id != '') {
-            $condition .= " AND `subject_timetable`.`section_id` = " . $section_id . "";
+        // Handle both single values and arrays for multi-select functionality - section_id
+        if ($section_id != null && !empty($section_id)) {
+            if (is_array($section_id) && count($section_id) > 0) {
+                $section_ids = implode(',', array_map('intval', $section_id));
+                $condition .= " AND `subject_timetable`.`section_id` IN (" . $section_ids . ")";
+            } elseif (!is_array($section_id)) {
+                $condition .= " AND `subject_timetable`.`section_id` = " . intval($section_id);
+            }
         }
 
         $sql = "SELECT ct.staff_id as class_teacher,`subject_group_subjects`.`subject_id`,subjects.name as `subject_name`,subjects.code,subjects.type,staff.name,staff.surname,staff.employee_id,`subject_timetable`.*,sec.section as section_name,cl.class as class_name FROM `subject_timetable` JOIN `subject_group_subjects` ON `subject_timetable`.`subject_group_subject_id` = `subject_group_subjects`.`id`inner JOIN subjects on subject_group_subjects.subject_id = subjects.id INNER JOIN staff on staff.id=subject_timetable.staff_id LEFT JOIN classes cl on cl.id=subject_timetable.class_id LEFT JOIN sections as sec on sec.id=subject_timetable.section_id left join class_teacher ct on (ct.class_id=cl.id and ct.staff_id=staff.id and ct.section_id=sec.id) WHERE 1=1 " . $condition . " AND `subject_timetable`.`session_id` = " . $this->current_session . " AND `staff`.`is_active` =1 ";

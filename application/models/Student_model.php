@@ -1587,20 +1587,36 @@ class Student_model extends MY_Model
 
     public function searchdatatablebyAdmissionDetails($class_id, $year)
     {
-        if (!empty($year)) {
-            $data = array('year(admission_date)' => $year, 'student_session.class_id' => $class_id);
-        } else {
-            $data = array('student_session.class_id' => $class_id);
-        }
-
         $this->datatables->select('students.firstname,students.middlename,students.lastname,students.is_active, students.mobileno, students.id as sid ,students.admission_no, students.admission_date, students.guardian_name, students.guardian_relation, students.guardian_phone, classes.class, sessions.id, sections.section')
             ->searchable('students.admission_no,students.firstname,students.admission_date,students.mobileno,students.guardian_name,students.guardian_phone')
             ->join('student_session', 'students.id = student_session.student_id')
             ->join('classes', 'student_session.class_id = classes.id')
             ->join('sections', 'student_session.section_id = sections.id')
-            ->join('sessions', 'student_session.session_id = sessions.id')
-            ->where($data)
-            ->group_by('students.id')
+            ->join('sessions', 'student_session.session_id = sessions.id');
+
+        // Handle both single values and arrays for multi-select functionality - class_id
+        if ($class_id != null && !empty($class_id)) {
+            if (is_array($class_id) && count($class_id) > 0) {
+                $this->datatables->where_in('student_session.class_id', $class_id);
+            } elseif (!is_array($class_id)) {
+                $this->datatables->where('student_session.class_id', $class_id);
+            }
+        }
+
+        // Handle both single values and arrays for multi-select functionality - year
+        if ($year != null && !empty($year)) {
+            if (is_array($year) && count($year) > 0) {
+                $this->datatables->group_start();
+                foreach ($year as $y) {
+                    $this->datatables->or_where('year(admission_date)', $y);
+                }
+                $this->datatables->group_end();
+            } elseif (!is_array($year)) {
+                $this->datatables->where('year(admission_date)', $year);
+            }
+        }
+
+        $this->datatables->group_by('students.id')
             ->orderable('students.admission_no,students.firstname,students.admission_date," "," "," ",students.mobileno,students.guardian_name,students.guardian_phone')
             ->sort('students.id')
             ->from('students');
@@ -2309,6 +2325,80 @@ class Student_model extends MY_Model
         return $result;
     }
 
+    public function searchdatatablebyStudentProfileDetails($class_id, $section_id, $search_type = null)
+    {
+        error_log('=== STUDENT PROFILE MODEL METHOD STARTED ===');
+        error_log('Model input - class_id: ' . print_r($class_id, true));
+        error_log('Model input - section_id: ' . print_r($section_id, true));
+        error_log('Model input - search_type: ' . print_r($search_type, true));
+
+        // Build simplified select statement for student profile - using working pattern from other methods
+        $this->datatables->select('students.id,students.admission_no,students.roll_no,students.firstname,students.middlename,students.lastname,students.gender,students.dob,students.admission_date,students.mobileno,students.email,students.father_name,students.father_phone,students.father_occupation,students.mother_name,students.mother_phone,students.mother_occupation,students.guardian_name,students.guardian_relation,students.guardian_phone,students.guardian_occupation,students.guardian_email,students.guardian_address,students.current_address,students.permanent_address,students.religion,students.cast,students.blood_group,students.height,students.weight,students.measurement_date,students.adhar_no,students.samagra_id,students.bank_account_no,students.bank_name,students.ifsc_code,students.rte,students.previous_school,students.note,students.guardian_is,classes.class,sections.section,categories.category,student_session.fees_discount,school_houses.house_name')
+            ->searchable('students.admission_no,students.firstname,students.middlename,students.lastname,students.father_name,students.mother_name,students.guardian_name,students.guardian_phone,students.mobileno,students.email')
+            ->join('student_session', 'students.id = student_session.student_id')
+            ->join('classes', 'student_session.class_id = classes.id')
+            ->join('sections', 'student_session.section_id = sections.id')
+            ->join('categories', 'categories.id = students.category_id', 'left')
+            ->join('school_houses', 'school_houses.id = students.school_house_id', 'left');
+
+        // Handle both single values and arrays for multi-select functionality - class_id
+        if ($class_id != null && !empty($class_id)) {
+            if (is_array($class_id) && count($class_id) > 0) {
+                $this->datatables->where_in('student_session.class_id', $class_id);
+            } elseif (!is_array($class_id)) {
+                $this->datatables->where('student_session.class_id', $class_id);
+            }
+        }
+
+        // Handle both single values and arrays for multi-select functionality - section_id
+        if ($section_id != null && !empty($section_id)) {
+            if (is_array($section_id) && count($section_id) > 0) {
+                $this->datatables->where_in('student_session.section_id', $section_id);
+            } elseif (!is_array($section_id)) {
+                $this->datatables->where('student_session.section_id', $section_id);
+            }
+        }
+
+        // Handle search by admission date
+        if (!empty($search_type)) {
+            $between_date = $this->customlib->get_betweendate($search_type);
+            $from_date = date('Y-m-d', strtotime($between_date['from_date']));
+            $to_date = date('Y-m-d', strtotime($between_date['to_date']));
+            $this->datatables->where("date_format(students.admission_date,'%Y-%m-%d') between  '" . $from_date . "' and '" . $to_date . "'");
+        }
+
+        error_log('Student Profile Model - About to generate DataTable JSON...');
+
+        // Add WHERE clauses and complete the query using the working pattern
+        $this->datatables->where('student_session.session_id', $this->current_session)
+            ->where('students.is_active', 'yes')
+            ->group_by('students.id')
+            ->orderable('students.admission_no,students.firstname,students.father_name,students.mother_name,students.guardian_name,students.guardian_phone,students.mobileno')
+            ->sort('students.id')
+            ->from('students');
+
+        try {
+            $result = $this->datatables->generate('json');
+            error_log('Student Profile Model - Generated JSON length: ' . strlen($result));
+            error_log('Student Profile Model - Generated JSON preview: ' . substr($result, 0, 500) . '...');
+
+            // Validate JSON
+            $json_test = json_decode($result);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                error_log('Student Profile Model - JSON Error: ' . json_last_error_msg());
+                error_log('Student Profile Model - Raw result: ' . $result);
+            } else {
+                error_log('Student Profile Model - JSON is valid, data count: ' . (isset($json_test->data) ? count($json_test->data) : 'N/A'));
+            }
+
+            return $result;
+        } catch (Exception $e) {
+            error_log('Student Profile Model - Exception in generate: ' . $e->getMessage());
+            error_log('Student Profile Model - Exception trace: ' . $e->getTraceAsString());
+            throw $e;
+        }
+    }
+
     public function searchFullText($searchterm, $carray = null)
     {
         $userdata = $this->customlib->getUserData();
@@ -2406,11 +2496,22 @@ class Student_model extends MY_Model
             ->where('students.is_active', "yes")
             ->from('students');
 
-        if ($class_id != null) {
-            $this->datatables->where('student_session.class_id', $class_id);
+        // Handle both single values and arrays for multi-select functionality - class_id
+        if ($class_id != null && !empty($class_id)) {
+            if (is_array($class_id) && count($class_id) > 0) {
+                $this->datatables->where_in('student_session.class_id', $class_id);
+            } elseif (!is_array($class_id)) {
+                $this->datatables->where('student_session.class_id', $class_id);
+            }
         }
-        if ($section_id != null) {
-            $this->datatables->where('student_session.section_id', $section_id);
+
+        // Handle both single values and arrays for multi-select functionality - section_id
+        if ($section_id != null && !empty($section_id)) {
+            if (is_array($section_id) && count($section_id) > 0) {
+                $this->datatables->where_in('student_session.section_id', $section_id);
+            } elseif (!is_array($section_id)) {
+                $this->datatables->where('student_session.section_id', $section_id);
+            }
         }
         $this->datatables->sort('students.admission_no', 'asc');
         return $this->datatables->generate('json');
@@ -2448,12 +2549,22 @@ class Student_model extends MY_Model
             ->join('sections', 'sections.id = class_sections.section_id', 'left')
             ->from('online_admissions');
 
-        if ($class_id != null) {
-            $this->datatables->where('student_session.class_id', $class_id);
+        // Handle both single values and arrays for multi-select functionality - class_id
+        if ($class_id != null && !empty($class_id)) {
+            if (is_array($class_id) && count($class_id) > 0) {
+                $this->datatables->where_in('student_session.class_id', $class_id);
+            } elseif (!is_array($class_id)) {
+                $this->datatables->where('student_session.class_id', $class_id);
+            }
         }
 
-        if ($section_id != null) {
-            $this->datatables->where('student_session.section_id', $section_id);
+        // Handle both single values and arrays for multi-select functionality - section_id
+        if ($section_id != null && !empty($section_id)) {
+            if (is_array($section_id) && count($section_id) > 0) {
+                $this->datatables->where_in('student_session.section_id', $section_id);
+            } elseif (!is_array($section_id)) {
+                $this->datatables->where('student_session.section_id', $section_id);
+            }
         }
         if ($status != null) {
             $this->datatables->where('online_admissions.is_enroll', $status);
