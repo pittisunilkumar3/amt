@@ -244,27 +244,7 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                                     </div>
                                 </div>
 
-                                <!-- <div class="col-sm-3">
-                                    <div class="form-group">
-                                        <label>Discount Type</label><small class="req"> *</small>
-                                        <select name="certificate_id" class="form-control" >
-                                            <option value=""><?php echo $this->lang->line('select'); ?></option>
-                                            <?php
-                                            if (isset($certificateList)) {
-                                                foreach ($certificateList as $list) {
-                                                    ?>
-                                                    <option value="<?php echo $list['id'] ?>" <?php if (set_value('certificate_id') == $list['id']) {
-                                                    echo "selected=selected";
-                                                }
-                                            ?>><?php echo $list['name'] ?></option>
-                                                    <?php
-                                            }
-                                            }
-                                            ?>
-                                        </select>
-                                        <span class="text-danger"><?php echo form_error('certificate_id'); ?></span>
-                                    </div>
-                                </div> -->
+
 
 
 
@@ -299,189 +279,38 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                         </div>
                     </div>
                 
-                    <?php
-                    if (isset($resultlist)) {
-                        ?>
-                        <form method="post" action="">
-                            <div  class="" id="duefee">
-                                <div class="box-header ptbnull">
-                                </div>
-                            
-                                <div class="box-header ptbnull">
-                                    <h3 class="box-title titlefix"><i class="fa fa-users"></i> <?php echo $this->lang->line('student_list'); ?></h3>
-                                    <!-- <button style="margin-left:10px;" class="btn btn-info btn-sm disapprovalprintSelected pull-right" type="button" name="generate" title="generate multiple certificate">Disapprove</button>
-                                    <button class="btn btn-info btn-sm printSelected pull-right" type="button" name="generate" title="generate multiple certificate">Approve</button> -->
-
-
-                                </div>
-
-                                <div class="box-body table-responsive overflow-visible">
-                                    <div class="download_label"><?php echo $this->lang->line('student_list'); ?></div>
-                                    <div class="tab-pane active table-responsive no-padding" id="tab_1">
-                                        <table class="table table-striped table-bordered table-hover example" cellspacing="0" width="100%">
-                                            <thead>
-                                                <tr>
-                                                    <th><input type="checkbox" id="select_all" /></th>
-                                                    <th><?php echo $this->lang->line('admission_no'); ?></th>
-                                                    <th><?php echo $this->lang->line('student_name'); ?></th>
-                                                    <th><?php echo $this->lang->line('class'); ?></th>
-
-                                                    <th><?php echo $this->lang->line('father_name'); ?></th>
-                                                    <th><?php echo $this->lang->line('date_of_birth'); ?></th>
-                                                    <th><?php echo $this->lang->line('gender'); ?></th>
-
-                                                    <th><?php echo $this->lang->line('category'); ?></th>
-
-                                                    <th class=""><?php echo $this->lang->line('mobile_number'); ?></th>
-                                                    <th><?php echo $this->lang->line('fee_group');?></th>
-                                                    <th><?php echo $this->lang->line('discount_amountt'); ?></th>
-                                                    <th><?php echo $this->lang->line('discount_status'); ?></th>
-                                                    <th class="text-center" style="text-align:center"><?php echo $this->lang->line('action'); ?></th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php
-                                                if (empty($resultlist)) {
-                                                    
-                                                        ?>
-
-                                                    <?php
-                                                    } else {
-
-                                                        
-
-                                                            $count = 1;
-                                                            foreach ($resultlist as $student) {
-
-
-                                                                        $hidde = 'hidden';
-                                                                        if ($student['approval_status']==0) {
-                                                                            $hidde = 'checkbox';
-                                                                            // Change the color if the condition is true
-                                                                        } 
-
-                                                                    
-                                                                        ?>
-                                                                        
-
-
-
-                                                                        <!-- <?php 
-                                                                            
-                                                                            $discountmaount=$this->feediscount_model->getfeeamount($certificateResult['id']);
-                                                                        ?> -->
-                                                        
-                                                                        <tr>
-                                                                            <td class="text-center">
-                                                                                
-                                                                                <input type="<?php echo $hidde; ?>" class="checkbox center-block"  name="check" data-student_id="<?php echo $student['id'] ?>" value="<?php echo $student['id'] ?>">
-                                                                                <input type="hidden" name="class_id" value="<?php echo $student['class_id'] ?>">
-                                                                                <input type="hidden" name="std_id" value="<?php echo $student['id'] ?>">
-                                                                                <input type="hidden" name="certificate_id" value="<?php echo $certificateResult['id'];?>" id="certificate_id">
-                                                                            </td>
-                                                                            <td><?php echo $student['admission_no']; ?></td>
-                                                                            <td>
-                                                                                <a href="<?php echo base_url(); ?>student/view/<?php echo $student['id']; ?>"><?php echo $this->customlib->getFullName($student['firstname'], $student['middlename'], $student['lastname'], $sch_setting->middlename, $sch_setting->lastname); ?>
-                                                                                </a>
-                                                                            </td>
-                                                                            <td><?php echo $student['class'] . "(" . $student['section'] . ")" ?></td>
-                                                                            <td><?php echo $student['father_name']; ?></td>
-                                                                            <td><?php if ($student['dob'] != '' && $student['dob'] != '0000-00-00') {echo date($this->customlib->getSchoolDateFormat(), $this->customlib->dateyyyymmddTodateformat($student['dob']));}?></td>
-                                                                            <td><?php echo $this->lang->line(strtolower($student['gender'])); ?></td>
-                                                                            <td><?php echo $student['category']; ?></td>
-                                                                            <td><?php echo $student['mobileno']; ?></td>
-                                                                            <td><?php echo $student['fgrname']; ?>
-
-                                                                            <td><?php echo $student['amount']; ?></td>
-
-
-                                                                            
-
-                                                                            <?php 
-                                                                                if($student['approval_status']==0){
-                                                                            ?>
-                                                                                <td>
-                                                                                    <!-- <button type="button" class="btn btn-xs btn-default myCollectFeeBtn" data-toggle="modal" data-target="#myFeesModal" data-fee-category="transport"><i class="fa fa-plus"></i></button> -->
-
-                                                                                    <span class="label label-warning"><?php echo $this->lang->line('pending'); ?></span>
-                                                                                </td>
-                                                                                <td class="text-center">
-                                                                                    <td>
-                                                                                    
-                                                                                    <span style="margin-right:3px; cursor:pointer;" class="label label-success approve-btn" data-toggle="modal" data-target="#confirm-approved" data-studentid="<?php echo $student['fdaid']; ?>" >Approve</span>
-                                                                                    </td>
-                                                                                    <td>
-                                                                                    <!-- <span class="label label-danger disapprove-btn">Disapprove</span> -->
-                                                                                    <span style="cursor:pointer;" class="label label-danger disapprove-btn" data-studentid="<?php echo $student['fdaid']; ?>" data-toggle="modal" data-target="#confirm-delete">Disapprove</span>
-                                                                                    
-                                                                                    </td>
-                                                                                </td>
-                                                                            <?php }?>
-
-
-
-                                                                            <?php 
-                                                                                if($student['approval_status']==1){
-                                                                            ?>
-                                                                                <td><span class="label label-success" ><?php echo $this->lang->line('approved');?></span></td>
-                                                                                <td class="text-center">
-                                                                                    <li class="btn btn-default btn-xs"
-                                                                                        data-invoiceno="<?php echo $fee_value->student_fees_deposite_id . "/" . $fee_deposits_value->inv_no; ?>"
-                                                                                        data-main_invoice="<?php echo $fee_value->student_fees_deposite_id ?>"
-                                                                                        data-sub_invoice="<?php echo $fee_deposits_value->inv_no ?>"
-                                                                                        data-toggle="modal" data-target="#confirm-retrive"
-                                                                                        title="<?php echo $this->lang->line('revert'); ?>"
-                                                                                        data-studentid="<?php echo $student['fdaid']; ?>"
-                                                                                        data-paymentid="<?php echo $student['payment_id']; ?>">
-                                                                                        <i class="fa fa-undo"> </i>
-                                                                                    </li>
-                                                                                <td>
-
-                                                                            <?php }?>
-
-
-
-                                                                            <?php 
-                                                                                if($student['approval_status']==2){
-                                                                            ?>
-                                                                                <td><span class="label label-danger"><?php echo $this->lang->line('rejected');?></span></td>
-                                                                                <td class="text-center">
-                                                                                    <li class="btn btn-default btn-xs"
-                                                                                        data-invoiceno="<?php echo $fee_value->student_fees_deposite_id . "/" . $fee_deposits_value->inv_no; ?>"
-                                                                                        data-main_invoice="<?php echo $fee_value->student_fees_deposite_id ?>"
-                                                                                        data-sub_invoice="<?php echo $fee_deposits_value->inv_no ?>"
-                                                                                        data-toggle="modal" data-target="#confirm-retrive"
-                                                                                        title="<?php echo $this->lang->line('revert'); ?>"
-                                                                                        data-studentid="<?php echo $student['fdaid']; ?>"
-                                                                                        data-paymentid="<?php echo $student['payment_id']; ?>"
-                                                                                        >
-                                                                                        <i class="fa fa-undo"> </i>
-                                                                                    </li>
-                                                                                <td>
-
-                                                                            <?php }?>
-                                                                            
-
-                                                                        </tr>
-
-
-                                                                        <?php
-                                                                            }
-                                                                    }
-
-                                                                    
-                                                                    $count++;
-                                                                
-                                                            ?>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
+                    <div class="nav-tabs-custom border0 navnoshadow">
+                        <div class="box-header ptbnull"></div>
+                        <ul class="nav nav-tabs">
+                            <li class="active"><a href="#tab_1" data-toggle="tab" aria-expanded="true"><i class="fa fa-list"></i> <?php echo $this->lang->line('list_view'); ?></a></li>
+                        </ul>
+                        <div class="tab-content">
+                            <div class="tab-pane active table-responsive no-padding overflow-visible-lg" id="tab_1">
+                                <div class="download_label export_title"><?php echo $this->lang->line('student_list'); ?></div>
+                                <table class="table table-striped table-bordered table-hover fees-discount-list" data-export-title="<?php echo $this->lang->line('student_list'); ?>">
+                                    <thead>
+                                        <tr>
+                                            <th class="no-sort"><input type="checkbox" id="select_all" /></th>
+                                            <th><?php echo $this->lang->line('admission_no'); ?></th>
+                                            <th><?php echo $this->lang->line('student_name'); ?></th>
+                                            <th><?php echo $this->lang->line('class'); ?></th>
+                                            <th><?php echo $this->lang->line('father_name'); ?></th>
+                                            <th><?php echo $this->lang->line('date_of_birth'); ?></th>
+                                            <th><?php echo $this->lang->line('gender'); ?></th>
+                                            <th><?php echo $this->lang->line('category'); ?></th>
+                                            <th><?php echo $this->lang->line('mobile_number'); ?></th>
+                                            <th><?php echo $this->lang->line('fee_group');?></th>
+                                            <th><?php echo $this->lang->line('discount_amountt'); ?></th>
+                                            <th><?php echo $this->lang->line('discount_status'); ?></th>
+                                            <th class="text-center no-sort"><?php echo $this->lang->line('action'); ?></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
                             </div>
-                        </form>
-                        <?php
-                        }
-                        ?>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1021,7 +850,176 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
         $(selector).next('.SumoSelect').removeClass('loading');
     }
 
+</script>
 
+<script type="text/javascript">
+$(document).ready(function(){
+    console.log('🚀 Fees Discount Approval Page Loaded');
+
+    // Initialize empty DataTable
+    emptyDatatable('fees-discount-list','data');
+    console.log('📊 Empty DataTable initialized');
+
+    // Handle form submission
+    $("form").on('submit', function(e){
+        e.preventDefault(); // avoid to execute the actual submit of the form.
+
+        var form = $(this);
+        var url = form.attr('action');
+        var form_data = form.serializeArray();
+
+        console.log('🚀 FEES DISCOUNT SEARCH STARTED');
+        console.log('Form URL:', url);
+        console.log('Form Data:', form_data);
+
+        $.ajax({
+            url: '<?php echo site_url("admin/feesdiscountapproval/searchvalidation") ?>',
+            type: "POST",
+            dataType: 'json',
+            data: form_data,
+            beforeSend: function () {
+                $('[id^=error]').html("");
+            },
+            success: function(response) {
+                console.log('✅ AJAX Response Received:', response);
+
+                if(!response.status){
+                    console.error('❌ Validation Error:', response.error);
+                    $.each(response.error, function(key, value) {
+                        $('#error_' + key).html(value);
+                    });
+                } else {
+                    console.log('🎯 Fees Discount Search - Initializing DataTable...');
+                    console.log('DataTable ID: fees-discount-list');
+                    console.log('DataTable URL: admin/feesdiscountapproval/dtfeesdiscountlist');
+                    console.log('DataTable Params:', response.params);
+
+                    $('[id^=error]').html("");
+                    initDatatable('fees-discount-list','admin/feesdiscountapproval/dtfeesdiscountlist',response.params,[],100);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', status, error);
+                alert('Network error occurred. Please check your connection and try again.');
+            }
+        });
+    });
+
+    // Handle dynamic event binding for DataTable buttons
+    $(document).on('click', '.approve-btn', function () {
+        var studentID = $(this).data('studentid');
+
+        $('#confirm-approved').on('show.bs.modal', function (e) {
+            $('#main_invoice',this).val(studentID);
+        });
+    });
+
+    $(document).on('click', '.disapprove-btn', function () {
+        var studentID = $(this).data('studentid');
+
+        $('#confirm-delete').on('show.bs.modal', function (e) {
+            $('#main_invoicee',this).val(studentID);
+        });
+    });
+
+    $(document).on('click', '.btn-xs[data-target="#confirm-retrive"]', function () {
+        var studentID = $(this).data('studentid');
+        var paymentid = $(this).data('paymentid');
+
+        $('#confirm-retrive').on('show.bs.modal', function (e) {
+            $('#main_invoic',this).val(studentID);
+            $('#sub_invoic',this).val(paymentid);
+        });
+    });
+
+    // Handle checkbox selection in DataTable
+    $(document).on('change', '#select_all', function () {
+        if (this.checked) {
+            $('.checkbox').each(function () {
+                this.checked = true;
+            });
+        } else {
+            $('.checkbox').each(function () {
+                this.checked = false;
+            });
+        }
+    });
+
+    $(document).on('change', '.checkbox', function () {
+        if ($('.checkbox:checked').length == $('.checkbox').length) {
+            $('#select_all').prop('checked', true);
+        } else {
+            $('#select_all').prop('checked', false);
+        }
+    });
+});
+
+// Helper function to initialize empty DataTable
+function emptyDatatable(selector, message) {
+    if ($.fn.DataTable.isDataTable('.' + selector)) {
+        $('.' + selector).DataTable().destroy();
+    }
+
+    $('.' + selector).DataTable({
+        "dom": '<"row"<"col-sm-6 mb-xs"B><"col-sm-6"f>><"table-responsive"tr>p',
+        "lengthChange": false,
+        "pageLength": 100,
+        "columnDefs": [
+            {"orderable": false, "targets": 'no-sort'},
+            {"orderable": false, "targets": [-1],'class':'action'}
+        ],
+        "buttons": [
+            {
+                extend: 'copyHtml5',
+                text: '<i class="far fa-copy"></i>',
+                titleAttr: 'Copy',
+                title: $('.export_title').html(),
+                exportOptions: {
+                    columns: ':visible'
+                }
+            },
+            {
+                extend: 'excelHtml5',
+                text: '<i class="fa fa-file-excel"></i>',
+                titleAttr: 'Excel',
+                title: $('.export_title').html(),
+                exportOptions: {
+                    columns: ':visible'
+                }
+            },
+            {
+                extend: 'csvHtml5',
+                text: '<i class="fa fa-file-text-o"></i>',
+                titleAttr: 'CSV',
+                title: $('.export_title').html(),
+                exportOptions: {
+                    columns: ':visible'
+                }
+            },
+            {
+                extend: 'pdfHtml5',
+                text: '<i class="fa fa-file-pdf-o"></i>',
+                titleAttr: 'PDF',
+                title: $('.export_title').html(),
+                exportOptions: {
+                    columns: ':visible'
+                }
+            },
+            {
+                extend: 'print',
+                text: '<i class="fa fa-print"></i>',
+                titleAttr: 'Print',
+                title: $('.export_title').html(),
+                exportOptions: {
+                    columns: ':visible'
+                }
+            }
+        ],
+        "language": {
+            "emptyTable": "Please search to view results"
+        }
+    });
+}
 </script>
 
 

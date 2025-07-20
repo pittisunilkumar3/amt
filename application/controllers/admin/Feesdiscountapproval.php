@@ -63,50 +63,163 @@ class Feesdiscountapproval extends Admin_Controller
         $sessionlist             = $this->session_model->get();
         $data['sessionlist']     = $sessionlist;
 
-        $button                  = $this->input->post('search');
-        if ($this->input->server('REQUEST_METHOD') == "GET") {
-            $this->load->view('layout/header', $data);
-            $this->load->view('admin/feediscount/feesdiscountapproval', $data);
-            $this->load->view('layout/footer', $data);
-        } else {
-            $class       = $this->input->post('class_id');
-            $section     = $this->input->post('section_id');
-            $disstatus   = $this->input->post('progress_id');
-            $session_id  = $this->input->post('session_id');
-            $certificate = $this->input->post('certificate_id');
-
-            // No mandatory field validation - allow flexible search
-            $data['class_id']          = $this->input->post('class_id');
-            $data['section_id']        = $this->input->post('section_id');
-            $data['session_id']        = $this->input->post('session_id');
-            $certificate               = $this->input->post('certificate_id');
-
-            $certificateResult         = $this->feediscount_model->get($certificate);
-            $data['certificateResult'] = $certificateResult;
-
-            $resultlist                = $this->student_model->searchByClassSectionAnddiscountStatus($class,$certificate, $section,$disstatus, $session_id);
-            $data['resultlist']        = $resultlist;
-
-            // Generate title based on selected filters
-            if (!empty($class) && !empty($section)) {
-                if (is_array($class)) {
-                    $class = $class[0]; // Use first class for title
-                }
-                if (is_array($section)) {
-                    $section = $section[0]; // Use first section for title
-                }
-                $title = $this->classsection_model->getDetailbyClassSection($class, $section);
-                $data['title'] = $this->lang->line('std_dtl_for') . ' ' . $title['class'] . "(" . $title['section'] . ")";
-            } else {
-                $data['title'] = 'Fees Discount Approval Results';
-            }
-            $data['sch_setting'] = $this->sch_setting_detail;
-            $this->load->view('layout/header', $data);
-            $this->load->view('admin/feediscount/feesdiscountapproval', $data);
-            $this->load->view('layout/footer', $data);
-        }
+        // Always show the search form - AJAX will handle data loading
+        $this->load->view('layout/header', $data);
+        $this->load->view('admin/feediscount/feesdiscountapproval', $data);
+        $this->load->view('layout/footer', $data);
     }
 
+    public function dtfeesdiscountlist()
+    {
+        // Enhanced error logging and debugging
+        error_log('=== FEES DISCOUNT DATATABLE REQUEST STARTED ===');
+        error_log('POST data: ' . print_r($_POST, true));
+        error_log('Request method: ' . $_SERVER['REQUEST_METHOD']);
+
+        $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
+        $class_id        = $this->input->post('class_id');
+        $section_id      = $this->input->post('section_id');
+        $session_id      = $this->input->post('session_id');
+        $progress_id     = $this->input->post('progress_id');
+
+        // Enhanced debug logging
+        error_log('Fees Discount DataTable - Raw input: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+        log_message('debug', 'Fees Discount DataTable - Raw input: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+
+        // Handle both single and multi-select values properly
+        if (!is_array($class_id)) {
+            $class_id = !empty($class_id) ? array($class_id) : array();
+        }
+        if (!is_array($section_id)) {
+            $section_id = !empty($section_id) ? array($section_id) : array();
+        }
+
+        // Remove empty values from arrays
+        $class_id = array_filter($class_id, function($value) { return !empty($value); });
+        $section_id = array_filter($section_id, function($value) { return !empty($value); });
+
+        error_log('Fees Discount DataTable - Processed: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+        log_message('debug', 'Fees Discount DataTable - Processed: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+
+        $sch_setting = $this->sch_setting_detail;
+
+        try {
+            // Get the discount approval data (pass null for certificate_id since we removed it)
+            $resultlist = $this->student_model->searchByClassSectionAnddiscountStatus($class_id, null, $section_id, $progress_id, $session_id);
+
+            error_log('Fees Discount DataTable - Model result count: ' . count($resultlist));
+            error_log('Fees Discount DataTable - Model result preview: ' . print_r(array_slice($resultlist, 0, 2), true));
+
+        } catch (Exception $e) {
+            error_log('Fees Discount DataTable - Exception: ' . $e->getMessage());
+            $resultlist = array();
+        }
+
+        $dt_data = array();
+
+        if (!empty($resultlist)) {
+            foreach ($resultlist as $student) {
+                $viewbtn = '';
+                $approvebtn = '';
+                $disapprovebtn = '';
+                $revertbtn = '';
+
+                // View button (explore button)
+                $viewbtn = "<a href='" . base_url() . "student/view/" . $student['id'] . "' class='btn btn-default btn-xs' data-toggle='tooltip' title='" . $this->lang->line('view') . "'><i class='fa fa-reorder'></i></a>";
+
+                // Action buttons based on approval status
+                if ($student['approval_status'] == 0) { // Pending
+                    $approvebtn = "<span style='margin-right:3px; cursor:pointer;' class='label label-success approve-btn' data-toggle='modal' data-target='#confirm-approved' data-studentid='" . $student['fdaid'] . "'>Approve</span>";
+                    $disapprovebtn = "<span style='cursor:pointer;' class='label label-danger disapprove-btn' data-studentid='" . $student['fdaid'] . "' data-toggle='modal' data-target='#confirm-delete'>Disapprove</span>";
+                } elseif ($student['approval_status'] == 1) { // Approved
+                    $revertbtn = "<li class='btn btn-default btn-xs' data-toggle='modal' data-target='#confirm-retrive' title='" . $this->lang->line('revert') . "' data-studentid='" . $student['fdaid'] . "' data-paymentid='" . $student['payment_id'] . "'><i class='fa fa-undo'></i></li>";
+                }
+
+                $row = array();
+
+                // Checkbox for bulk operations (only for pending status)
+                $checkbox = '';
+                if ($student['approval_status'] == 0) {
+                    $checkbox = "<input type='checkbox' class='checkbox center-block' name='check' data-student_id='" . $student['id'] . "' value='" . $student['id'] . "'>";
+                }
+                $row[] = $checkbox;
+
+                $row[] = $student['admission_no'];
+                $row[] = "<a href='" . base_url() . "student/view/" . $student['id'] . "'>" . $this->customlib->getFullName($student['firstname'], $student['middlename'], $student['lastname'], $sch_setting->middlename, $sch_setting->lastname) . "</a>";
+                $row[] = $student['class'] . "(" . $student['section'] . ")";
+                $row[] = $student['father_name'];
+
+                // Format date of birth
+                $dob = '';
+                if ($student['dob'] != '' && $student['dob'] != '0000-00-00') {
+                    $dob = date($this->customlib->getSchoolDateFormat(), $this->customlib->dateyyyymmddTodateformat($student['dob']));
+                }
+                $row[] = $dob;
+
+                $row[] = $this->lang->line(strtolower($student['gender']));
+                $row[] = $student['category'];
+                $row[] = $student['mobileno'];
+                $row[] = $student['fgrname']; // Fee group name
+                $row[] = $student['amount']; // Discount amount
+
+                // Status column
+                $status = '';
+                if ($student['approval_status'] == 0) {
+                    $status = "<span class='label label-warning'>" . $this->lang->line('pending') . "</span>";
+                } elseif ($student['approval_status'] == 1) {
+                    $status = "<span class='label label-success'>" . $this->lang->line('approved') . "</span>";
+                } elseif ($student['approval_status'] == 2) {
+                    $status = "<span class='label label-danger'>" . $this->lang->line('rejected') . "</span>";
+                }
+                $row[] = $status;
+
+                // Action column
+                $actions = $viewbtn . ' ' . $approvebtn . ' ' . $disapprovebtn . ' ' . $revertbtn;
+                $row[] = $actions;
+
+                $dt_data[] = $row;
+            }
+        }
+
+        $json_data = array(
+            "draw"            => intval($this->input->post('draw')),
+            "recordsTotal"    => count($resultlist),
+            "recordsFiltered" => count($resultlist),
+            "data"            => $dt_data,
+        );
+
+        error_log('Fees Discount DataTable - Final JSON data count: ' . count($dt_data));
+
+        // Set proper JSON header
+        header('Content-Type: application/json');
+        echo json_encode($json_data);
+    }
+
+    public function searchvalidation()
+    {
+        $search_type = $this->input->post('search_type');
+
+        if ($search_type == "search_filter") {
+            // No mandatory validation for flexible search
+            $array = array('status' => 1, 'error' => '');
+            echo json_encode($array);
+        } else {
+            $class_id    = $this->input->post('class_id');
+            $section_id  = $this->input->post('section_id');
+            $session_id  = $this->input->post('session_id');
+            $progress_id = $this->input->post('progress_id');
+
+            $params = array(
+                'class_id' => $class_id,
+                'section_id' => $section_id,
+                'session_id' => $session_id,
+                'progress_id' => $progress_id
+            );
+
+            $array = array('status' => 1, 'error' => '', 'params' => $params);
+            echo json_encode($array);
+        }
+    }
 
     public function generate($student, $class, $certificate)
     {

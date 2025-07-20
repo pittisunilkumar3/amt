@@ -3679,6 +3679,14 @@ class Student_model extends MY_Model
             }
         }
 
+        // Handle certificate filtering (multi-select)
+        if ($certifid != null && !empty($certifid)) {
+            if (is_array($certifid)) {
+                $this->db->where_in('fees_discount_approval.fees_discount_id', $certifid);
+            } else {
+                $this->db->where('fees_discount_approval.fees_discount_id', $certifid);
+            }
+        }
 
         if (!empty($class_section_array)) {
             $this->db->group_start();
