@@ -988,6 +988,12 @@ class Financereports extends Admin_Controller
         }
 
         try {
+            log_message('debug', 'Fee Collection Report Columnwise - Method started');
+            // Load required models
+            $this->load->model('studentfeemaster_model');
+            $this->load->model('feetype_model');
+            $this->load->model('session_model');
+
             $data['collect_by']  = $this->studentfeemaster_model->get_feesreceived_by();
             $data['searchlist']  = $this->customlib->get_searchtype();
             $data['group_by']    = $this->customlib->get_groupby();
@@ -999,8 +1005,12 @@ class Financereports extends Admin_Controller
             $tnumber=count($feetype);
             $feetype[$tnumber]=array('id'=>'transport_fees','type'=>'Transport Fees');
 
-            // Get other fee types
-            $other_feetype       = $this->feetypeadding_model->get();
+            // Get other fee types (with error handling)
+            $other_feetype = array();
+            if (file_exists(APPPATH . 'models/Feetypeadding_model.php')) {
+                $this->load->model('feetypeadding_model');
+                $other_feetype = $this->feetypeadding_model->get();
+            }
 
             // Combine both fee types
             $combined_feetype = array_merge($feetype, $other_feetype);
@@ -1060,10 +1070,29 @@ class Financereports extends Admin_Controller
                 $data['selected_section'] = $section_id;
 
                 // Get fee collection data for column-wise display
-                $data['results'] = $this->studentfeemaster_model->getFeeCollectionReportColumnwise($start_date, $end_date, $feetype_id, $received_by, $group, $class_id, $section_id, $session_id);
+                try {
+                    log_message('debug', 'Getting column-wise data with params: start_date=' . $start_date . ', end_date=' . $end_date);
+                    $data['results'] = $this->studentfeemaster_model->getFeeCollectionReportColumnwise($start_date, $end_date, $feetype_id, $received_by, $group, $class_id, $section_id, $session_id);
+                    log_message('debug', 'Results count: ' . count($data['results']));
 
-                // Get all fee types for column headers
-                $data['fee_types'] = $this->studentfeemaster_model->getFeeTypesForColumnwise($start_date, $end_date, $feetype_id, $class_id, $section_id, $session_id);
+                    // Get all fee types for column headers
+                    $data['fee_types'] = $this->studentfeemaster_model->getFeeTypesForColumnwise($start_date, $end_date, $feetype_id, $class_id, $section_id, $session_id);
+                    log_message('debug', 'Fee types count: ' . count($data['fee_types']));
+
+                    // Ensure we have arrays
+                    if (!is_array($data['results'])) {
+                        $data['results'] = array();
+                    }
+                    if (!is_array($data['fee_types'])) {
+                        $data['fee_types'] = array();
+                    }
+
+                } catch (Exception $e) {
+                    log_message('error', 'Column-wise report error: ' . $e->getMessage());
+                    $data['results'] = array();
+                    $data['fee_types'] = array();
+                    $data['error_message'] = 'An error occurred while generating the report. Please try again.';
+                }
             }
             $data['subtotal']    = $subtotal;
 
@@ -1073,7 +1102,16 @@ class Financereports extends Admin_Controller
             $this->load->view('layout/footer', $data);
         } catch (Exception $e) {
             log_message('error', 'Fee Collection Report Columnwise Error: ' . $e->getMessage());
-            show_error('An error occurred while loading the report. Please try again.');
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+
+            // Set default data to prevent view errors
+            $data['results'] = array();
+            $data['fee_types'] = array();
+            $data['error_message'] = 'An error occurred while loading the report: ' . $e->getMessage();
+
+            $this->load->view('layout/header', $data);
+            $this->load->view('financereports/fee_collection_report_columnwise', $data);
+            $this->load->view('layout/footer', $data);
         }
     }
 

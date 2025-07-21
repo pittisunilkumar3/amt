@@ -99,164 +99,56 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
     font-weight: 500;
 }
 
-/* Select all/clear all button styling */
-.SumoSelect .select-all {
-    background-color: #f8f9fa;
-    border-bottom: 1px solid #dee2e6;
-    padding: 8px 12px;
-    font-weight: 600;
-    color: #495057;
-    cursor: pointer;
-    display: block !important;
-}
-
-.SumoSelect .select-all:hover {
-    background-color: #e9ecef;
-}
-
-/* Ensure Select All option is visible */
-.SumoSelect .optWrapper .options li.opt {
-    display: list-item !important;
-    padding: 6px 12px;
-    cursor: pointer;
-}
-
-.SumoSelect .optWrapper .options li.opt:hover {
-    background-color: #f5f5f5;
-}
-
-/* Select All specific styling */
-.SumoSelect .optWrapper .options li.opt.select-all {
-    background-color: #e3f2fd;
-    border-bottom: 1px solid #bbdefb;
-    font-weight: 600;
-    color: #1976d2;
-}
-
-.SumoSelect .optWrapper .options li.opt.select-all:hover {
-    background-color: #bbdefb;
-}
-
-/* Loading state for dropdowns */
-.SumoSelect.loading > .CaptionCont {
-    opacity: 0.6;
-    pointer-events: none;
-}
-
-.SumoSelect.loading > .CaptionCont:after {
-    content: "";
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    margin-top: -8px;
-    width: 16px;
-    height: 16px;
-    border: 2px solid #ccc;
-    border-top-color: #337ab7;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* Error message styling */
-.text-danger {
-    font-size: 12px;
-    margin-top: 5px;
-    display: block;
-}
-
-/* Form alignment improvements */
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: 500;
-}
-
-/* Alert message styling */
-.alert {
-    margin-bottom: 20px;
-    border-radius: 4px;
-}
-
-.alert-success {
-    background-color: #dff0d8;
-    border-color: #d6e9c6;
-    color: #3c763d;
-}
-
-.alert-danger {
-    background-color: #f2dede;
-    border-color: #ebccd1;
-    color: #a94442;
-}
-
-.alert .fa {
-    margin-right: 8px;
-}
-
-/* Column-wise table styling */
+/* Simple Excel-like table styling */
 .table-columnwise {
-    font-size: 12px;
+    font-size: 11px;
+    border-collapse: collapse;
+    width: 100%;
+    font-family: Arial, sans-serif;
+    background-color: #ffffff;
 }
 
-.table-columnwise th {
-    background-color: #f5f5f5;
-    font-weight: 600;
-    text-align: center;
-    vertical-align: middle;
-    border: 1px solid #ddd;
-    padding: 8px 4px;
-}
-
-.table-columnwise td {
-    text-align: center;
-    vertical-align: middle;
-    border: 1px solid #ddd;
-    padding: 6px 4px;
-}
-
-.table-columnwise .student-info {
-    text-align: left;
-    font-weight: 500;
-}
-
-.table-columnwise .amount-cell {
-    text-align: right;
-    font-weight: 500;
-}
-
-.table-columnwise .total-row {
-    background-color: #f9f9f9;
-    font-weight: 600;
-}
-
-.table-columnwise .total-row td {
-    border-top: 2px solid #337ab7;
-}
-
-/* Responsive table */
+/* Simple table container */
 .table-responsive {
     overflow-x: auto;
+    overflow-y: auto;
+    margin: 0;
+    padding: 0;
+    background-color: #ffffff;
+    border: 1px solid #000000;
 }
 
-@media (max-width: 768px) {
-    .table-columnwise {
-        font-size: 10px;
-    }
-    
-    .table-columnwise th,
-    .table-columnwise td {
-        padding: 4px 2px;
-    }
+/* Simple Excel-like headers */
+.table-columnwise th {
+    background-color: #f0f0f0;
+    border: 1px solid #000000;
+    padding: 5px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 11px;
 }
+
+/* Simple Excel-like cells */
+.table-columnwise td {
+    border: 1px solid #000000;
+    padding: 5px;
+    text-align: center;
+    font-size: 11px;
+    background-color: #ffffff;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 </style>
 <div class="content-wrapper">
     <section class="content-header"></section>
@@ -442,6 +334,11 @@ if (empty($results)) {
 
 
                         <div class="box-body table-responsive" id="transfee">
+                        <?php if (isset($error_message)) { ?>
+                            <div class="alert alert-danger">
+                                <strong>Error:</strong> <?php echo $error_message; ?>
+                            </div>
+                        <?php } ?>
                         <div id="printhead"><center><b><h4><?php echo $this->lang->line('fee_collection_report_column_wise') . "<br>";
     $this->customlib->get_postmessage();
     ?></h4></b></center></div>
@@ -451,30 +348,58 @@ if (empty($results)) {
 
 
 
-                            <a class="btn btn-default btn-xs pull-right" id="print" onclick="printDiv()" ><i class="fa fa-print"></i></a>
-                            <a class="btn btn-default btn-xs pull-right" id="btnExport" onclick="exportToExcel();"> <i class="fa fa-file-excel-o"></i> </a>
+
+
+                            <!-- Table Container with Enhanced Styling -->
+                            <div class="table-container">
                                 <table class="table table-striped table-bordered table-hover table-columnwise" id="headerTable">
                                     <thead>
                                         <tr>
-                                            <th><?php echo $this->lang->line('admission_no'); ?></th>
-                                            <th><?php echo $this->lang->line('student_name'); ?></th>
-                                            <th><?php echo $this->lang->line('class'); ?></th>
-                                            <th><?php echo $this->lang->line('section'); ?></th>
+                                            <th rowspan="2" style="vertical-align: middle;"><?php echo $this->lang->line('admission_no'); ?></th>
+                                            <th rowspan="2" style="vertical-align: middle;"><?php echo $this->lang->line('student_name'); ?></th>
+                                            <th rowspan="2" style="vertical-align: middle;"><?php echo $this->lang->line('class'); ?></th>
+                                            <th rowspan="2" style="vertical-align: middle;"><?php echo $this->lang->line('section'); ?></th>
                                             <?php
                                             $total_by_type = array();
                                             foreach ($fee_types as $fee_type) {
-                                                $total_by_type[$fee_type['type']] = 0;
+                                                $total_by_type[$fee_type['type']] = array(
+                                                    'total_amount' => 0,
+                                                    'paid_amount' => 0,
+                                                    'remaining_amount' => 0
+                                                );
                                             ?>
-                                                <th><?php echo $fee_type['type']; ?></th>
+                                                <th colspan="3" style="text-align: center; background-color: #f5f5f5;"><?php echo $fee_type['type']; ?></th>
                                             <?php } ?>
-                                            <th><?php echo $this->lang->line('total'); ?></th>
+                                            <th rowspan="2" style="vertical-align: middle; background-color: #e8f4fd;"><?php echo $this->lang->line('grand_total'); ?></th>
+                                        </tr>
+                                        <tr>
+                                            <?php foreach ($fee_types as $fee_type) { ?>
+                                                <th style="text-align: center; font-size: 11px; background-color: #f9f9f9;">Total Amount</th>
+                                                <th style="text-align: center; font-size: 11px; background-color: #e8f5e8;">Paid Amount</th>
+                                                <th style="text-align: center; font-size: 11px; background-color: #ffe8e8;">Remaining</th>
+                                            <?php } ?>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php
                                         $grand_total = 0;
-                                        foreach ($results as $student) {
-                                            $student_total = 0;
+                                        // Initialize totals array if not already done
+                                        if (!isset($total_by_type) || empty($total_by_type)) {
+                                            $total_by_type = array();
+                                            if (isset($fee_types) && is_array($fee_types)) {
+                                                foreach ($fee_types as $fee_type) {
+                                                    $total_by_type[$fee_type['type']] = array(
+                                                        'total_amount' => 0,
+                                                        'paid_amount' => 0,
+                                                        'remaining_amount' => 0
+                                                    );
+                                                }
+                                            }
+                                        }
+
+                                        if (isset($results) && is_array($results)) {
+                                            foreach ($results as $student) {
+                                                $student_total = 0;
                                         ?>
                                             <tr>
                                                 <td class="student-info"><?php echo $student['admission_no']; ?></td>
@@ -482,28 +407,118 @@ if (empty($results)) {
                                                 <td><?php echo $student['class']; ?></td>
                                                 <td><?php echo $student['section']; ?></td>
                                                 <?php foreach ($fee_types as $fee_type) {
-                                                    $amount = isset($student['fee_types'][$fee_type['type']]) ? $student['fee_types'][$fee_type['type']] : 0;
-                                                    $student_total += $amount;
-                                                    $total_by_type[$fee_type['type']] += $amount;
+                                                    $fee_data = isset($student['fee_types'][$fee_type['type']]) ? $student['fee_types'][$fee_type['type']] : array(
+                                                        'total_amount' => 0,
+                                                        'paid_amount' => 0,
+                                                        'remaining_amount' => 0,
+                                                        'payments' => array()
+                                                    );
+
+                                                    // Handle old format (just amount) vs new format (detailed data)
+                                                    if (is_numeric($fee_data)) {
+                                                        $paid_amount = $fee_data;
+                                                        $total_amount = $fee_data;
+                                                        $remaining_amount = 0;
+                                                        $payments = array();
+                                                    } else {
+                                                        $paid_amount = $fee_data['paid_amount'];
+                                                        $total_amount = $fee_data['total_amount'];
+                                                        $remaining_amount = $fee_data['remaining_amount'];
+                                                        $payments = $fee_data['payments'];
+                                                    }
+
+                                                    $student_total += $paid_amount;
+                                                    $total_by_type[$fee_type['type']]['total_amount'] += $total_amount;
+                                                    $total_by_type[$fee_type['type']]['paid_amount'] += $paid_amount;
+                                                    $total_by_type[$fee_type['type']]['remaining_amount'] += $remaining_amount;
+
+                                                    // Create tooltip with payment details
+                                                    $tooltip = '';
+                                                    if (!empty($payments)) {
+                                                        $tooltip = 'title="Payment Details:\n';
+                                                        foreach ($payments as $payment) {
+                                                            $tooltip .= 'Date: ' . $payment['date'] . ', Amount: ' . $currency_symbol . number_format($payment['amount'], 2) . ', By: ' . $payment['collected_by'] . '\n';
+                                                        }
+                                                        $tooltip .= '"';
+                                                    }
                                                 ?>
-                                                    <td class="amount-cell"><?php echo ($amount > 0) ? $currency_symbol . number_format($amount, 2) : '-'; ?></td>
+                                                    <!-- Total Amount -->
+                                                    <td class="amount-cell">
+                                                        <?php echo ($total_amount > 0) ? $currency_symbol . number_format($total_amount, 0) : '-'; ?>
+                                                    </td>
+                                                    <!-- Paid Amount -->
+                                                    <td class="amount-cell" <?php echo $tooltip; ?>>
+                                                        <?php echo ($paid_amount > 0) ? $currency_symbol . number_format($paid_amount, 0) : '-'; ?>
+                                                    </td>
+                                                    <!-- Remaining Amount -->
+                                                    <td class="amount-cell">
+                                                        <?php echo ($remaining_amount > 0) ? $currency_symbol . number_format($remaining_amount, 0) : '-'; ?>
+                                                    </td>
                                                 <?php } ?>
-                                                <td class="amount-cell"><strong><?php echo $currency_symbol . number_format($student_total, 2); ?></strong></td>
+                                                <td class="total-cell">
+                                                    <strong><?php echo $currency_symbol . number_format($student_total, 0); ?></strong>
+                                                </td>
                                             </tr>
                                         <?php
-                                            $grand_total += $student_total;
-                                        } ?>
+                                                $grand_total += $student_total;
+                                            } // end foreach
+                                        } // end if isset($results) ?>
                                     </tbody>
                                     <tfoot>
-                                        <tr class="total-row">
-                                            <td colspan="4"><strong><?php echo $this->lang->line('total'); ?></strong></td>
-                                            <?php foreach ($fee_types as $fee_type) { ?>
-                                                <td class="amount-cell"><strong><?php echo $currency_symbol . number_format($total_by_type[$fee_type['type']], 2); ?></strong></td>
+                                        <?php
+                                        $grand_total_amount = 0;
+                                        $grand_paid_amount = 0;
+                                        $grand_remaining_amount = 0;
+
+                                        foreach ($fee_types as $fee_type) {
+                                            $type_totals = $total_by_type[$fee_type['type']];
+                                            $grand_total_amount += $type_totals['total_amount'];
+                                            $grand_paid_amount += $type_totals['paid_amount'];
+                                            $grand_remaining_amount += $type_totals['remaining_amount'];
+                                        }
+                                        ?>
+
+                                        <!-- Grand Total (Total Assigned) Row -->
+                                        <tr style="font-weight: bold;">
+                                            <td colspan="4"><strong>Grand Total</strong></td>
+                                            <?php foreach ($fee_types as $fee_type) {
+                                                $type_totals = $total_by_type[$fee_type['type']];
+                                            ?>
+                                                <td><strong><?php echo $currency_symbol . number_format($type_totals['total_amount'], 0); ?></strong></td>
+                                                <td>-</td>
+                                                <td>-</td>
                                             <?php } ?>
-                                            <td class="amount-cell"><strong><?php echo $currency_symbol . number_format($grand_total, 2); ?></strong></td>
+                                            <td><strong><?php echo $currency_symbol . number_format($grand_total_amount, 0); ?></strong></td>
+                                        </tr>
+
+                                        <!-- Grand Paid (Total Collected) Row -->
+                                        <tr style="font-weight: bold;">
+                                            <td colspan="4"><strong>Grand Paid</strong></td>
+                                            <?php foreach ($fee_types as $fee_type) {
+                                                $type_totals = $total_by_type[$fee_type['type']];
+                                            ?>
+                                                <td>-</td>
+                                                <td><strong><?php echo $currency_symbol . number_format($type_totals['paid_amount'], 0); ?></strong></td>
+                                                <td>-</td>
+                                            <?php } ?>
+                                            <td><strong><?php echo $currency_symbol . number_format($grand_paid_amount, 0); ?></strong></td>
+                                        </tr>
+
+                                        <!-- Grand Pending (Total Remaining) Row -->
+                                        <tr style="font-weight: bold;">
+                                            <td colspan="4"><strong>Grand Pending</strong></td>
+                                            <?php foreach ($fee_types as $fee_type) {
+                                                $type_totals = $total_by_type[$fee_type['type']];
+                                            ?>
+                                                <td>-</td>
+                                                <td>-</td>
+                                                <td><strong><?php echo $currency_symbol . number_format($type_totals['remaining_amount'], 0); ?></strong></td>
+                                            <?php } ?>
+                                            <td><strong><?php echo $currency_symbol . number_format($grand_remaining_amount, 0); ?></strong></td>
                                         </tr>
                                     </tfoot>
                                 </table>
+                            </div> <!-- End table-container -->
                         </div>
                     </div>
                                         <?php
@@ -665,48 +680,7 @@ if (empty($results)) {
         }
     }
 
-    function printDiv() {
-        var divToPrint = document.getElementById('transfee');
-        var newWin = window.open('', 'Print-Window');
-        newWin.document.open();
-        newWin.document.write('<html><body onload="window.print()">' + divToPrint.innerHTML + '</body></html>');
-        newWin.document.close();
-        setTimeout(function() {
-            newWin.close();
-        }, 10);
-    }
 
-    function exportToExcel() {
-        var tab_text = "<table border='2px'><tr bgcolor='#87AFC6'>";
-        var textRange;
-        var j = 0;
-        var tab = document.getElementById('headerTable');
-
-        for (j = 0; j < tab.rows.length; j++) {
-            tab_text = tab_text + tab.rows[j].innerHTML + "</tr>";
-        }
-
-        tab_text = tab_text + "</table>";
-        tab_text = tab_text.replace(/<A[^>]*>|<\/A>/g, "");
-        tab_text = tab_text.replace(/<img[^>]*>/gi, "");
-        tab_text = tab_text.replace(/<input[^>]*>|<\/input>/gi, "");
-
-        var ua = window.navigator.userAgent;
-        var msie = ua.indexOf("MSIE ");
-
-        if (msie > 0 || !!navigator.userAgent.match(/Trident.*rv\:11\./)) {
-            txtArea1.document.open("txt/html", "replace");
-            txtArea1.document.write(tab_text);
-            txtArea1.document.close();
-            txtArea1.focus();
-            sa = txtArea1.document.execCommand("SaveAs", true, "fee_collection_report_columnwise.xls");
-        } else {
-            var link = document.createElement("a");
-            link.download = "fee_collection_report_columnwise.xls";
-            link.href = "data:application/vnd.ms-excel," + encodeURIComponent(tab_text);
-            link.click();
-        }
-    }
 
     // Form validation
     $('form').on('submit', function(e) {
@@ -745,4 +719,8 @@ if ($search_type == 'period') {
     <?php
 }
 ?>
+
+
 </script>
+
+

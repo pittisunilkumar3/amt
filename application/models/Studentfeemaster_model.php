@@ -2165,10 +2165,14 @@ $module=$this->module_model->getPermissionByModulename('transport');
     public function getFeeCollectionReportColumnwise($start_date, $end_date, $feetype_id = null, $received_by = null, $group = null, $class_id = null, $section_id = null, $session_id = null)
     {
         try {
-            // For now, return the same data as the original getFeeCollectionReport but process it differently
+            log_message('debug', 'getFeeCollectionReportColumnwise called with params: start_date=' . $start_date . ', end_date=' . $end_date);
+
+            // Use the existing working method and enhance the data structure
             $original_data = $this->getFeeCollectionReport($start_date, $end_date, $feetype_id, $received_by, $group, $class_id, $section_id, $session_id);
 
-            // Process the data for column-wise display
+            log_message('debug', 'Original data count: ' . count($original_data));
+
+            // Process the data for enhanced column-wise display
             $return_array = array();
             if (!empty($original_data)) {
                 foreach ($original_data as $record) {
@@ -2189,13 +2193,37 @@ $module=$this->module_model->getPermissionByModulename('transport');
 
                     $fee_type_key = $record['type'];
                     if (!isset($return_array[$student_key]['fee_types'][$fee_type_key])) {
-                        $return_array[$student_key]['fee_types'][$fee_type_key] = 0;
+                        $return_array[$student_key]['fee_types'][$fee_type_key] = array(
+                            'total_amount' => 0,
+                            'paid_amount' => 0,
+                            'remaining_amount' => 0,
+                            'payments' => array()
+                        );
                     }
 
-                    $return_array[$student_key]['fee_types'][$fee_type_key] += $record['amount'];
+                    // For now, use paid amount as both total and paid (since we don't have total fee assignment data easily)
+                    $amount = $record['amount'];
+                    $return_array[$student_key]['fee_types'][$fee_type_key]['paid_amount'] += $amount;
+                    $return_array[$student_key]['fee_types'][$fee_type_key]['total_amount'] += $amount; // Simplified for now
+
+                    // Add payment details
+                    $return_array[$student_key]['fee_types'][$fee_type_key]['payments'][] = array(
+                        'amount' => $amount,
+                        'date' => $record['date'],
+                        'collected_by' => isset($record['collected_by']) ? $record['collected_by'] : 'System'
+                    );
+                }
+
+                // Calculate remaining amounts (will be 0 for now since total = paid)
+                foreach ($return_array as $student_key => $student_data) {
+                    foreach ($student_data['fee_types'] as $fee_type => $fee_data) {
+                        $return_array[$student_key]['fee_types'][$fee_type]['remaining_amount'] =
+                            $fee_data['total_amount'] - $fee_data['paid_amount'];
+                    }
                 }
             }
 
+            log_message('debug', 'Processed data count: ' . count($return_array));
             return $return_array;
         } catch (Exception $e) {
             log_message('error', 'getFeeCollectionReportColumnwise Error: ' . $e->getMessage());
