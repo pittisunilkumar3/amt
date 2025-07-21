@@ -69,6 +69,29 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
     width: calc(100% - 10px);
 }
 
+/* Additional table styling */
+.table-container {
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    overflow-x: auto;
+    overflow-y: visible;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    max-width: 100%;
+}
+
+.table-columnwise thead th {
+    background: linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 1px solid #ccc;
+}
+
+.table-columnwise tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.table-columnwise tbody tr:hover {
+    background-color: #e8f4fd;
+}
+
 /* Responsive design improvements */
 @media (max-width: 768px) {
     .col-sm-2.col-lg-2.col-md-2 {
@@ -83,6 +106,30 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
     .form-group label {
         font-weight: 600;
         margin-bottom: 5px;
+    }
+
+    .payment-details-cell {
+        min-width: 120px;
+        max-width: 150px;
+    }
+
+    .payment-row {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 3px 0;
+    }
+
+    .payment-amount, .payment-date, .payment-collector {
+        margin: 1px 0;
+        text-align: left;
+    }
+
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .table-columnwise {
+        min-width: 800px;
     }
 }
 
@@ -99,13 +146,190 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
     font-weight: 500;
 }
 
-/* Simple Excel-like table styling */
+/* Enhanced Excel-like table styling with borders */
 .table-columnwise {
     font-size: 11px;
     border-collapse: collapse;
     width: 100%;
     font-family: Arial, sans-serif;
     background-color: #ffffff;
+    border: none;
+}
+
+.table-columnwise th {
+    border: 1px solid #ccc;
+    padding: 8px 4px;
+    background-color: #f8f9fa;
+    font-weight: bold;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.table-columnwise td {
+    border: 1px solid #e0e0e0;
+    padding: 4px;
+    vertical-align: top;
+}
+
+.table-columnwise .student-info {
+    background-color: #f9f9f9;
+    font-weight: 500;
+}
+
+.table-columnwise .total-cell {
+    background-color: #e8f4fd;
+    font-weight: bold;
+    text-align: center;
+    border: 1px solid #ccc;
+}
+
+.table-columnwise tfoot td {
+    border: 1px solid #ccc;
+    background-color: #f0f8ff;
+    font-weight: bold;
+    text-align: center;
+}
+
+/* Payment details cell styling */
+.payment-details-cell {
+    padding: 6px !important;
+    vertical-align: top;
+    min-width: 180px;
+    max-width: 220px;
+    border: 1px solid #ccc;
+}
+
+.payment-breakdown {
+    font-size: 10px;
+    line-height: 1.3;
+}
+
+.payment-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 0;
+    border-bottom: 1px dotted #ddd;
+    margin-bottom: 3px;
+    background-color: #fafafa;
+    padding: 2px 4px;
+    border-radius: 2px;
+}
+
+.payment-row:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.payment-amount {
+    font-weight: bold;
+    color: #2c5aa0;
+    flex: 0 0 auto;
+    margin-right: 8px;
+    font-size: 10px;
+}
+
+.payment-date {
+    font-size: 9px;
+    color: #666;
+    flex: 1;
+    text-align: center;
+    margin: 0 4px;
+}
+
+.payment-collector {
+    font-size: 9px;
+    color: #333;
+    flex: 1;
+    text-align: right;
+    font-style: italic;
+}
+
+.payment-summary {
+    margin-top: 6px;
+    padding: 4px;
+    border-top: 1px solid #ccc;
+    background-color: #f0f8ff;
+    border-radius: 3px;
+}
+
+/* Grand Total Footer Styling */
+.grand-total-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+}
+
+.grand-total-row {
+    font-weight: bold !important;
+    font-size: 12px !important;
+    border-top: 2px solid #333 !important;
+}
+
+.grand-total-row.assigned-total {
+    background-color: #f8f9fa !important;
+    color: #495057;
+}
+
+.grand-total-row.paid-total {
+    background-color: #e8f5e8 !important;
+    color: #155724;
+}
+
+.grand-total-row.remaining-total {
+    background-color: #ffe8e8 !important;
+    color: #721c24;
+}
+
+.grand-total-label {
+    text-align: left !important;
+    padding: 8px !important;
+    font-weight: bold !important;
+}
+
+.grand-total-amount {
+    text-align: center !important;
+    padding: 8px !important;
+    font-weight: bold !important;
+    border: 1px solid #ccc !important;
+}
+
+.grand-total-final {
+    text-align: center !important;
+    padding: 8px !important;
+    font-weight: bold !important;
+    background-color: #e8f4fd !important;
+    border: 2px solid #007bff !important;
+}
+
+.payment-total {
+    text-align: center;
+    font-weight: bold;
+    color: #2c5aa0;
+    margin-bottom: 2px;
+}
+
+.payment-remaining {
+    text-align: center;
+    font-weight: bold;
+    color: #d9534f;
+    font-size: 9px;
+}
+
+.payment-overpaid {
+    text-align: center;
+    font-weight: bold;
+    color: #28a745;
+    font-size: 9px;
+}
+
+.no-payment {
+    text-align: center;
+    color: #999;
+    font-style: italic;
+    padding: 15px 0;
+    background-color: #f9f9f9;
+    border-radius: 3px;
 }
 
 /* Simple table container */
@@ -368,15 +592,13 @@ if (empty($results)) {
                                                     'remaining_amount' => 0
                                                 );
                                             ?>
-                                                <th colspan="3" style="text-align: center; background-color: #f5f5f5;"><?php echo $fee_type['type']; ?></th>
+                                                <th colspan="1" style="text-align: center; background-color: #f5f5f5;"><?php echo $fee_type['type']; ?></th>
                                             <?php } ?>
                                             <th rowspan="2" style="vertical-align: middle; background-color: #e8f4fd;"><?php echo $this->lang->line('grand_total'); ?></th>
                                         </tr>
                                         <tr>
                                             <?php foreach ($fee_types as $fee_type) { ?>
-                                                <th style="text-align: center; font-size: 11px; background-color: #f9f9f9;">Total Amount</th>
-                                                <th style="text-align: center; font-size: 11px; background-color: #e8f5e8;">Paid Amount</th>
-                                                <th style="text-align: center; font-size: 11px; background-color: #ffe8e8;">Remaining</th>
+                                                <th style="text-align: center; font-size: 11px; background-color: #e8f5e8;">Payment Details</th>
                                             <?php } ?>
                                         </tr>
                                     </thead>
@@ -419,11 +641,13 @@ if (empty($results)) {
                                                         $paid_amount = $fee_data;
                                                         $total_amount = $fee_data;
                                                         $remaining_amount = 0;
+                                                        $overpaid_amount = 0;
                                                         $payments = array();
                                                     } else {
                                                         $paid_amount = $fee_data['paid_amount'];
                                                         $total_amount = $fee_data['total_amount'];
                                                         $remaining_amount = $fee_data['remaining_amount'];
+                                                        $overpaid_amount = isset($fee_data['overpaid_amount']) ? $fee_data['overpaid_amount'] : 0;
                                                         $payments = $fee_data['payments'];
                                                     }
 
@@ -431,28 +655,47 @@ if (empty($results)) {
                                                     $total_by_type[$fee_type['type']]['total_amount'] += $total_amount;
                                                     $total_by_type[$fee_type['type']]['paid_amount'] += $paid_amount;
                                                     $total_by_type[$fee_type['type']]['remaining_amount'] += $remaining_amount;
-
-                                                    // Create tooltip with payment details
-                                                    $tooltip = '';
-                                                    if (!empty($payments)) {
-                                                        $tooltip = 'title="Payment Details:\n';
-                                                        foreach ($payments as $payment) {
-                                                            $tooltip .= 'Date: ' . $payment['date'] . ', Amount: ' . $currency_symbol . number_format($payment['amount'], 2) . ', By: ' . $payment['collected_by'] . '\n';
-                                                        }
-                                                        $tooltip .= '"';
-                                                    }
                                                 ?>
-                                                    <!-- Total Amount -->
-                                                    <td class="amount-cell">
-                                                        <?php echo ($total_amount > 0) ? $currency_symbol . number_format($total_amount, 0) : '-'; ?>
-                                                    </td>
-                                                    <!-- Paid Amount -->
-                                                    <td class="amount-cell" <?php echo $tooltip; ?>>
-                                                        <?php echo ($paid_amount > 0) ? $currency_symbol . number_format($paid_amount, 0) : '-'; ?>
-                                                    </td>
-                                                    <!-- Remaining Amount -->
-                                                    <td class="amount-cell">
-                                                        <?php echo ($remaining_amount > 0) ? $currency_symbol . number_format($remaining_amount, 0) : '-'; ?>
+                                                    <!-- Payment Details Cell -->
+                                                    <td class="payment-details-cell">
+                                                        <?php if (!empty($payments) || $total_amount > 0) { ?>
+                                                            <div class="payment-breakdown">
+                                                                <?php if (!empty($payments)) { ?>
+                                                                    <?php foreach ($payments as $payment) { ?>
+                                                                        <div class="payment-row">
+                                                                            <div class="payment-amount">
+                                                                                <?php echo $currency_symbol . number_format($payment['amount'], 0); ?>
+                                                                            </div>
+                                                                            <div class="payment-date">
+                                                                                <?php echo date('d-M-Y', strtotime($payment['date'])); ?>
+                                                                            </div>
+                                                                            <div class="payment-collector">
+                                                                                <?php echo !empty($payment['collected_by_name']) ? $payment['collected_by_name'] : 'System'; ?>
+                                                                            </div>
+                                                                        </div>
+                                                                    <?php } ?>
+                                                                <?php } ?>
+                                                                <div class="payment-summary">
+                                                                    <div class="payment-total">
+                                                                        Paid: <?php echo $currency_symbol . number_format($paid_amount, 0); ?>
+                                                                    </div>
+                                                                    <?php if ($overpaid_amount > 0) { ?>
+                                                                        <div class="payment-overpaid" style="color: #28a745; font-weight: bold;">
+                                                                            Overpaid: <?php echo $currency_symbol . number_format($overpaid_amount, 0); ?>
+                                                                        </div>
+                                                                    <?php } else { ?>
+                                                                        <div class="payment-remaining">
+                                                                            Remaining: <?php echo $currency_symbol . number_format($remaining_amount, 0); ?>
+                                                                        </div>
+                                                                    <?php } ?>
+                                                                </div>
+                                                            </div>
+                                                        <?php } else { ?>
+                                                            <div class="no-payment">
+                                                                <div>No fees assigned</div>
+                                                                <div class="payment-remaining">Remaining: <?php echo $currency_symbol; ?>0</div>
+                                                            </div>
+                                                        <?php } ?>
                                                     </td>
                                                 <?php } ?>
                                                 <td class="total-cell">
@@ -464,7 +707,7 @@ if (empty($results)) {
                                             } // end foreach
                                         } // end if isset($results) ?>
                                     </tbody>
-                                    <tfoot>
+                                    <tfoot class="grand-total-footer">
                                         <?php
                                         $grand_total_amount = 0;
                                         $grand_paid_amount = 0;
@@ -479,42 +722,36 @@ if (empty($results)) {
                                         ?>
 
                                         <!-- Grand Total (Total Assigned) Row -->
-                                        <tr style="font-weight: bold;">
-                                            <td colspan="4"><strong>Grand Total</strong></td>
+                                        <tr class="grand-total-row assigned-total">
+                                            <td colspan="4" class="grand-total-label"><strong>Grand Total (Assigned)</strong></td>
                                             <?php foreach ($fee_types as $fee_type) {
                                                 $type_totals = $total_by_type[$fee_type['type']];
                                             ?>
-                                                <td><strong><?php echo $currency_symbol . number_format($type_totals['total_amount'], 0); ?></strong></td>
-                                                <td>-</td>
-                                                <td>-</td>
+                                                <td class="grand-total-amount"><strong><?php echo $currency_symbol . number_format($type_totals['total_amount'], 0); ?></strong></td>
                                             <?php } ?>
-                                            <td><strong><?php echo $currency_symbol . number_format($grand_total_amount, 0); ?></strong></td>
+                                            <td class="grand-total-final"><strong><?php echo $currency_symbol . number_format($grand_total_amount, 0); ?></strong></td>
                                         </tr>
 
                                         <!-- Grand Paid (Total Collected) Row -->
-                                        <tr style="font-weight: bold;">
-                                            <td colspan="4"><strong>Grand Paid</strong></td>
+                                        <tr class="grand-total-row paid-total">
+                                            <td colspan="4" class="grand-total-label"><strong>Grand Paid (Collected)</strong></td>
                                             <?php foreach ($fee_types as $fee_type) {
                                                 $type_totals = $total_by_type[$fee_type['type']];
                                             ?>
-                                                <td>-</td>
-                                                <td><strong><?php echo $currency_symbol . number_format($type_totals['paid_amount'], 0); ?></strong></td>
-                                                <td>-</td>
+                                                <td class="grand-total-amount"><strong><?php echo $currency_symbol . number_format($type_totals['paid_amount'], 0); ?></strong></td>
                                             <?php } ?>
-                                            <td><strong><?php echo $currency_symbol . number_format($grand_paid_amount, 0); ?></strong></td>
+                                            <td class="grand-total-final"><strong><?php echo $currency_symbol . number_format($grand_paid_amount, 0); ?></strong></td>
                                         </tr>
 
-                                        <!-- Grand Pending (Total Remaining) Row -->
-                                        <tr style="font-weight: bold;">
-                                            <td colspan="4"><strong>Grand Pending</strong></td>
+                                        <!-- Grand Remaining (Total Pending) Row -->
+                                        <tr class="grand-total-row remaining-total">
+                                            <td colspan="4" class="grand-total-label"><strong>Grand Remaining (Pending)</strong></td>
                                             <?php foreach ($fee_types as $fee_type) {
                                                 $type_totals = $total_by_type[$fee_type['type']];
                                             ?>
-                                                <td>-</td>
-                                                <td>-</td>
-                                                <td><strong><?php echo $currency_symbol . number_format($type_totals['remaining_amount'], 0); ?></strong></td>
+                                                <td class="grand-total-amount"><strong><?php echo $currency_symbol . number_format($type_totals['remaining_amount'], 0); ?></strong></td>
                                             <?php } ?>
-                                            <td><strong><?php echo $currency_symbol . number_format($grand_remaining_amount, 0); ?></strong></td>
+                                            <td class="grand-total-final"><strong><?php echo $currency_symbol . number_format($grand_remaining_amount, 0); ?></strong></td>
                                         </tr>
                                     </tfoot>
                                 </table>

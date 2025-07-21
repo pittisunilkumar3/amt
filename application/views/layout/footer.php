@@ -99,6 +99,38 @@ if ($language_name != 'en') {
     // include base_url() . "security/config.php";
     // include base_url() . "security/project-security.php";
 ?>
+
+<script type="text/javascript">
+    // Global search function for header search form
+    function getstudentlist() {
+        console.log('🔍 Global Search - getstudentlist() called');
+
+        // Get the search form
+        var form = document.getElementById('header_search_form');
+        if (!form) {
+            console.error('❌ Global Search - Form not found');
+            return false;
+        }
+
+        // Get search text
+        var searchInput = document.getElementById('search_text2');
+        if (!searchInput) {
+            console.error('❌ Global Search - Search input not found');
+            return false;
+        }
+
+        var searchText = searchInput.value.trim();
+        if (searchText === '') {
+            alert('Please enter search text');
+            return false;
+        }
+
+        console.log('🔍 Global Search - Search text:', searchText);
+
+        // Submit the form normally - let the form action handle the rest
+        return true;
+    }
+</script>
 </body>
 </html>
 <!-- jQuery 3 -->

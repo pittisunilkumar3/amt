@@ -3316,6 +3316,7 @@ class Student_model extends MY_Model
     {
         $userdata = $this->customlib->getUserData();
         $staff_id = $userdata['id'];
+        $class_section_array = $this->customlib->get_myClassSection();
 
         $i             = 1;
         $custom_fields = $this->customfield_model->get_custom_fields('students', 1);

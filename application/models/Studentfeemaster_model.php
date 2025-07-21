@@ -2172,7 +2172,10 @@ $module=$this->module_model->getPermissionByModulename('transport');
 
             log_message('debug', 'Original data count: ' . count($original_data));
 
-            // Process the data for enhanced column-wise display
+            // Get assigned fee amounts for proper remaining calculation
+            $assigned_fees = $this->getAssignedFeeAmounts($class_id, $section_id, $session_id, $feetype_id);
+
+            // Process the data for enhanced column-wise display with detailed payment information
             $return_array = array();
             if (!empty($original_data)) {
                 foreach ($original_data as $record) {
@@ -2193,32 +2196,81 @@ $module=$this->module_model->getPermissionByModulename('transport');
 
                     $fee_type_key = $record['type'];
                     if (!isset($return_array[$student_key]['fee_types'][$fee_type_key])) {
+                        // Get assigned amount for this fee type
+                        $assigned_amount = 0;
+                        if (isset($assigned_fees[$student_key][$fee_type_key])) {
+                            $assigned_amount = $assigned_fees[$student_key][$fee_type_key];
+                        }
+
                         $return_array[$student_key]['fee_types'][$fee_type_key] = array(
-                            'total_amount' => 0,
+                            'total_amount' => $assigned_amount,
                             'paid_amount' => 0,
-                            'remaining_amount' => 0,
+                            'remaining_amount' => $assigned_amount,
                             'payments' => array()
                         );
                     }
 
-                    // For now, use paid amount as both total and paid (since we don't have total fee assignment data easily)
+                    // Get payment amount and details
                     $amount = $record['amount'];
                     $return_array[$student_key]['fee_types'][$fee_type_key]['paid_amount'] += $amount;
-                    $return_array[$student_key]['fee_types'][$fee_type_key]['total_amount'] += $amount; // Simplified for now
 
-                    // Add payment details
+                    // Get collected by name from the record
+                    $collected_by_name = 'System';
+                    if (isset($record['received_byname']) && !empty($record['received_byname'])) {
+                        if (is_array($record['received_byname'])) {
+                            $collected_by_name = isset($record['received_byname']['name']) ? $record['received_byname']['name'] : 'System';
+                        } else {
+                            $collected_by_name = $record['received_byname'];
+                        }
+                    } elseif (isset($record['received_by']) && !empty($record['received_by'])) {
+                        // If we have received_by ID but no name, try to get the name
+                        try {
+                            // Load staff_model if not already loaded
+                            if (!isset($this->staff_model)) {
+                                $this->load->model('staff_model');
+                            }
+                            $staff_info = $this->staff_model->get_StaffNameById($record['received_by']);
+                            if (isset($staff_info['name']) && !empty($staff_info['name'])) {
+                                $collected_by_name = $staff_info['name'];
+                            }
+                        } catch (Exception $e) {
+                            // If staff_model is not available, use the ID as fallback
+                            $collected_by_name = 'Staff ID: ' . $record['received_by'];
+                        }
+                    }
+
+                    // Add detailed payment information
                     $return_array[$student_key]['fee_types'][$fee_type_key]['payments'][] = array(
                         'amount' => $amount,
                         'date' => $record['date'],
-                        'collected_by' => isset($record['collected_by']) ? $record['collected_by'] : 'System'
+                        'collected_by_id' => isset($record['received_by']) ? $record['received_by'] : '',
+                        'collected_by_name' => $collected_by_name,
+                        'payment_mode' => isset($record['payment_mode']) ? $record['payment_mode'] : '',
+                        'description' => isset($record['description']) ? $record['description'] : '',
+                        'amount_fine' => isset($record['amount_fine']) ? $record['amount_fine'] : 0,
+                        'amount_discount' => isset($record['amount_discount']) ? $record['amount_discount'] : 0,
+                        'inv_no' => isset($record['inv_no']) ? $record['inv_no'] : ''
                     );
                 }
 
-                // Calculate remaining amounts (will be 0 for now since total = paid)
+                // Calculate remaining amounts (prevent negative values for display)
                 foreach ($return_array as $student_key => $student_data) {
                     foreach ($student_data['fee_types'] as $fee_type => $fee_data) {
+                        $calculated_remaining = $fee_data['total_amount'] - $fee_data['paid_amount'];
+                        // Prevent negative remaining amounts for display purposes
+                        // If paid amount exceeds total amount, remaining should be 0
                         $return_array[$student_key]['fee_types'][$fee_type]['remaining_amount'] =
-                            $fee_data['total_amount'] - $fee_data['paid_amount'];
+                            max(0, $calculated_remaining);
+
+                        // Store the actual calculation for audit purposes
+                        $return_array[$student_key]['fee_types'][$fee_type]['actual_remaining'] = $calculated_remaining;
+
+                        // If overpaid, store the overpaid amount
+                        if ($calculated_remaining < 0) {
+                            $return_array[$student_key]['fee_types'][$fee_type]['overpaid_amount'] = abs($calculated_remaining);
+                        } else {
+                            $return_array[$student_key]['fee_types'][$fee_type]['overpaid_amount'] = 0;
+                        }
                     }
                 }
             }
@@ -2227,6 +2279,76 @@ $module=$this->module_model->getPermissionByModulename('transport');
             return $return_array;
         } catch (Exception $e) {
             log_message('error', 'getFeeCollectionReportColumnwise Error: ' . $e->getMessage());
+            return array();
+        }
+    }
+
+    public function getAssignedFeeAmounts($class_id = null, $section_id = null, $session_id = null, $feetype_id = null)
+    {
+        try {
+            // Get assigned fee amounts from fee_groups_feetype and student_fees_master
+            $this->db->select('student_session.id as student_session_id, feetype.type, fee_groups_feetype.amount as assigned_amount');
+            $this->db->from('student_session');
+            $this->db->join('student_fees_master', 'student_fees_master.student_session_id = student_session.id', 'left');
+            $this->db->join('fee_session_groups', 'fee_session_groups.id = student_fees_master.fee_session_group_id', 'left');
+            $this->db->join('fee_groups_feetype', 'fee_groups_feetype.fee_session_group_id = fee_session_groups.id', 'left');
+            $this->db->join('feetype', 'feetype.id = fee_groups_feetype.feetype_id', 'left');
+
+            // Apply filters
+            if ($session_id != null && !empty($session_id)) {
+                if (is_array($session_id) && count($session_id) > 0) {
+                    $this->db->where_in('student_session.session_id', $session_id);
+                } elseif (!is_array($session_id)) {
+                    $this->db->where('student_session.session_id', $session_id);
+                }
+            } else {
+                $this->db->where('student_session.session_id', $this->current_session);
+            }
+
+            if ($class_id != null && !empty($class_id)) {
+                if (is_array($class_id) && count($class_id) > 0) {
+                    $this->db->where_in('student_session.class_id', $class_id);
+                } elseif (!is_array($class_id)) {
+                    $this->db->where('student_session.class_id', $class_id);
+                }
+            }
+
+            if ($section_id != null && !empty($section_id)) {
+                if (is_array($section_id) && count($section_id) > 0) {
+                    $this->db->where_in('student_session.section_id', $section_id);
+                } elseif (!is_array($section_id)) {
+                    $this->db->where('student_session.section_id', $section_id);
+                }
+            }
+
+            if ($feetype_id != null && !empty($feetype_id)) {
+                if (is_array($feetype_id) && count($feetype_id) > 0) {
+                    $this->db->where_in('fee_groups_feetype.feetype_id', $feetype_id);
+                } elseif (!is_array($feetype_id)) {
+                    $this->db->where('fee_groups_feetype.feetype_id', $feetype_id);
+                }
+            }
+
+            $this->db->where('feetype.type IS NOT NULL');
+            $query = $this->db->get();
+            $results = $query->result_array();
+
+            // Organize by student_session_id and fee type
+            $assigned_fees = array();
+            foreach ($results as $result) {
+                $student_session_id = $result['student_session_id'];
+                $fee_type = $result['type'];
+                $amount = $result['assigned_amount'] ? $result['assigned_amount'] : 0;
+
+                if (!isset($assigned_fees[$student_session_id])) {
+                    $assigned_fees[$student_session_id] = array();
+                }
+                $assigned_fees[$student_session_id][$fee_type] = $amount;
+            }
+
+            return $assigned_fees;
+        } catch (Exception $e) {
+            log_message('error', 'getAssignedFeeAmounts Error: ' . $e->getMessage());
             return array();
         }
     }

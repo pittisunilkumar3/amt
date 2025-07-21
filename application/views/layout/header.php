@@ -150,7 +150,7 @@ if ($this->config->item('SSLK') == "") {
                                 <form id="header_search_form" class="navbar-form navbar-left search-form" role="search"  action="<?php echo site_url('admin/admin/searchhole'); ?>" method="POST">
                                     <?php echo $this->customlib->getCSRF(); ?>
                                     <div class="input-group">
-                                        <input type="text" value="<?php echo set_value('search_text2'); ?>" name="search_text2" id="search_text1" class="form-control search-form search-form3" placeholder="<?php echo $this->lang->line('search_by_student_name'); ?>">
+                                        <input type="text" value="<?php echo set_value('search_text2'); ?>" name="search_text2" id="search_text2" class="form-control search-form search-form3" placeholder="<?php echo $this->lang->line('search_by_student_name'); ?>">
                                         <span class="input-group-btn">
                                             <button type="submit" name="search" id="search-btn" onclick="getstudentlist()" style="" class="btn btn-flat topsidesearchbtn"><i class="fa fa-search"></i></button>
                                         </span>
