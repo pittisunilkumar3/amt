@@ -1115,6 +1115,456 @@ class Financereports extends Admin_Controller
         }
     }
 
+    public function export_fee_collection_columnwise()
+    {
+        log_message('debug', 'Export method called - POST data: ' . print_r($_POST, true));
+
+
+
+        try {
+            // Get form data - same as main report method
+            $search_type = $this->input->post('search_type');
+            $date_from = $this->input->post('date_from');
+            $date_to = $this->input->post('date_to');
+            $feetype_id = $this->input->post('feetype_id');
+            $received_by = $this->input->post('received_by');
+            $group = $this->input->post('group');
+            $class_id = $this->input->post('class_id');
+            $section_id = $this->input->post('section_id');
+            $session_id = $this->input->post('sch_session_id');
+            $export_format = $this->input->post('export_format');
+
+            // Process dates same as main report method
+            $dates = $this->customlib->get_betweendate($search_type, $date_from, $date_to);
+            $start_date = date('Y-m-d', strtotime($dates['from_date']));
+            $end_date = date('Y-m-d', strtotime($dates['to_date']));
+
+            // Process received_by parameter same as main method
+            if (isset($received_by) && $received_by != '') {
+                $received_by = $received_by;
+            } else {
+                $received_by = "";
+            }
+
+            // Process feetype_id parameter same as main method
+            if (isset($feetype_id) && $feetype_id != '') {
+                $feetype_id = $feetype_id;
+            } else {
+                $feetype_id = "";
+            }
+
+            // Process group parameter same as main method
+            if (isset($group) && $group != '') {
+                $group = $group;
+            } else {
+                $group = '';
+            }
+
+            // Handle session_id - use current session if not provided
+            if (empty($session_id)) {
+                $session_id = $this->setting_model->getCurrentSession();
+                log_message('debug', 'Export: Using current session_id = ' . $session_id);
+            }
+
+            // Validate export format
+            if (!in_array($export_format, ['pdf', 'excel', 'csv'])) {
+                show_error('Invalid export format');
+                return;
+            }
+
+            // Debug: Log export parameters
+            log_message('debug', 'Export Parameters: start_date=' . $start_date . ', end_date=' . $end_date . ', format=' . $export_format);
+
+            // Get the same data as the main report
+            $data['results'] = $this->studentfeemaster_model->getFeeCollectionReportColumnwise($start_date, $end_date, $feetype_id, $received_by, $group, $class_id, $section_id, $session_id);
+            $data['fee_types'] = $this->studentfeemaster_model->getFeeTypesForColumnwise($start_date, $end_date, $feetype_id, $class_id, $section_id, $session_id);
+
+            // Debug: Log data counts
+            log_message('debug', 'Export Data: results_count=' . count($data['results']) . ', fee_types_count=' . count($data['fee_types']));
+
+            // Debug: Check if results are empty and log sample data
+            if (empty($data['results'])) {
+                log_message('error', 'Export Error: No results found for the given parameters');
+                log_message('debug', 'Export Debug: Parameters used - start_date=' . $start_date . ', end_date=' . $end_date . ', session_id=' . $session_id . ', class_id=' . $class_id . ', section_id=' . $section_id);
+
+                // Try to get data with broader parameters to see if there's any data at all
+                log_message('debug', 'Export Debug: Trying broader search...');
+                $test_results = $this->studentfeemaster_model->getFeeCollectionReportColumnwise($start_date, $end_date, null, null, null, null, null, $session_id);
+                log_message('debug', 'Export Debug: Broader search found ' . count($test_results) . ' results');
+            } else {
+                // Log detailed data structure for debugging
+                log_message('debug', 'Export Debug: Fee types count: ' . count($data['fee_types']));
+                log_message('debug', 'Export Debug: Fee types list: ' . json_encode(array_column($data['fee_types'], 'type')));
+
+                // Log sample student data to see available fee types
+                $sample_student = array_values($data['results'])[0];
+                if (isset($sample_student['fee_types'])) {
+                    log_message('debug', 'Export Debug: Sample student fee types: ' . json_encode(array_keys($sample_student['fee_types'])));
+
+                    // Log detailed structure of first student's fee data
+                    $first_fee_type = array_keys($sample_student['fee_types'])[0];
+                    $fee_structure = $sample_student['fee_types'][$first_fee_type];
+                    log_message('debug', 'Export Debug: Sample fee structure for ' . $first_fee_type . ': ' . json_encode($fee_structure));
+                } else {
+                    log_message('debug', 'Export Debug: No fee_types found in student data');
+                }
+
+                // Log complete structure of first student for debugging
+                log_message('debug', 'Export Debug: First student complete structure: ' . json_encode($sample_student));
+            }
+
+            // Get school settings
+            $data['sch_setting'] = $this->sch_setting_detail;
+            $data['currency_symbol'] = $this->customlib->getSchoolCurrencyFormat();
+
+            // Set report parameters
+            $data['start_date'] = $start_date;
+            $data['end_date'] = $end_date;
+            $data['export_format'] = $export_format;
+
+            // If no data found, create a simple export with message
+            if (empty($data['results']) && empty($data['fee_types'])) {
+                $data['results'] = array();
+                $data['fee_types'] = array(array('type' => 'No Data Available', 'id' => 'no_data'));
+            }
+
+            // Validate and fix data structure before export
+            $data = $this->validate_export_data($data);
+
+            // Only support CSV export
+            if ($export_format == 'csv') {
+                $this->export_csv_columnwise($data);
+            } else {
+                show_error('Only CSV export is supported');
+            }
+
+        } catch (Exception $e) {
+            log_message('error', 'Export Fee Collection Columnwise Error: ' . $e->getMessage());
+            show_error('An error occurred while exporting the report: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Validate and fix export data structure to ensure CSV export works correctly
+     */
+    private function validate_export_data($data)
+    {
+        log_message('debug', 'Validating export data structure...');
+
+        // Ensure results is an array
+        if (!isset($data['results']) || !is_array($data['results'])) {
+            log_message('debug', 'Results not found or not array, setting to empty array');
+            $data['results'] = array();
+        }
+
+        // Ensure fee_types is an array
+        if (!isset($data['fee_types']) || !is_array($data['fee_types'])) {
+            log_message('debug', 'Fee types not found or not array, setting to empty array');
+            $data['fee_types'] = array();
+        }
+
+        // Validate each student record
+        foreach ($data['results'] as $index => $student) {
+            if (!is_array($student)) {
+                log_message('debug', 'Student record ' . $index . ' is not an array, skipping');
+                unset($data['results'][$index]);
+                continue;
+            }
+
+            // Ensure required fields exist
+            $required_fields = array('admission_no', 'firstname', 'lastname', 'class', 'section');
+            foreach ($required_fields as $field) {
+                if (!isset($student[$field])) {
+                    $data['results'][$index][$field] = '';
+                }
+            }
+
+            // Ensure fee_types exists and is an array
+            if (!isset($student['fee_types']) || !is_array($student['fee_types'])) {
+                $data['results'][$index]['fee_types'] = array();
+            }
+        }
+
+        // Re-index results array to remove gaps
+        $data['results'] = array_values($data['results']);
+
+        log_message('debug', 'Data validation complete. Results: ' . count($data['results']) . ', Fee types: ' . count($data['fee_types']));
+
+        return $data;
+    }
+
+
+
+    private function export_csv_columnwise($data)
+    {
+        // Generate filename
+        $filename = 'Fee_Collection_Report_Columnwise_' . date('Y-m-d_H-i-s') . '.csv';
+
+        // Set headers for download with UTF-8 encoding
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment;filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+
+        // Open output stream
+        $output = fopen('php://output', 'w');
+
+        // Add UTF-8 BOM to handle special characters properly
+        fwrite($output, "\xEF\xBB\xBF");
+
+        // Build CSV content
+        $this->build_csv_content($output, $data);
+
+        fclose($output);
+        exit;
+    }
+
+
+
+
+
+    private function build_csv_content($output, $data)
+    {
+        // Use Rs. instead of currency symbol to avoid encoding issues
+        $currency_symbol = 'Rs.';
+
+        // Log data structure for debugging
+        log_message('debug', 'CSV Export: Building content with ' . count($data['results']) . ' students and ' . count($data['fee_types']) . ' fee types');
+
+        // Title row
+        fputcsv($output, array('Fee Collection Report Column Wise'));
+        fputcsv($output, array()); // Empty row
+
+        // Date range
+        if (!empty($data['start_date']) && !empty($data['end_date'])) {
+            fputcsv($output, array('Period: ' . date('d-M-Y', strtotime($data['start_date'])) . ' to ' . date('d-M-Y', strtotime($data['end_date']))));
+            fputcsv($output, array()); // Empty row
+        }
+
+        // Headers - Use EXACT same logic as frontend view
+        $headers = array('Admission No', 'Student Name', 'Class', 'Section');
+
+        // Mirror the frontend logic: foreach ($fee_types as $fee_type)
+        $fee_types = isset($data['fee_types']) ? $data['fee_types'] : array();
+
+        // Log fee types being used for headers
+        log_message('debug', 'CSV Export: Fee types for headers: ' . json_encode(array_column($fee_types, 'type')));
+
+        foreach ($fee_types as $fee_type) {
+            $headers[] = $fee_type['type'];
+        }
+        $headers[] = 'Grand Total';
+        fputcsv($output, $headers);
+
+        // Log headers being written
+        log_message('debug', 'CSV Export: Headers written: ' . json_encode($headers));
+
+        // Data rows - Use EXACT same logic as frontend view
+        $results = isset($data['results']) ? $data['results'] : array();
+        log_message('debug', 'CSV Export: Processing ' . count($results) . ' student records');
+
+        if (isset($results) && is_array($results)) {
+            $row_count = 0;
+            foreach ($results as $student) {
+                $row_data = array();
+                $student_total = 0;
+                $row_count++;
+
+                // Basic student information - same as frontend
+                $row_data[] = isset($student['admission_no']) ? $student['admission_no'] : '';
+                $row_data[] = $this->customlib->getFullName(
+                    isset($student['firstname']) ? $student['firstname'] : '',
+                    isset($student['middlename']) ? $student['middlename'] : '',
+                    isset($student['lastname']) ? $student['lastname'] : '',
+                    $data['sch_setting']->middlename,
+                    $data['sch_setting']->lastname
+                );
+                $row_data[] = isset($student['class']) ? $student['class'] : '';
+                $row_data[] = isset($student['section']) ? $student['section'] : '';
+
+                // Log first few students for debugging
+                if ($row_count <= 3) {
+                    log_message('debug', 'CSV Export: Student ' . $row_count . ' basic info: ' . json_encode(array_slice($row_data, 0, 4)));
+                    if (isset($student['fee_types'])) {
+                        log_message('debug', 'CSV Export: Student ' . $row_count . ' fee types available: ' . json_encode(array_keys($student['fee_types'])));
+                    }
+                }
+
+                // Mirror frontend logic: foreach ($fee_types as $fee_type)
+                foreach ($fee_types as $fee_type) {
+                    $fee_type_name = $fee_type['type'];
+                    $fee_data = isset($student['fee_types'][$fee_type_name]) ? $student['fee_types'][$fee_type_name] : array(
+                        'total_amount' => 0,
+                        'paid_amount' => 0,
+                        'remaining_amount' => 0,
+                        'payments' => array()
+                    );
+
+                    // Log fee data for first few students and fee types
+                    if ($row_count <= 2) {
+                        log_message('debug', 'CSV Export: Student ' . $row_count . ', Fee Type "' . $fee_type_name . '": ' . json_encode($fee_data));
+                    }
+
+                    // Handle old format (just amount) vs new format (detailed data) - EXACT same logic as frontend
+                    if (is_numeric($fee_data)) {
+                        $paid_amount = $fee_data;
+                        $total_amount = $fee_data;
+                        $remaining_amount = 0;
+                        $overpaid_amount = 0;
+                        $payments = array();
+                    } else {
+                        $paid_amount = isset($fee_data['paid_amount']) ? $fee_data['paid_amount'] : 0;
+                        $total_amount = isset($fee_data['total_amount']) ? $fee_data['total_amount'] : 0;
+                        $remaining_amount = isset($fee_data['remaining_amount']) ? $fee_data['remaining_amount'] : 0;
+                        $overpaid_amount = isset($fee_data['overpaid_amount']) ? $fee_data['overpaid_amount'] : 0;
+                        $payments = isset($fee_data['payments']) ? $fee_data['payments'] : array();
+                    }
+
+                    // Build payment details string - same format as frontend displays
+                    $payment_details = '';
+                    if (!empty($payments) || $total_amount > 0) {
+                        // Individual payment records - detailed breakdown as per requirements
+                        if (!empty($payments) && is_array($payments)) {
+                            foreach ($payments as $payment) {
+                                $amount = isset($payment['amount']) ? $payment['amount'] : 0;
+                                $date = isset($payment['date']) ? $payment['date'] : '';
+                                $collector = isset($payment['collected_by_name']) ? $payment['collected_by_name'] : 'System';
+
+                                $payment_details .= $currency_symbol . number_format($amount, 0) . ' - ';
+                                if (!empty($date)) {
+                                    $payment_details .= date('d-M-Y', strtotime($date)) . ' - ';
+                                }
+                                $payment_details .= $collector . '; ';
+                            }
+                        }
+
+                        // Payment summary - same as frontend
+                        $payment_details .= 'Paid: ' . $currency_symbol . number_format($paid_amount, 0) . '; ';
+                        if ($overpaid_amount > 0) {
+                            $payment_details .= 'Overpaid: ' . $currency_symbol . number_format($overpaid_amount, 0);
+                        } else {
+                            $payment_details .= 'Remaining: ' . $currency_symbol . number_format($remaining_amount, 0);
+                        }
+                    } else {
+                        $payment_details = 'No fees assigned; Remaining: ' . $currency_symbol . '0';
+                    }
+
+                    $row_data[] = $payment_details;
+                    $student_total += $paid_amount;
+
+                    // Log payment details for first few records
+                    if ($row_count <= 2) {
+                        log_message('debug', 'CSV Export: Student ' . $row_count . ', Fee "' . $fee_type_name . '" payment details: ' . $payment_details);
+                    }
+                }
+
+                // Grand total for student
+                $row_data[] = $currency_symbol . ' ' . number_format($student_total, 0);
+
+                // Log complete row for first few students
+                if ($row_count <= 2) {
+                    log_message('debug', 'CSV Export: Student ' . $row_count . ' complete row (' . count($row_data) . ' columns): ' . json_encode($row_data));
+                }
+
+                fputcsv($output, $row_data);
+            }
+
+            log_message('debug', 'CSV Export: Processed ' . $row_count . ' student rows');
+        } else {
+            log_message('debug', 'CSV Export: No results array found or results is not an array');
+        }
+
+        // Add grand totals
+        fputcsv($output, array()); // Empty row
+
+        // Calculate totals - EXACT same logic as frontend view
+        $total_by_type = array();
+        foreach ($fee_types as $fee_type) {
+            $total_by_type[$fee_type['type']] = array(
+                'total_amount' => 0,
+                'paid_amount' => 0,
+                'remaining_amount' => 0
+            );
+        }
+
+        if (isset($results) && is_array($results)) {
+            foreach ($results as $student) {
+                foreach ($fee_types as $fee_type) {
+                    $fee_data = isset($student['fee_types'][$fee_type['type']]) ? $student['fee_types'][$fee_type['type']] : array(
+                        'total_amount' => 0,
+                        'paid_amount' => 0,
+                        'remaining_amount' => 0,
+                        'payments' => array()
+                    );
+
+                    // Handle old format (just amount) vs new format (detailed data) - EXACT same as frontend
+                    if (is_numeric($fee_data)) {
+                        $paid_amount = $fee_data;
+                        $total_amount = $fee_data;
+                        $remaining_amount = 0;
+                    } else {
+                        $paid_amount = $fee_data['paid_amount'];
+                        $total_amount = $fee_data['total_amount'];
+                        $remaining_amount = $fee_data['remaining_amount'];
+                    }
+
+                    $total_by_type[$fee_type['type']]['total_amount'] += $total_amount;
+                    $total_by_type[$fee_type['type']]['paid_amount'] += $paid_amount;
+                    $total_by_type[$fee_type['type']]['remaining_amount'] += $remaining_amount;
+                }
+            }
+        }
+
+        // Grand totals rows - EXACT same logic as frontend view
+        $grand_total_amount = 0;
+        $grand_paid_amount = 0;
+        $grand_remaining_amount = 0;
+
+        foreach ($fee_types as $fee_type) {
+            $type_totals = $total_by_type[$fee_type['type']];
+            $grand_total_amount += $type_totals['total_amount'];
+            $grand_paid_amount += $type_totals['paid_amount'];
+            $grand_remaining_amount += $type_totals['remaining_amount'];
+        }
+
+        // Grand Total (Total Assigned) Row - same as frontend
+        $grand_total_assigned = array('Grand Total (Assigned)', '', '', '');
+        foreach ($fee_types as $fee_type) {
+            $type_totals = $total_by_type[$fee_type['type']];
+            $grand_total_assigned[] = $currency_symbol . number_format($type_totals['total_amount'], 0);
+        }
+        $grand_total_assigned[] = $currency_symbol . number_format($grand_total_amount, 0);
+        fputcsv($output, $grand_total_assigned);
+
+        // Grand Paid (Total Collected) Row - same as frontend
+        $grand_total_paid = array('Grand Paid (Collected)', '', '', '');
+        foreach ($fee_types as $fee_type) {
+            $type_totals = $total_by_type[$fee_type['type']];
+            $grand_total_paid[] = $currency_symbol . number_format($type_totals['paid_amount'], 0);
+        }
+        $grand_total_paid[] = $currency_symbol . number_format($grand_paid_amount, 0);
+        fputcsv($output, $grand_total_paid);
+
+        // Grand Remaining (Total Pending) Row - same as frontend
+        $grand_total_remaining = array('Grand Remaining (Pending)', '', '', '');
+        foreach ($fee_types as $fee_type) {
+            $type_totals = $total_by_type[$fee_type['type']];
+            $grand_total_remaining[] = $currency_symbol . number_format($type_totals['remaining_amount'], 0);
+        }
+        $grand_total_remaining[] = $currency_symbol . number_format($grand_remaining_amount, 0);
+        fputcsv($output, $grand_total_remaining);
+
+        // Add summary information
+        fputcsv($output, array()); // Empty row
+        fputcsv($output, array('Export Summary:'));
+        fputcsv($output, array('Total Students: ' . count($results)));
+        fputcsv($output, array('Total Fee Types: ' . count($fee_types)));
+        fputcsv($output, array('Export Date: ' . date('Y-m-d H:i:s')));
+
+        log_message('debug', 'CSV Export: Content building complete');
+    }
+
+
+
 
 
 

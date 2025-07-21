@@ -302,6 +302,28 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
     border: 2px solid #007bff !important;
 }
 
+/* Export Buttons Styling */
+.export-buttons {
+    display: inline-block;
+}
+
+.export-buttons .btn {
+    margin-left: 5px;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 3px;
+    transition: all 0.3s ease;
+}
+
+.export-buttons .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.export-buttons .btn i {
+    margin-right: 3px;
+}
+
 .payment-total {
     text-align: center;
     font-weight: bold;
@@ -551,7 +573,18 @@ if (empty($results)) {
                     <div class="">
                         <div class="box-header ptbnull"></div>
                         <div class="box-header ptbnull">
-                            <h3 class="box-title titlefix"><i class="fa fa-money"></i> <?php echo $this->lang->line('fee_collection_report_column_wise'); ?></h3>
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <h3 class="box-title titlefix"><i class="fa fa-money"></i> <?php echo $this->lang->line('fee_collection_report_column_wise'); ?></h3>
+                                </div>
+                                <div class="col-md-4 text-right">
+                                    <div class="export-buttons" style="margin-top: 5px;">
+                                        <button type="button" class="btn btn-sm btn-success" id="export-csv" title="Export to CSV">
+                                            <i class="fa fa-file-text-o"></i> Export CSV
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
 
@@ -952,6 +985,58 @@ if ($search_type == 'period') {
         $(document).ready(function () {
             showdate('period');
         });
+
+        // Export functionality
+        $('#export-csv').on('click', function() {
+            exportReport('csv');
+        });
+
+        function exportReport(format) {
+            // Show loading indicator
+            var button = $('#export-' + format);
+            var originalText = button.html();
+            button.html('<i class="fa fa-spinner fa-spin"></i> Exporting...');
+            button.prop('disabled', true);
+
+            // Create a temporary form for export
+            var exportForm = $('<form>', {
+                'method': 'POST',
+                'action': '<?php echo site_url("financereports/export_fee_collection_columnwise"); ?>'
+            });
+
+            // Add CSRF token
+            exportForm.append($('<input>', {
+                'type': 'hidden',
+                'name': '<?php echo $this->security->get_csrf_token_name(); ?>',
+                'value': '<?php echo $this->security->get_csrf_hash(); ?>'
+            }));
+
+            // Add all form data as hidden inputs
+            var formArray = $('form').serializeArray();
+            $.each(formArray, function(i, field) {
+                exportForm.append($('<input>', {
+                    'type': 'hidden',
+                    'name': field.name,
+                    'value': field.value
+                }));
+            });
+
+            // Add export format
+            exportForm.append($('<input>', {
+                'type': 'hidden',
+                'name': 'export_format',
+                'value': format
+            }));
+
+            // Submit form
+            exportForm.appendTo('body').submit().remove();
+
+            // Reset button after a delay
+            setTimeout(function() {
+                button.html(originalText);
+                button.prop('disabled', false);
+            }, 3000);
+        }
 
     <?php
 }

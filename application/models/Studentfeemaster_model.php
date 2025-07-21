@@ -2172,6 +2172,9 @@ $module=$this->module_model->getPermissionByModulename('transport');
 
             log_message('debug', 'Original data count: ' . count($original_data));
 
+            // Get ALL fee types for the selected filters to ensure complete column structure
+            $all_fee_types = $this->getFeeTypesForColumnwise($start_date, $end_date, $feetype_id, $class_id, $section_id, $session_id);
+
             // Get assigned fee amounts for proper remaining calculation
             $assigned_fees = $this->getAssignedFeeAmounts($class_id, $section_id, $session_id, $feetype_id);
 
@@ -2275,7 +2278,29 @@ $module=$this->module_model->getPermissionByModulename('transport');
                 }
             }
 
+            // Ensure ALL fee types are included in each student's record, even if no payments exist
+            if (!empty($return_array) && !empty($all_fee_types)) {
+                foreach ($return_array as $student_key => $student_data) {
+                    foreach ($all_fee_types as $fee_type_info) {
+                        $fee_type = $fee_type_info['type'];
+
+                        // If this fee type is not already in the student's record, add it with zero values
+                        if (!isset($student_data['fee_types'][$fee_type])) {
+                            $return_array[$student_key]['fee_types'][$fee_type] = array(
+                                'total_amount' => 0,
+                                'paid_amount' => 0,
+                                'remaining_amount' => 0,
+                                'overpaid_amount' => 0,
+                                'actual_remaining' => 0,
+                                'payments' => array()
+                            );
+                        }
+                    }
+                }
+            }
+
             log_message('debug', 'Processed data count: ' . count($return_array));
+            log_message('debug', 'All fee types count: ' . count($all_fee_types));
             return $return_array;
         } catch (Exception $e) {
             log_message('error', 'getFeeCollectionReportColumnwise Error: ' . $e->getMessage());
@@ -2356,11 +2381,14 @@ $module=$this->module_model->getPermissionByModulename('transport');
     public function getFeeTypesForColumnwise($start_date, $end_date, $feetype_id = null, $class_id = null, $section_id = null, $session_id = null)
     {
         try {
-            // Get data from the original method and extract unique fee types
-            $original_data = $this->getFeeCollectionReport($start_date, $end_date, $feetype_id, null, null, $class_id, $section_id, $session_id);
+            log_message('debug', 'getFeeTypesForColumnwise called with: class_id=' . $class_id . ', section_id=' . $section_id . ', session_id=' . $session_id);
 
+            // Get ALL fee types configured for the selected class/section/session, not just ones with payments
             $fee_types = array();
             $unique_types = array();
+
+            // First, get fee types from payment data (existing logic)
+            $original_data = $this->getFeeCollectionReport($start_date, $end_date, $feetype_id, null, null, $class_id, $section_id, $session_id);
 
             if (!empty($original_data)) {
                 foreach ($original_data as $record) {
@@ -2374,6 +2402,47 @@ $module=$this->module_model->getPermissionByModulename('transport');
                 }
             }
 
+            // Additionally, get ALL fee types configured for students in the selected class/section
+            // This ensures we show columns even for fee types with no payments
+            $this->db->distinct();
+            $this->db->select('feetype.type, feetype.id as feetype_id');
+            $this->db->from('students');
+            $this->db->join('student_session', 'student_session.student_id = students.id');
+            $this->db->join('student_fees_master', 'student_fees_master.student_session_id = student_session.id');
+            $this->db->join('fee_session_groups', 'fee_session_groups.id = student_fees_master.fee_session_group_id');
+            $this->db->join('fee_groups_feetype', 'fee_groups_feetype.fee_groups_id = fee_session_groups.fee_groups_id');
+            $this->db->join('feetype', 'feetype.id = fee_groups_feetype.feetype_id');
+
+            if ($session_id) {
+                $this->db->where('student_session.session_id', $session_id);
+            }
+            if ($class_id) {
+                $this->db->where('student_session.class_id', $class_id);
+            }
+            if ($section_id) {
+                $this->db->where('student_session.section_id', $section_id);
+            }
+
+            $this->db->order_by('feetype.type');
+            $query = $this->db->get();
+            $all_fee_types = $query->result_array();
+
+            log_message('debug', 'Found ' . count($all_fee_types) . ' configured fee types');
+
+            // Merge with existing fee types, avoiding duplicates
+            if (!empty($all_fee_types)) {
+                foreach ($all_fee_types as $fee_type_record) {
+                    if (!in_array($fee_type_record['type'], $unique_types)) {
+                        $unique_types[] = $fee_type_record['type'];
+                        $fee_types[] = array(
+                            'type' => $fee_type_record['type'],
+                            'id' => $fee_type_record['feetype_id']
+                        );
+                    }
+                }
+            }
+
+            log_message('debug', 'Total unique fee types: ' . count($fee_types));
             return $fee_types;
         } catch (Exception $e) {
             log_message('error', 'getFeeTypesForColumnwise Error: ' . $e->getMessage());

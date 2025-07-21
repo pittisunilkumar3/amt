@@ -2929,8 +2929,13 @@ class Student_model extends MY_Model
 
 
 
-    public function getDatatableByClassSectionn($class_id = null, $section_id = null,$staff_id)
+    public function getDatatableByClassSectionn($class_id = null, $section_id = null, $staff_id = null)
     {
+        error_log('=== STUDENT REFERRAL MODEL METHOD STARTED ===');
+        error_log('Model input - class_id: ' . print_r($class_id, true));
+        error_log('Model input - section_id: ' . print_r($section_id, true));
+        error_log('Model input - staff_id: ' . print_r($staff_id, true));
+
         $this->datatables
             ->select('classes.id as `class_id`,student_session.id as student_session_id,students.id,classes.class,sections.id as `section_id`,sections.section,students.id,students.admission_no , students.roll_no,students.admission_date,students.firstname,students.middlename,  students.lastname,students.image,students.mobileno,students.email,students.state,students.city, students.pincode,students.religion,students.dob,students.current_address,    students.permanent_address,IFNULL(students.category_id, 0) as `category_id`,IFNULL(categories.category, "") as `category`,students.adhar_no,students.samagra_id,students.bank_account_no,students.bank_name, students.ifsc_code ,students.guardian_name, students.guardian_relation,students.guardian_phone,students.guardian_address,students.is_active ,students.created_at ,students.updated_at,students.father_name,students.app_key,students.parent_app_key,students.rte,students.gender')
             ->searchable('class_id,section_id,admission_no,students.firstname,students.middlename,  students.lastname,students.father_name,students.dob,students.guardian_phone')
@@ -2940,19 +2945,51 @@ class Student_model extends MY_Model
             ->join('sections', 'sections.id = student_session.section_id')
             ->join('categories', 'students.category_id = categories.id', 'left')
             ->join('student_reference','student_reference.student_id=students.id')
-            ->where('student_reference.staff_id',$staff_id)
             ->where('student_session.session_id', $this->current_session)
             ->where('students.is_active', "yes")
             ->sort('students.admission_no', 'asc');
-        if ($class_id != null) {
-            $this->datatables->where('student_session.class_id', $class_id);
+
+        // Handle staff_id filtering - support both single values and arrays
+        if ($staff_id != null && !empty($staff_id)) {
+            if (is_array($staff_id) && count($staff_id) > 0) {
+                error_log('Applying staff_id array filter: ' . implode(',', $staff_id));
+                $this->datatables->where_in('student_reference.staff_id', $staff_id);
+            } elseif (!is_array($staff_id)) {
+                error_log('Applying staff_id single filter: ' . $staff_id);
+                $this->datatables->where('student_reference.staff_id', $staff_id);
+            }
         }
-        if ($section_id != null) {
-            $this->datatables->where('student_session.section_id', $section_id);
+
+        // Handle class_id filtering - support both single values and arrays
+        if ($class_id != null && !empty($class_id)) {
+            if (is_array($class_id) && count($class_id) > 0) {
+                error_log('Applying class_id array filter: ' . implode(',', $class_id));
+                $this->datatables->where_in('student_session.class_id', $class_id);
+            } elseif (!is_array($class_id)) {
+                error_log('Applying class_id single filter: ' . $class_id);
+                $this->datatables->where('student_session.class_id', $class_id);
+            }
+        }
+
+        // Handle section_id filtering - support both single values and arrays
+        if ($section_id != null && !empty($section_id)) {
+            if (is_array($section_id) && count($section_id) > 0) {
+                error_log('Applying section_id array filter: ' . implode(',', $section_id));
+                $this->datatables->where_in('student_session.section_id', $section_id);
+            } elseif (!is_array($section_id)) {
+                error_log('Applying section_id single filter: ' . $section_id);
+                $this->datatables->where('student_session.section_id', $section_id);
+            }
         }
 
         $this->datatables->from('students');
-        return $this->datatables->generate('json');
+
+        error_log('About to generate DataTable JSON for student referral...');
+        $result = $this->datatables->generate('json');
+        error_log('Generated JSON length: ' . strlen($result));
+        error_log('Generated JSON preview: ' . substr($result, 0, 300) . '...');
+
+        return $result;
     }
 
 

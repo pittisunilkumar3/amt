@@ -25,10 +25,9 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                                 <div class="row">
                                     <div class="col-md-4">
                                         <div class="form-group">
-                                            <label><?php echo $this->lang->line('reference_staff'); ?></label><small class="req"> *</small>
-                                            
-                                            <select autofocus="" id="reference_id" name="reference_id" class="form-control select2" >
-                                                <option value=""><?php echo $this->lang->line('select'); ?></option>
+                                            <label><?php echo $this->lang->line('reference_staff'); ?></label>
+
+                                            <select id="reference_id" name="reference_id[]" class="form-control multiselect-dropdown" multiple>
                                                 <?php
                                                     foreach ($stafflist as $staff) {
                                                         ?>
@@ -42,13 +41,13 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                                                 ?>
                                             </select>
 
-                                            <span class="text-danger" id="error_reference_id"></span>                                            </div>
+                                            <span class="text-danger" id="error_reference_id"></span>
+                                        </div>
                                     </div>
                                     <div class="col-sm-4">
                                         <div class="form-group">
-                                            <label><?php echo $this->lang->line('class'); ?></label><small class="req">  *</small>
-                                            <select autofocus="" id="class_id" name="class_id" class="form-control" >
-                                                <option value=""><?php echo $this->lang->line('select'); ?></option>
+                                            <label><?php echo $this->lang->line('class'); ?></label>
+                                            <select id="class_id" name="class_id[]" class="form-control multiselect-dropdown" multiple>
                                                 <?php
                                                 foreach ($classlist as $class) {
                                                     ?>
@@ -66,10 +65,9 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                                     <div class="col-sm-4">
                                         <div class="form-group">
                                             <label><?php echo $this->lang->line('section'); ?></label>
-                                            <select  id="section_id" name="section_id" class="form-control" >
-                                                <option value=""><?php echo $this->lang->line('select'); ?></option>
+                                            <select id="section_id" name="section_id[]" class="form-control multiselect-dropdown" multiple>
                                             </select>
-                                            <span class="text-danger"><?php echo form_error('section_id'); ?></span>
+                                            <span class="text-danger" id="error_section_id"></span>
                                         </div>
                                     </div>
                                     <div class="col-sm-12">
@@ -132,49 +130,122 @@ $(document).ready(function() {
 
 
 <script type="text/javascript">
+$(document).ready(function () {
+    console.log('Document ready, initializing student referral page...');
+    console.log('Found multiselect dropdowns:', $('.multiselect-dropdown').length);
 
-    $(document).ready(function () {
-        var class_id = $('#class_id').val();
-        var section_id = '<?php echo set_value('section_id', 0) ?>';
-        getSectionByClass(class_id, section_id);
-    });
+    // Check if SumoSelect is available
+    if (typeof $.fn.SumoSelect === 'undefined') {
+        console.error('SumoSelect plugin not loaded!');
+        return;
+    }
 
+    // Wait a moment for DOM to be fully ready
+    setTimeout(function() {
+        console.log('🔧 Initializing SumoSelect...');
+
+        // Destroy any existing SumoSelect instances
+        $('.multiselect-dropdown').each(function() {
+            if ($(this)[0].sumo) {
+                $(this)[0].sumo.unload();
+            }
+        });
+
+        // Initialize SumoSelect for all multi-select dropdowns
+        $('.multiselect-dropdown').SumoSelect({
+            placeholder: 'Select Options',
+            csvDispCount: 3,
+            captionFormat: '{0} Selected',
+            captionFormatAllSelected: 'All Selected ({0})',
+            selectAll: true,
+            search: true,
+            searchText: 'Search...',
+            noMatch: 'No matches found "{0}"',
+            okCancelInMulti: true,
+            isClickAwayOk: true,
+            locale: ['OK', 'Cancel', 'Select All'],
+            up: false,
+            showTitle: true
+        });
+
+        console.log('✅ SumoSelect initialized successfully');
+
+        // Initialize section dropdown on page load if class is pre-selected
+        var preSelectedClass = $('#class_id').val();
+        if (preSelectedClass && preSelectedClass.length > 0) {
+            $('#class_id').trigger('change');
+        }
+    }, 100);
+
+    // Handle class dropdown changes for section population
     $(document).on('change', '#class_id', function (e) {
-        $('#section_id').html("");
-        var class_id = $(this).val();
-        getSectionByClass(class_id, 0);
-    });
+        console.log('Class dropdown changed');
+        var class_ids = $(this).val(); // This will be an array for multi-select
+        var base_url = '<?php echo base_url() ?>';
 
-    function getSectionByClass(class_id, section_id) {
-        if (class_id != "") {
-            $('#section_id').html("");
-            var base_url = '<?php echo base_url() ?>';
-            var div_data = '<option value=""><?php echo $this->lang->line('select'); ?></option>';
-            $.ajax({
-                type: "GET",
-                url: base_url + "sections/getByClass",
-                data: {'class_id': class_id},
-                dataType: "json",
-                beforeSend: function () {
-                    $('#section_id').addClass('dropdownloading');
-                },
-                success: function (data) {
-                    $.each(data, function (i, obj)
-                    {
-                        var sel = "";
-                        if (section_id == obj.section_id) {
-                            sel = "selected";
+        // Clear section dropdown
+        $('#section_id').html('');
+
+        // Refresh SumoSelect to clear previous selections
+        if ($('#section_id')[0].sumo) {
+            $('#section_id')[0].sumo.reload();
+        }
+
+        if (class_ids && class_ids.length > 0) {
+            console.log('Selected classes:', class_ids);
+
+            // Collect all sections from selected classes
+            var allSections = [];
+            var requests = [];
+
+            // Create AJAX requests for each selected class
+            $.each(class_ids, function(index, class_id) {
+                var request = $.ajax({
+                    type: "GET",
+                    url: base_url + "sections/getByClass",
+                    data: {'class_id': class_id},
+                    dataType: "json"
+                }).done(function(data) {
+                    $.each(data, function(i, obj) {
+                        // Check if section already exists to avoid duplicates
+                        var exists = allSections.some(function(section) {
+                            return section.value === obj.section_id;
+                        });
+                        if (!exists) {
+                            allSections.push({
+                                value: obj.section_id,
+                                text: obj.section
+                            });
                         }
-                        div_data += "<option value=" + obj.section_id + " " + sel + ">" + obj.section + "</option>";
                     });
-                    $('#section_id').append(div_data);
-                },
-                complete: function () {
-                    $('#section_id').removeClass('dropdownloading');
+                });
+                requests.push(request);
+            });
+
+            // Wait for all requests to complete
+            $.when.apply($, requests).done(function() {
+                // Sort sections by name for better UX
+                allSections.sort(function(a, b) {
+                    return a.text.localeCompare(b.text);
+                });
+
+                // Add all sections to dropdown
+                var div_data = '';
+                $.each(allSections, function(i, section) {
+                    div_data += "<option value='" + section.value + "'>" + section.text + "</option>";
+                });
+                $('#section_id').html(div_data);
+
+                // Refresh SumoSelect after adding options
+                if ($('#section_id')[0].sumo) {
+                    $('#section_id')[0].sumo.reload();
                 }
+
+                console.log('Sections loaded for selected classes:', allSections.length);
             });
         }
-    }
+    });
+});
 </script>
 <script type="text/javascript">
 $(document).ready(function(){
@@ -216,10 +287,18 @@ $(document).on('submit','.class_search_form',function(e){
 
     function resetFields(search_type){
         if(search_type == "keyword_search"){
-            $('#class_id').prop('selectedIndex',0);
-            $('#section_id').find('option').not(':first').remove();
+            // Reset multi-select dropdowns
+            if ($('#class_id')[0].sumo) {
+                $('#class_id')[0].sumo.unSelectAll();
+            }
+            if ($('#section_id')[0].sumo) {
+                $('#section_id')[0].sumo.unSelectAll();
+            }
+            $('#section_id').html('');
+            if ($('#section_id')[0].sumo) {
+                $('#section_id')[0].sumo.reload();
+            }
         }else if (search_type == "class_search") {
-
              $('#search_text').val("");
         }
     }
