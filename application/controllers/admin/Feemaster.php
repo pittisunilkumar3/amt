@@ -206,6 +206,27 @@ class Feemaster extends Admin_Controller
         }
     }
 
+    public function getDefaultFeeGroupsByClass($class_id)
+    {
+        // Get default fee session groups for a specific class
+        // We need to get fee_session_groups.id because that's what the student form uses
+        $current_session = $this->setting_model->getCurrentSession();
+
+        $this->db->select('fsg.id as fee_session_group_id, fg.name as fee_group_name');
+        $this->db->from('default_class_fees dcf');
+        $this->db->join('fee_groups fg', 'fg.id = dcf.fee_group_id');
+        $this->db->join('fee_session_groups fsg', 'fsg.fee_groups_id = dcf.fee_group_id');
+        $this->db->where('dcf.class_id', $class_id);
+        $this->db->where('fsg.session_id', $current_session);
+        $query = $this->db->get();
+
+        if ($query->num_rows() > 0) {
+            echo json_encode(['status' => 'success', 'data' => $query->result_array()]);
+        } else {
+            echo json_encode(['status' => 'success', 'data' => []]);
+        }
+    }
+
     public function deletegrp($id)
     {
         $data['title'] = $this->lang->line('fees_master_list');

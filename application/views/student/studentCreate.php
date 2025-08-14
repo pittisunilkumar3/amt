@@ -1077,11 +1077,22 @@ $count++;
         getHostel(hostel_id, hostel_room_id);
         getSectionByClass(class_id, section_id);
         get_pickup_point(vehroute_id,route_pickup_point_id);
+        // Load default fee groups on page load if class is already selected
+        if (class_id) {
+            loadDefaultFeeGroups(class_id);
+        }
 
         $(document).on('change', '#class_id', function (e) {
             $('#section_id').html("");
             var class_id = $(this).val();
             getSectionByClass(class_id, 0);
+            // Auto-select default fee groups for the selected class
+            loadDefaultFeeGroups(class_id);
+        });
+
+        // Handle manual fee group checkbox changes
+        $(document).on('change', '.fee_group_chk', function (e) {
+            calculateTotalFees();
         });
 
         $(".color").colorpicker();
@@ -1133,6 +1144,61 @@ if (($userdata["role_id"] == 2)) {
                         $('#section_id').removeClass('dropdownloading');
                     }
                 });
+            }
+        }
+
+        function loadDefaultFeeGroups(class_id) {
+            if (class_id != "") {
+                var base_url = '<?php echo base_url() ?>';
+                console.log('Loading default fee groups for class:', class_id);
+                $.ajax({
+                    type: "GET",
+                    url: base_url + "admin/feemaster/getDefaultFeeGroupsByClass/" + class_id,
+                    dataType: "json",
+                    success: function (data) {
+                        console.log('Default fee groups response:', data);
+                        if (data.status === 'success' && data.data.length > 0) {
+                            // First, uncheck all fee group checkboxes
+                            $('.fee_group_chk').prop('checked', false);
+
+                            // Then check the default fee groups for this class
+                            $.each(data.data, function (i, obj) {
+                                console.log('Checking fee group:', obj.fee_session_group_id);
+                                $('input[name="fee_session_group_id[]"][value="' + obj.fee_session_group_id + '"]').prop('checked', true);
+                            });
+
+                            // Recalculate total fees
+                            calculateTotalFees();
+                        } else {
+                            console.log('No default fee groups found for class:', class_id);
+                            // If no default fee groups, uncheck all
+                            $('.fee_group_chk').prop('checked', false);
+                            calculateTotalFees();
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.log('Error loading default fee groups:', error);
+                        console.log('Response:', xhr.responseText);
+                    }
+                });
+            } else {
+                // If no class selected, uncheck all fee groups
+                $('.fee_group_chk').prop('checked', false);
+                calculateTotalFees();
+            }
+        }
+
+        function calculateTotalFees() {
+            var total = 0;
+            $('.fee_group_chk:checked').each(function() {
+                var amount = $(this).closest('.panel-title').find('.fee_group_total').data('amount');
+                if (amount) {
+                    total += parseFloat(amount);
+                }
+            });
+            // Update total display if there's a total fees element
+            if ($('#total_fees_display').length) {
+                $('#total_fees_display').text(total.toFixed(2));
             }
         }
 
