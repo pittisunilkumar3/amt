@@ -529,12 +529,28 @@ if (isset($title)) {
             autoclose: true,
             language: '<?php echo $language_name; ?>',
             endDate: '+0d',
-            startDate: '<?php if ($feesinbackdate == 0) {echo "-0m";}
-;?>',
+            startDate: '<?php if ($feesinbackdate == 0) {echo "-0m";} ?>',
             weekStart : start_week,
             todayHighlight: true
         });
       });
+
+        // Additional click handler for readonly date_fee inputs to ensure date picker shows
+        $('body').on('click',".date_fee", function(){
+            var $this = $(this);
+            if (!$this.data('datepicker')) {
+                $this.datepicker({
+                    format: date_format,
+                    autoclose: true,
+                    language: '<?php echo $language_name; ?>',
+                    endDate: '+0d',
+                    startDate: '<?php if ($feesinbackdate == 0) {echo "-0m";} ?>',
+                    weekStart : start_week,
+                    todayHighlight: true
+                });
+            }
+            $this.datepicker('show');
+        });
 
         $('.datetime_twelve_hour').datetimepicker({
                format:  calendar_date_time_format + ' hh:mm a'

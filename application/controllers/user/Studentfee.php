@@ -182,6 +182,7 @@ class Studentfee extends Student_Controller
     public function addfee($id)
     {
         $data['title']           = 'Student Detail';
+        $data['feesinbackdate']  = $this->customlib->getfeesinbackdate();
         $student                 = $this->student_model->get($id);
         $data['student']         = $student;
         $student_due_fee         = $this->studentfee_model->getDueFeeBystudent($student['class_id'], $student['section_id'], $id);

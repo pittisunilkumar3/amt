@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Date Picker Test</title>
+    
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="backend/bootstrap/css/bootstrap.min.css">
+    <!-- Date Picker CSS -->
+    <link rel="stylesheet" href="backend/plugins/datepicker/datepicker3.css">
+    <link rel="stylesheet" href="backend/themes/default/datepicker/bootstrap-datepicker3.css">
+    
+    <!-- jQuery -->
+    <script src="backend/custom/jquery.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="backend/bootstrap/js/bootstrap.min.js"></script>
+    <!-- Date Picker JS -->
+    <script src="backend/plugins/datepicker/bootstrap-datepicker.js"></script>
+</head>
+<body>
+    <div class="container" style="margin-top: 50px;">
+        <h2>Date Picker Test</h2>
+        
+        <div class="form-group">
+            <label for="test_date">Test Date Input:</label>
+            <div class="input-group">
+                <input id="test_date" name="test_date" placeholder="Click calendar or type date" type="text"
+                    class="form-control date_fee" />
+                <span class="input-group-addon date-picker-trigger" data-target="#test_date">
+                    <i class="fa fa-calendar"></i>
+                </span>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="test_date2">Another Test Date Input:</label>
+            <div class="input-group">
+                <input id="test_date2" name="test_date2" placeholder="Click calendar or type date" type="text"
+                    class="form-control date_fee" />
+                <span class="input-group-addon date-picker-trigger" data-target="#test_date2">
+                    <i class="fa fa-calendar"></i>
+                </span>
+            </div>
+        </div>
+        
+        <button type="button" class="btn btn-primary" onclick="testDatePicker()">Test Date Picker</button>
+        <div id="debug-output" style="margin-top: 20px; padding: 10px; background-color: #f5f5f5; border: 1px solid #ddd;"></div>
+    </div>
+
+    <script type="text/javascript">
+        // Define the same variables as in the main application
+        var date_format = 'dd/mm/yyyy'; // Default format
+        var start_week = 0;
+        var language_name = 'en';
+        
+        function testDatePicker() {
+            var output = document.getElementById('debug-output');
+            output.innerHTML = '<h4>Debug Information:</h4>';
+            
+            // Check if datepicker is available
+            if (typeof $.fn.datepicker === 'undefined') {
+                output.innerHTML += '<p style="color: red;">ERROR: Bootstrap datepicker library is not loaded!</p>';
+                return;
+            } else {
+                output.innerHTML += '<p style="color: green;">✓ Bootstrap datepicker library is loaded</p>';
+            }
+            
+            // Check date_fee elements
+            var dateElements = $('.date_fee');
+            output.innerHTML += '<p>Found ' + dateElements.length + ' elements with class "date_fee"</p>';
+            
+            // Initialize datepickers
+            dateElements.each(function() {
+                var $this = $(this);
+                var id = $this.attr('id') || 'no-id';
+                
+                if ($this.data('datepicker')) {
+                    output.innerHTML += '<p style="color: orange;">Element ' + id + ' already has datepicker</p>';
+                } else {
+                    $this.datepicker({
+                        format: date_format,
+                        autoclose: true,
+                        todayHighlight: true,
+                        orientation: 'bottom auto'
+                    });
+                    output.innerHTML += '<p style="color: green;">✓ Datepicker initialized for ' + id + '</p>';
+                }
+            });
+        }
+        
+        $(document).ready(function() {
+            console.log('Document ready, initializing date pickers...');
+            
+            // Initialize date pickers
+            $('.date_fee').each(function() {
+                var $this = $(this);
+                console.log('Initializing datepicker for:', $this.attr('id'));
+                
+                $this.datepicker({
+                    format: date_format,
+                    autoclose: true,
+                    todayHighlight: true,
+                    orientation: 'bottom auto',
+                    container: 'body'
+                });
+            });
+            
+            // Add click handlers
+            $('.date_fee').on('click', function() {
+                console.log('Date input clicked:', this.id);
+                $(this).datepicker('show');
+            });
+            
+            $('.date-picker-trigger').on('click', function(e) {
+                e.preventDefault();
+                var targetId = $(this).data('target');
+                console.log('Calendar icon clicked, target:', targetId);
+                $(targetId).datepicker('show');
+            });
+        });
+    </script>
+</body>
+</html>

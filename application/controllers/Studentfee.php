@@ -422,6 +422,7 @@ class Studentfee extends Admin_Controller
 
         $data['sch_setting']   = $this->sch_setting_detail;
         $data['title']         = 'Student Detail';
+        $data['feesinbackdate'] = $this->customlib->getfeesinbackdate();
         $student               = $this->student_model->getByStudentSession($id);
         $route_pickup_point_id = $student['route_pickup_point_id'];
         $student_session_id    = $student['student_session_id'];

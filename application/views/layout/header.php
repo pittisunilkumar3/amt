@@ -23,6 +23,7 @@ $this->load->view('layout/theme');
         <link rel="stylesheet" href="<?php echo base_url(); ?>backend/plugins/morris/morris.css">
         <link rel="stylesheet" href="<?php echo base_url(); ?>backend/plugins/jvectormap/jquery-jvectormap-1.2.2.css">
         <link rel="stylesheet" href="<?php echo base_url(); ?>backend/plugins/datepicker/datepicker3.css">
+        <link rel="stylesheet" href="<?php echo base_url(); ?>backend/themes/<?php echo $this->customlib->getCurrentTheme(); ?>/datepicker/bootstrap-datepicker3.css">
         <link rel="stylesheet" href="<?php echo base_url(); ?>backend/plugins/colorpicker/bootstrap-colorpicker.css">
 
         <link rel="stylesheet" href="<?php echo base_url(); ?>backend/plugins/daterangepicker/daterangepicker-bs3.css">

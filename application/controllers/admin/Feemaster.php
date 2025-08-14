@@ -26,6 +26,8 @@ class Feemaster extends Admin_Controller
         $data['feetypeList']  = $feetype;
         $feegroup_result       = $this->feesessiongroup_model->getFeesByGroup(null,0);
         $data['feemasterList'] = $feegroup_result;
+        $class                = $this->class_model->get();
+        $data['classlist']    = $class;
 
         $this->form_validation->set_rules('feetype_id', $this->lang->line('fee_type'), 'required');
         $this->form_validation->set_rules('amount', $this->lang->line('amount'), 'required|numeric');
@@ -88,6 +90,122 @@ class Feemaster extends Admin_Controller
         redirect('admin/feemaster/index');
     }
 
+    public function saveDefaultClassFee()
+    {
+        if (!$this->rbac->hasPrivilege('fees_master', 'can_add')) {
+            echo json_encode(['status' => 'error', 'message' => 'Access denied']);
+            return;
+        }
+
+        $class_id = $this->input->post('class_id');
+        $fee_group_id = $this->input->post('fee_group_id');
+        $edit_id = $this->input->post('edit_id');
+
+        if (empty($class_id) || empty($fee_group_id)) {
+            echo json_encode(['status' => 'error', 'message' => 'Class and Fee Group are required']);
+            return;
+        }
+
+        // Check if combination already exists
+        if (empty($edit_id)) {
+            // For new records, check if combination exists
+            $existing = $this->db->get_where('default_class_fees', [
+                'class_id' => $class_id,
+                'fee_group_id' => $fee_group_id
+            ])->row();
+
+            if ($existing) {
+                echo json_encode(['status' => 'error', 'message' => 'This combination already exists']);
+                return;
+            }
+        } else {
+            // For updates, check if combination exists excluding current record
+            $this->db->where('class_id', $class_id);
+            $this->db->where('fee_group_id', $fee_group_id);
+            $this->db->where('id !=', $edit_id);
+            $existing = $this->db->get('default_class_fees')->row();
+
+            if ($existing) {
+                echo json_encode(['status' => 'error', 'message' => 'This combination already exists']);
+                return;
+            }
+        }
+
+        if (!empty($edit_id)) {
+            // Update existing record
+            $data = [
+                'class_id' => $class_id,
+                'fee_group_id' => $fee_group_id,
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+            $this->db->where('id', $edit_id);
+            $result = $this->db->update('default_class_fees', $data);
+        } else {
+            // Insert new record
+            $data = [
+                'class_id' => $class_id,
+                'fee_group_id' => $fee_group_id,
+                'created_at' => date('Y-m-d H:i:s')
+            ];
+            $result = $this->db->insert('default_class_fees', $data);
+        }
+
+        if ($result) {
+            echo json_encode(['status' => 'success', 'message' => 'Default class fee saved successfully']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to save default class fee']);
+        }
+    }
+
+    public function getDefaultClassFeeList()
+    {
+        $this->db->select('dcf.*, c.class as class_name, fg.name as fee_group_name');
+        $this->db->from('default_class_fees dcf');
+        $this->db->join('classes c', 'c.id = dcf.class_id');
+        $this->db->join('fee_groups fg', 'fg.id = dcf.fee_group_id');
+        $this->db->order_by('c.class, fg.name');
+        $query = $this->db->get();
+
+        if ($query->num_rows() > 0) {
+            echo json_encode(['status' => 'success', 'data' => $query->result_array()]);
+        } else {
+            echo json_encode(['status' => 'success', 'data' => []]);
+        }
+    }
+
+    public function getDefaultClassFee($id)
+    {
+        $this->db->select('dcf.*, c.class as class_name, fg.name as fee_group_name');
+        $this->db->from('default_class_fees dcf');
+        $this->db->join('classes c', 'c.id = dcf.class_id');
+        $this->db->join('fee_groups fg', 'fg.id = dcf.fee_group_id');
+        $this->db->where('dcf.id', $id);
+        $query = $this->db->get();
+
+        if ($query->num_rows() > 0) {
+            echo json_encode(['status' => 'success', 'data' => $query->row_array()]);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Record not found']);
+        }
+    }
+
+    public function deleteDefaultClassFee($id)
+    {
+        if (!$this->rbac->hasPrivilege('fees_master', 'can_delete')) {
+            echo json_encode(['status' => 'error', 'message' => 'Access denied']);
+            return;
+        }
+
+        $this->db->where('id', $id);
+        $result = $this->db->delete('default_class_fees');
+
+        if ($result) {
+            echo json_encode(['status' => 'success', 'message' => 'Default class fee deleted successfully']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to delete default class fee']);
+        }
+    }
+
     public function deletegrp($id)
     {
         $data['title'] = $this->lang->line('fees_master_list');
@@ -111,6 +229,8 @@ class Feemaster extends Admin_Controller
         $data['feetypeList']   = $feetype;
         $feegroup_result       = $this->feesessiongroup_model->getFeesByGroup(null,0);
         $data['feemasterList'] = $feegroup_result;
+        $class                 = $this->class_model->get();
+        $data['classlist']     = $class;
         $this->form_validation->set_rules('feetype_id', $this->lang->line('fee_type'), 'required');
         $this->form_validation->set_rules('amount', $this->lang->line('amount'), 'required|numeric');
         $this->form_validation->set_rules(

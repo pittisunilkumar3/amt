@@ -139,6 +139,11 @@
                     <div class="box box-primary">
                         <div class="box-header ptbnull">
                             <h3 class="box-title titlefix"><?php echo $this->lang->line('fees_master_list') . " : " . $this->setting_model->getCurrentSessionName(); ?></h3>
+                            <div class="box-tools pull-right">
+                                <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#setDefaultClassFeeModal">
+                                    <i class="fa fa-cog"></i> Set Default Class Fee
+                                </button>
+                            </div>
                         </div><!-- /.box-header -->
                         <div class="box-body">
                             <div class="download_label"><?php echo $this->lang->line('fees_master_list') . " : " . $this->setting_model->getCurrentSessionName(); ?></div>
@@ -241,6 +246,86 @@
         <?php } ?>
         <!-- left column -->
 </div>
+
+<!-- Set Default Class Fee Modal -->
+<div class="modal fade" id="setDefaultClassFeeModal" tabindex="-1" role="dialog" aria-labelledby="setDefaultClassFeeModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title" id="setDefaultClassFeeModalLabel">
+                    <i class="fa fa-cog"></i> Set Default Class Fee
+                </h4>
+            </div>
+            <div class="modal-body">
+                <form id="defaultClassFeeForm" method="post">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="class_id">Class <span class="text-danger">*</span></label>
+                                <select class="form-control" id="class_id" name="class_id" required>
+                                    <option value="">Select Class</option>
+                                    <?php
+                                    if (isset($classlist)) {
+                                        foreach ($classlist as $class) {
+                                            echo '<option value="' . $class['id'] . '">' . $class['class'] . '</option>';
+                                        }
+                                    }
+                                    ?>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="fee_group_id">Fee Group <span class="text-danger">*</span></label>
+                                <select class="form-control" id="fee_group_id" name="fee_group_id" required>
+                                    <option value="">Select Fee Group</option>
+                                    <?php
+                                    if (isset($feegroupList)) {
+                                        foreach ($feegroupList as $feegroup) {
+                                            echo '<option value="' . $feegroup['id'] . '">' . $feegroup['name'] . '</option>';
+                                        }
+                                    }
+                                    ?>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa fa-save"></i> Save Default Class Fee
+                            </button>
+                            <button type="button" class="btn btn-default" onclick="clearEditMode()" style="display: none;" id="cancelEditBtn">
+                                <i class="fa fa-times"></i> Cancel Edit
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <hr>
+
+                <!-- List of Default Class Fees -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <h5><i class="fa fa-list"></i> Default Class Fee Assignments</h5>
+                        <div id="defaultClassFeeList" style="max-height: 300px; overflow-y: auto;">
+                            <!-- This will be populated via AJAX -->
+                            <div class="text-center">
+                                <i class="fa fa-spinner fa-spin"></i> Loading...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 <script type="text/javascript">
     $(document).ready(function () {
         var account_type = "<?php echo set_value('account_type', $feegroup_type->fine_type); ?>";
@@ -281,6 +366,164 @@
             $('#fine_percentage').val("").prop('readonly', true);
         } else {
             $('#fine_amount').val("");
+        }
+    }
+
+    // Modal event handlers
+    $('#setDefaultClassFeeModal').on('shown.bs.modal', function () {
+        loadDefaultClassFeeList();
+    });
+
+    // Clear edit mode when modal is closed
+    $('#setDefaultClassFeeModal').on('hidden.bs.modal', function () {
+        clearEditMode();
+    });
+
+    // Form submission handler
+    $('#defaultClassFeeForm').on('submit', function(e) {
+        e.preventDefault();
+        saveDefaultClassFee();
+    });
+
+    function saveDefaultClassFee() {
+        var classId = $('#class_id').val();
+        var feeGroupId = $('#fee_group_id').val();
+        var editId = $('#edit_id').val();
+
+        if (!classId || !feeGroupId) {
+            alert('Please select both Class and Fee Group');
+            return;
+        }
+
+        var postData = {
+            class_id: classId,
+            fee_group_id: feeGroupId
+        };
+
+        // Include edit_id if it exists (for updates)
+        if (editId) {
+            postData.edit_id = editId;
+        }
+
+        $.ajax({
+            url: '<?php echo base_url(); ?>admin/feemaster/saveDefaultClassFee',
+            type: 'POST',
+            data: postData,
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    alert('Default class fee saved successfully!');
+                    clearEditMode();
+                    loadDefaultClassFeeList();
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            },
+            error: function() {
+                alert('An error occurred while saving the default class fee.');
+            }
+        });
+    }
+
+    function loadDefaultClassFeeList() {
+        $.ajax({
+            url: '<?php echo base_url(); ?>admin/feemaster/getDefaultClassFeeList',
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    displayDefaultClassFeeList(response.data);
+                } else {
+                    $('#defaultClassFeeList').html('<div class="text-center text-muted">No default class fees found.</div>');
+                }
+            },
+            error: function() {
+                $('#defaultClassFeeList').html('<div class="text-center text-danger">Error loading default class fees.</div>');
+            }
+        });
+    }
+
+    function displayDefaultClassFeeList(data) {
+        var html = '';
+        if (data && data.length > 0) {
+            html += '<div class="table-responsive"><table class="table table-striped table-bordered">';
+            html += '<thead><tr><th>Class</th><th>Fee Group</th><th>Actions</th></tr></thead><tbody>';
+
+            $.each(data, function(index, item) {
+                html += '<tr>';
+                html += '<td>' + item.class_name + '</td>';
+                html += '<td>' + item.fee_group_name + '</td>';
+                html += '<td>';
+                html += '<button class="btn btn-xs btn-info" onclick="editDefaultClassFee(' + item.id + ')" title="Edit">';
+                html += '<i class="fa fa-edit"></i></button> ';
+                html += '<button class="btn btn-xs btn-danger" onclick="deleteDefaultClassFee(' + item.id + ')" title="Delete">';
+                html += '<i class="fa fa-trash"></i></button>';
+                html += '</td>';
+                html += '</tr>';
+            });
+
+            html += '</tbody></table></div>';
+        } else {
+            html = '<div class="text-center text-muted">No default class fees found.</div>';
+        }
+
+        $('#defaultClassFeeList').html(html);
+    }
+
+    function editDefaultClassFee(id) {
+        // Load the record for editing
+        $.ajax({
+            url: '<?php echo base_url(); ?>admin/feemaster/getDefaultClassFee/' + id,
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    $('#class_id').val(response.data.class_id);
+                    $('#fee_group_id').val(response.data.fee_group_id);
+                    // Add hidden field for update
+                    if ($('#edit_id').length === 0) {
+                        $('#defaultClassFeeForm').append('<input type="hidden" id="edit_id" name="edit_id">');
+                    }
+                    $('#edit_id').val(id);
+
+                    // Change button text to indicate edit mode
+                    $('#defaultClassFeeForm button[type="submit"]').html('<i class="fa fa-save"></i> Update Default Class Fee');
+                    $('#cancelEditBtn').show();
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            },
+            error: function() {
+                alert('An error occurred while loading the record for editing.');
+            }
+        });
+    }
+
+    function clearEditMode() {
+        $('#defaultClassFeeForm')[0].reset();
+        $('#edit_id').remove();
+        $('#defaultClassFeeForm button[type="submit"]').html('<i class="fa fa-save"></i> Save Default Class Fee');
+        $('#cancelEditBtn').hide();
+    }
+
+    function deleteDefaultClassFee(id) {
+        if (confirm('Are you sure you want to delete this default class fee assignment?')) {
+            $.ajax({
+                url: '<?php echo base_url(); ?>admin/feemaster/deleteDefaultClassFee/' + id,
+                type: 'POST',
+                dataType: 'json',
+                success: function(response) {
+                    if (response.status === 'success') {
+                        alert('Default class fee deleted successfully!');
+                        loadDefaultClassFeeList();
+                    } else {
+                        alert('Error: ' + response.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while deleting the default class fee.');
+                }
+            });
         }
     }
 </script>
