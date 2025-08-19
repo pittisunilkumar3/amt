@@ -12,3 +12,7 @@ CREATE TABLE IF NOT EXISTS `default_class_fees` (
   CONSTRAINT `fk_default_class_fees_class` FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_default_class_fees_fee_group` FOREIGN KEY (`fee_group_id`) REFERENCES `fee_groups` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+
+
+

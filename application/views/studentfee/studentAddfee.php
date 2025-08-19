@@ -3481,10 +3481,10 @@ $language_name = $language["short_code"];
                 cursor: pointer;
             }
 
-            /* Datepicker dropdown container */
+            /* Datepicker dropdown container - use absolute positioning for better control */
             .datepicker.dropdown-menu {
-                position: fixed !important;
-                z-index: 9999 !important;
+                position: absolute !important;
+                z-index: 1060 !important;
                 margin-top: 2px;
                 padding: 4px;
                 border: 1px solid rgba(0,0,0,.15);
@@ -3493,16 +3493,18 @@ $language_name = $language["short_code"];
                 background-color: #fff;
                 min-width: 250px;
                 font-size: 14px;
+                display: block;
             }
 
             /* Ensure datepicker appears above modals */
             .modal-open .datepicker.dropdown-menu {
-                z-index: 1056 !important;
+                z-index: 1070 !important;
             }
 
             /* Datepicker positioning in modals */
             .modal .datepicker.dropdown-menu {
-                position: fixed !important;
+                position: absolute !important;
+                z-index: 1070 !important;
             }
 
             /* Input field styling */
@@ -3537,6 +3539,11 @@ $language_name = $language["short_code"];
                 background-color: #3c8dbc !important;
                 border-color: #367fa9;
             }
+
+            /* Ensure proper positioning relative to input */
+            .datepicker-container {
+                position: relative;
+            }
         `)
         .appendTo('head');
 
@@ -3550,153 +3557,146 @@ $language_name = $language["short_code"];
 
             $('.date_fee').each(function() {
                 var $input = $(this);
-                
+
                 // Destroy existing instance if any
                 if ($input.data('datepicker')) {
                     $input.datepicker('destroy');
                 }
 
-                // Initialize with fixed positioning
+                // Initialize datepicker with proper positioning
                 $input.datepicker({
                     format: 'dd/mm/yyyy',
                     autoclose: true,
                     todayHighlight: true,
-                    orientation: 'auto',
+                    orientation: 'bottom left',
                     container: 'body',
-                    zIndex: 9999,
-                    beforeShow: function(input, inst) {
-                        var $input = $(input);
-                        var inputOffset = $input.offset();
-                        var modalDialog = $input.closest('.modal-dialog');
-                        
-                        // Calculate position relative to modal if in modal
-                        if (modalDialog.length) {
-                            var modalOffset = modalDialog.offset();
-                            var top = inputOffset.top - modalOffset.top + $input.outerHeight() + 2;
-                            var left = inputOffset.left - modalOffset.left;
-                            
-                            setTimeout(function() {
-                                $('.datepicker-dropdown').css({
-                                    'position': 'fixed',
-                                    'top': (modalOffset.top + top) + 'px',
-                                    'left': (modalOffset.left + left) + 'px',
-                                    'z-index': 9999
-                                });
-                            }, 0);
-                        }
-                    }
-                }).on('show', function(e) {
-                    var $input = $(this);
-                    var $datepicker = $('.datepicker.dropdown-menu:visible');
-                    
-                    if ($datepicker.length) {
-                        var inputOffset = $input.offset();
-                        var modalDialog = $input.closest('.modal-dialog');
-                        
-                        if (modalDialog.length) {
-                            var modalOffset = modalDialog.offset();
-                            var top = inputOffset.top - modalOffset.top + $input.outerHeight() + 2;
-                            var left = inputOffset.left - modalOffset.left;
-                            
-                            $datepicker.css({
-                                'position': 'fixed',
-                                'top': (modalOffset.top + top) + 'px',
-                                'left': (modalOffset.left + left) + 'px',
-                                'z-index': 9999
-                            });
-                        } else {
-                            $datepicker.css({
-                                'position': 'fixed',
-                                'top': (inputOffset.top + $input.outerHeight() + 2) + 'px',
-                                'left': inputOffset.left + 'px',
-                                'z-index': 9999
-                            });
-                        }
-                    }
+                    zIndexOffset: 1050
                 });
             });
         }
 
-        // Initialize on document ready and after slight delay
-        initializeDatePickers();
-        setTimeout(initializeDatePickers, 500);
-
-        // Add click handlers with multiple attempts
-        function addClickHandlers() {
-            console.log('🖱️ Adding click handlers...');
-
-            // Remove existing handlers
-            $(document).off('click.datepicker_fix focus.datepicker_fix');
-
-            // Add new handlers
-            $(document).on('click.datepicker_fix', '.date_fee', function(e) {
-                var $this = $(this);
-                var id = $this.attr('id') || 'unknown';
-
-                console.log('🖱️ Date input clicked:', id);
-
-                // Initialize if not already done
-                if (!$this.data('datepicker')) {
-                    console.log('🔧 Initializing datepicker on click for:', id);
-                    $this.datepicker({
-                        format: 'dd/mm/yyyy',
-                        autoclose: true,
-                        todayHighlight: true,
-                        orientation: 'bottom left',
-                        container: $this.closest('.form-group'),
-                        weekStart: 0,
-                        endDate: '+0d',
-                        zIndexOffset: 1050
-                    });
-                }
-
-                // Show datepicker
-                try {
-                    $this.datepicker('show');
-                    console.log('✅ Datepicker shown for:', id);
-                } catch (error) {
-                    console.error('❌ Failed to show datepicker for:', id, error);
-                }
-            });
-
-            $(document).on('focus.datepicker_fix', '.date_fee', function(e) {
-                var $this = $(this);
-                if ($this.data('datepicker')) {
-                    $this.datepicker('show');
-                }
-            });
-        }
-
-        // Add handlers immediately and with delays
-        setTimeout(addClickHandlers, 100);
-        setTimeout(addClickHandlers, 1000);
-        setTimeout(addClickHandlers, 2000);
-
-        // Add positioning fix for datepicker dropdown
-        $(document).on('show', '.date_fee', function(e) {
-            var $input = $(this);
+        // Function to position datepicker correctly
+        function positionDatepicker($input) {
             setTimeout(function() {
                 var $datepicker = $('.datepicker.dropdown-menu:visible');
-                if ($datepicker.length) {
+                if ($datepicker.length && $input.length) {
                     var inputOffset = $input.offset();
                     var inputHeight = $input.outerHeight();
                     var inputWidth = $input.outerWidth();
 
-                    // Position the datepicker below the input field
-                    $datepicker.css({
-                        'position': 'absolute',
-                        'top': (inputOffset.top + inputHeight + 2) + 'px',
-                        'left': inputOffset.left + 'px',
-                        'z-index': '1151',
-                        'min-width': inputWidth + 'px'
-                    });
+                    // Check if we're in a modal
+                    var $modal = $input.closest('.modal');
 
-                    console.log('📍 Datepicker positioned at:', {
-                        top: (inputOffset.top + inputHeight + 2) + 'px',
-                        left: inputOffset.left + 'px'
-                    });
+                    if ($modal.length) {
+                        // For modals, use absolute positioning relative to the modal content
+                        var $modalContent = $modal.find('.modal-content');
+                        var modalContentOffset = $modalContent.offset();
+
+                        // Calculate position relative to modal content
+                        var relativeTop = inputOffset.top - modalContentOffset.top + inputHeight + 2;
+                        var relativeLeft = inputOffset.left - modalContentOffset.left;
+
+                        // Ensure the datepicker stays within modal bounds
+                        var modalWidth = $modalContent.outerWidth();
+                        var datepickerWidth = Math.max(inputWidth, 250);
+
+                        if (relativeLeft + datepickerWidth > modalWidth) {
+                            relativeLeft = modalWidth - datepickerWidth - 10;
+                        }
+
+                        $datepicker.css({
+                            'position': 'absolute',
+                            'top': relativeTop + 'px',
+                            'left': relativeLeft + 'px',
+                            'z-index': '1070',
+                            'min-width': datepickerWidth + 'px'
+                        });
+
+                        // Append to modal content to ensure proper positioning
+                        if ($datepicker.parent()[0] !== $modalContent[0]) {
+                            $datepicker.appendTo($modalContent);
+                        }
+                    } else {
+                        // For non-modal elements, use absolute positioning relative to document
+                        $datepicker.css({
+                            'position': 'absolute',
+                            'top': (inputOffset.top + inputHeight + 2) + 'px',
+                            'left': inputOffset.left + 'px',
+                            'z-index': '1060',
+                            'min-width': Math.max(inputWidth, 250) + 'px'
+                        });
+                    }
+
+                    console.log('📍 Datepicker positioned correctly');
                 }
             }, 10);
+        }
+
+        // Initialize datepickers
+        initializeDatePickers();
+
+        // Reinitialize after modal content loads
+        setTimeout(initializeDatePickers, 500);
+
+        // Event handlers for datepicker positioning
+        $(document).on('show', '.date_fee', function(e) {
+            var $input = $(this);
+            positionDatepicker($input);
+        });
+
+        $(document).on('click focus', '.date_fee', function(e) {
+            var $this = $(this);
+
+            // Initialize if not already done
+            if (!$this.data('datepicker')) {
+                $this.datepicker({
+                    format: 'dd/mm/yyyy',
+                    autoclose: true,
+                    todayHighlight: true,
+                    orientation: 'bottom left',
+                    container: 'body',
+                    zIndexOffset: 1050
+                });
+            }
+
+            // Show and position the datepicker
+            setTimeout(function() {
+                $this.datepicker('show');
+                positionDatepicker($this);
+            }, 10);
+        });
+
+        // Additional event handler for when datepicker is shown
+        $(document).on('changeDate show', '.date_fee', function(e) {
+            var $input = $(this);
+            positionDatepicker($input);
+        });
+
+        // Handle modal events to reposition datepickers
+        $(document).on('shown.bs.modal', '.modal', function() {
+            setTimeout(function() {
+                initializeDatePickers();
+                // Hide any visible datepickers when modal opens
+                $('.datepicker.dropdown-menu:visible').hide();
+            }, 100);
+        });
+
+        // Specific handler for myFeesModal
+        $("#myFeesModal").on('shown.bs.modal', function() {
+            setTimeout(function() {
+                initializeDatePickers();
+            }, 150);
+        });
+
+        // Handle window resize to reposition visible datepickers
+        $(window).on('resize', function() {
+            var $visibleDatepicker = $('.datepicker.dropdown-menu:visible');
+            if ($visibleDatepicker.length) {
+                var $input = $('.date_fee:focus');
+                if ($input.length) {
+                    positionDatepicker($input);
+                }
+            }
         });
 
         console.log('🎯 Date picker solution loaded');
