@@ -53,3 +53,13 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 $route['default_controller'] = 'welcome';
 $route['404_override'] = '';
 $route['translate_uri_dashes'] = FALSE;
+
+// Teacher Authentication Routes
+$route['teacher/login'] = 'teacher_auth/login';
+$route['teacher/logout'] = 'teacher_auth/logout';
+$route['teacher/profile'] = 'teacher_auth/profile';
+$route['teacher/profile/update'] = 'teacher_auth/update_profile';
+$route['teacher/change-password'] = 'teacher_auth/change_password';
+$route['teacher/dashboard'] = 'teacher_auth/dashboard';
+$route['teacher/refresh-token'] = 'teacher_auth/refresh_token';
+$route['teacher/validate-token'] = 'teacher_auth/validate_token';
