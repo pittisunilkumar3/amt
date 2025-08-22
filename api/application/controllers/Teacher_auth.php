@@ -91,6 +91,136 @@ class Teacher_auth extends CI_Controller
     }
 
     /**
+     * Check if specific teacher credentials exist in database
+     * POST /teacher/check-credentials
+     */
+    public function check_credentials()
+    {
+        // Check authentication headers
+        $client_service = $this->input->get_request_header('Client-Service', true);
+        $auth_key = $this->input->get_request_header('Auth-Key', true);
+
+        if ($client_service != 'smartschool' || $auth_key != 'schoolAdmin@') {
+            json_output(401, array('status' => 0, 'message' => 'Unauthorized access - Invalid headers.'));
+            return;
+        }
+
+        // Get POST data
+        $email = $this->input->post('email');
+        $password = $this->input->post('password');
+
+        if (empty($email)) {
+            json_output(400, array('status' => 0, 'message' => 'Email is required.'));
+            return;
+        }
+
+        // Check if email exists
+        $this->db->select('id, email, name, surname, password, is_active, designation, department');
+        $this->db->from('staff');
+        $this->db->where('email', $email);
+        $this->db->limit(1);
+        $query = $this->db->get();
+
+        if ($query->num_rows() == 0) {
+            json_output(404, array(
+                'status' => 0,
+                'message' => 'Email not found in database.',
+                'email_searched' => $email
+            ));
+            return;
+        }
+
+        $staff = $query->row();
+
+        // Check password if provided
+        $password_match = false;
+        if (!empty($password)) {
+            $password_match = ($staff->password === $password);
+        }
+
+        json_output(200, array(
+            'status' => 1,
+            'message' => 'Teacher record found',
+            'data' => array(
+                'staff_id' => $staff->id,
+                'email' => $staff->email,
+                'name' => $staff->name . ' ' . $staff->surname,
+                'is_active' => $staff->is_active,
+                'designation' => $staff->designation,
+                'department' => $staff->department,
+                'password_provided' => !empty($password),
+                'password_match' => $password_match,
+                'stored_password_length' => strlen($staff->password)
+            )
+        ));
+    }
+
+    /**
+     * Debug version of teacher login
+     * POST /teacher/debug-login
+     */
+    public function debug_login()
+    {
+        // Get all headers for debugging
+        $headers = array();
+        foreach ($_SERVER as $key => $value) {
+            if (strpos($key, 'HTTP_') === 0) {
+                $header_name = str_replace('HTTP_', '', $key);
+                $header_name = str_replace('_', '-', $header_name);
+                $headers[$header_name] = $value;
+            }
+        }
+
+        // Get specific headers
+        $client_service = $this->input->get_request_header('Client-Service', true);
+        $auth_key = $this->input->get_request_header('Auth-Key', true);
+
+        // Get POST data
+        $post_data = $this->input->post();
+
+        // Check authentication headers first
+        $auth_check = $this->teacher_auth_model->check_auth_client();
+
+        $debug_info = array(
+            'status' => 1,
+            'message' => 'Debug information',
+            'debug' => array(
+                'all_headers' => $headers,
+                'client_service' => $client_service,
+                'auth_key' => $auth_key,
+                'expected_client_service' => 'smartschool',
+                'expected_auth_key' => 'schoolAdmin@',
+                'headers_valid' => ($client_service == 'smartschool' && $auth_key == 'schoolAdmin@'),
+                'post_data' => $post_data,
+                'auth_check_result' => $auth_check,
+                'request_method' => $_SERVER['REQUEST_METHOD'],
+                'content_type' => $this->input->get_request_header('Content-Type', true)
+            )
+        );
+
+        // If headers are valid, try the actual login
+        if ($client_service == 'smartschool' && $auth_key == 'schoolAdmin@') {
+            $email = $this->input->post('email');
+            $password = $this->input->post('password');
+
+            if (!empty($email) && !empty($password)) {
+                try {
+                    $login_result = $this->teacher_auth_model->login($email, $password, '');
+                    $debug_info['debug']['login_attempt'] = array(
+                        'email' => $email,
+                        'password_length' => strlen($password),
+                        'login_result' => $login_result
+                    );
+                } catch (Exception $e) {
+                    $debug_info['debug']['login_error'] = $e->getMessage();
+                }
+            }
+        }
+
+        json_output(200, $debug_info);
+    }
+
+    /**
      * Teacher Login
      * POST /teacher/login
      */
@@ -104,18 +234,21 @@ class Teacher_auth extends CI_Controller
             $check_auth_client = $this->teacher_auth_model->check_auth_client();
             if ($check_auth_client == true) {
                 $params = json_decode(file_get_contents('php://input'), true);
-                
+
                 // Validate required parameters
                 if (!isset($params['email']) || !isset($params['password'])) {
                     json_output(400, array('status' => 400, 'message' => 'Email and password are required.'));
+                    return;
                 }
-                
+
                 $email = $params['email'];
                 $password = $params['password'];
                 $app_key = isset($params['deviceToken']) ? $params['deviceToken'] : null;
-                
+
                 $response = $this->teacher_auth_model->login($email, $password, $app_key);
                 json_output(200, $response);
+            } else {
+                json_output(401, array('status' => 0, 'message' => 'Unauthorized. Please check Client-Service and Auth-Key headers.'));
             }
         }
     }

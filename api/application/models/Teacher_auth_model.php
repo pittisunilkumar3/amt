@@ -36,7 +36,7 @@ class Teacher_auth_model extends CI_Model
         if ($client_service == $this->client_service && $auth_key == $this->auth_key) {
             return true;
         } else {
-            return json_output(200, array('status' => 0, 'message' => 'Unauthorized.'));
+            return false;
         }
     }
 

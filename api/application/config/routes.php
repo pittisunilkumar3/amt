@@ -62,6 +62,8 @@ $route['test-db/auth-tables'] = 'test_db/test_auth_tables';
 
 // Teacher Authentication Routes
 $route['teacher/test'] = 'teacher_auth/test';
+$route['teacher/check-credentials'] = 'teacher_auth/check_credentials';
+$route['teacher/debug-login'] = 'teacher_auth/debug_login';
 $route['teacher/simple-login'] = 'teacher_auth/simple_login';
 $route['teacher/login'] = 'teacher_auth/login';
 $route['teacher/logout'] = 'teacher_auth/logout';
