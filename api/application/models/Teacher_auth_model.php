@@ -17,6 +17,7 @@ class Teacher_auth_model extends CI_Model
 
         // Load libraries with error handling
         $this->load->library('encryption');
+        $this->load->library('enc_lib'); // Load encryption library for password verification
 
         // Try to load JWT library, but don't fail if it's not available
         if (file_exists(APPPATH . 'libraries/JWT_lib.php')) {
@@ -162,16 +163,26 @@ class Teacher_auth_model extends CI_Model
 
     public function checkTeacherLogin($email, $password)
     {
+        // Get the teacher record by email (same approach as main project's Staff_model->getByEmail)
         $this->db->select('staff.id, staff.email, staff.password, staff.is_active, staff.lang_id');
         $this->db->from('staff');
         $this->db->where('staff.email', $email);
-        $this->db->where('staff.password', $password); // Note: In production, use proper password hashing
         $this->db->where('staff.is_active', 1);
         $this->db->limit(1);
         $query = $this->db->get();
 
         if ($query->num_rows() == 1) {
-            return $query->row();
+            $staff = $query->row();
+
+            // Use the same password verification approach as main project
+            // Staff_model->checkLogin() uses $this->enc_lib->passHashDyc($password, $record->password)
+            $pass_verify = $this->enc_lib->passHashDyc($password, $staff->password);
+
+            if ($pass_verify) {
+                return $staff;
+            } else {
+                return false;
+            }
         } else {
             return false;
         }

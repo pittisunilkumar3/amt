@@ -17,6 +17,9 @@ class Teacher_auth extends CI_Controller
         $this->load->model('staff_model');
         $this->load->model('setting_model');
 
+        // Load libraries
+        $this->load->library('enc_lib'); // Load encryption library for password verification
+
         // Load helpers
         $this->load->helper('json_output');
     }
@@ -67,24 +70,32 @@ class Teacher_auth extends CI_Controller
             return;
         }
 
-        // Simple database check
-        $this->db->select('id, email, name, surname, is_active');
+        // Database check with proper password verification (same as main project)
+        $this->db->select('id, email, name, surname, password, is_active');
         $this->db->from('staff');
         $this->db->where('email', $email);
-        $this->db->where('password', $password);
         $this->db->where('is_active', 1);
         $this->db->limit(1);
         $query = $this->db->get();
 
         if ($query->num_rows() == 1) {
             $staff = $query->row();
-            json_output(200, array(
-                'status' => 1,
-                'message' => 'Login successful',
-                'staff_id' => $staff->id,
-                'name' => $staff->name . ' ' . $staff->surname,
-                'email' => $staff->email
-            ));
+
+            // Use the same password verification approach as main project
+            // Staff_model->checkLogin() uses $this->enc_lib->passHashDyc($password, $record->password)
+            $pass_verify = $this->enc_lib->passHashDyc($password, $staff->password);
+
+            if ($pass_verify) {
+                json_output(200, array(
+                    'status' => 1,
+                    'message' => 'Login successful',
+                    'staff_id' => $staff->id,
+                    'name' => $staff->name . ' ' . $staff->surname,
+                    'email' => $staff->email
+                ));
+            } else {
+                json_output(401, array('status' => 0, 'message' => 'Invalid email or password.'));
+            }
         } else {
             json_output(401, array('status' => 0, 'message' => 'Invalid email or password.'));
         }
