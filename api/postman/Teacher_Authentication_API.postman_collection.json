@@ -435,6 +435,506 @@
 			]
 		},
 		{
+			"name": "Teacher Webservice",
+			"item": [
+				{
+					"name": "Get Teacher Menu",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Client-Service",
+								"value": "smartschool",
+								"type": "text"
+							},
+							{
+								"key": "Auth-Key",
+								"value": "schoolAdmin@",
+								"type": "text"
+							},
+							{
+								"key": "User-ID",
+								"value": "{{user_id}}",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/teacher/menu",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"teacher",
+								"menu"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Teacher Permissions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Client-Service",
+								"value": "smartschool",
+								"type": "text"
+							},
+							{
+								"key": "Auth-Key",
+								"value": "schoolAdmin@",
+								"type": "text"
+							},
+							{
+								"key": "User-ID",
+								"value": "{{user_id}}",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/teacher/permissions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"teacher",
+								"permissions"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Teacher Modules",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Client-Service",
+								"value": "smartschool",
+								"type": "text"
+							},
+							{
+								"key": "Auth-Key",
+								"value": "schoolAdmin@",
+								"type": "text"
+							},
+							{
+								"key": "User-ID",
+								"value": "{{user_id}}",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/teacher/modules",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"teacher",
+								"modules"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Check Specific Permission",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Client-Service",
+								"value": "smartschool",
+								"type": "text"
+							},
+							{
+								"key": "Auth-Key",
+								"value": "schoolAdmin@",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "User-ID",
+								"value": "{{user_id}}",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{auth_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"category\": \"student_information\",\n    \"permission\": \"view\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/teacher/check-permission",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"teacher",
+								"check-permission"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Teacher Role",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Client-Service",
+								"value": "smartschool",
+								"type": "text"
+							},
+							{
+								"key": "Auth-Key",
+								"value": "schoolAdmin@",
+								"type": "text"
+							},
+							{
+								"key": "User-ID",
+								"value": "{{user_id}}",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/teacher/role",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"teacher",
+								"role"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get System Settings",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Client-Service",
+								"value": "smartschool",
+								"type": "text"
+							},
+							{
+								"key": "Auth-Key",
+								"value": "schoolAdmin@",
+								"type": "text"
+							},
+							{
+								"key": "User-ID",
+								"value": "{{user_id}}",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/teacher/settings",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"teacher",
+								"settings"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Sidebar Menu",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Client-Service",
+								"value": "smartschool",
+								"type": "text"
+							},
+							{
+								"key": "Auth-Key",
+								"value": "schoolAdmin@",
+								"type": "text"
+							},
+							{
+								"key": "User-ID",
+								"value": "{{user_id}}",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/teacher/sidebar-menu",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"teacher",
+								"sidebar-menu"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Permission Groups",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Client-Service",
+								"value": "smartschool",
+								"type": "text"
+							},
+							{
+								"key": "Auth-Key",
+								"value": "schoolAdmin@",
+								"type": "text"
+							},
+							{
+								"key": "User-ID",
+								"value": "{{user_id}}",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/teacher/permission-groups",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"teacher",
+								"permission-groups"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Group Permissions",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Client-Service",
+								"value": "smartschool",
+								"type": "text"
+							},
+							{
+								"key": "Auth-Key",
+								"value": "schoolAdmin@",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "User-ID",
+								"value": "{{user_id}}",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{auth_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"group_code\": \"student_information\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/teacher/group-permissions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"teacher",
+								"group-permissions"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Bulk Permission Check",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Client-Service",
+								"value": "smartschool",
+								"type": "text"
+							},
+							{
+								"key": "Auth-Key",
+								"value": "schoolAdmin@",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "User-ID",
+								"value": "{{user_id}}",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{auth_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"permissions\": [\n        {\n            \"category\": \"student_information\",\n            \"permission\": \"view\",\n            \"identifier\": \"student_view\"\n        },\n        {\n            \"category\": \"attendance\",\n            \"permission\": \"add\",\n            \"identifier\": \"attendance_add\"\n        },\n        {\n            \"category\": \"examinations\",\n            \"permission\": \"view\",\n            \"identifier\": \"exam_view\"\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/teacher/bulk-permission-check",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"teacher",
+								"bulk-permission-check"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Teacher Features",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Client-Service",
+								"value": "smartschool",
+								"type": "text"
+							},
+							{
+								"key": "Auth-Key",
+								"value": "schoolAdmin@",
+								"type": "text"
+							},
+							{
+								"key": "User-ID",
+								"value": "{{user_id}}",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/teacher/features",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"teacher",
+								"features"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Dashboard Summary",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Client-Service",
+								"value": "smartschool",
+								"type": "text"
+							},
+							{
+								"key": "Auth-Key",
+								"value": "schoolAdmin@",
+								"type": "text"
+							},
+							{
+								"key": "User-ID",
+								"value": "{{user_id}}",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/teacher/dashboard-summary",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"teacher",
+								"dashboard-summary"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
 			"name": "Error Scenarios",
 			"item": [
 				{

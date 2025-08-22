@@ -454,11 +454,233 @@ JWT-Token: {jwt_token} (alternative)
    - Monitor failed login attempts
    - Track API usage patterns
 
+## Teacher Webservice Endpoints
+
+### 9. Get Teacher Menu Items
+
+**Endpoint:** `GET /teacher/menu`
+
+**Description:** Retrieve teacher-specific menu items based on role and permissions.
+
+**Headers Required:**
+```
+User-ID: {user_id}
+Authorization: {token}
+JWT-Token: {jwt_token} (alternative)
+```
+
+**Success Response (200):**
+```json
+{
+    "status": 1,
+    "message": "Menu items retrieved successfully.",
+    "data": {
+        "role": {
+            "id": 2,
+            "name": "Teacher",
+            "slug": "teacher",
+            "is_superadmin": false
+        },
+        "menus": [
+            {
+                "id": 1,
+                "menu": "Student Information",
+                "icon": "fa fa-users",
+                "activate_menu": "student_information",
+                "lang_key": "student_information",
+                "level": 1,
+                "permission_group": "student_information",
+                "submenus": [
+                    {
+                        "id": 1,
+                        "menu": "Student Details",
+                        "key": "student_details",
+                        "lang_key": "student_details",
+                        "url": "student/search",
+                        "level": 1,
+                        "permission_group": "student_information",
+                        "activate_controller": "student",
+                        "activate_methods": ["search", "view"]
+                    }
+                ]
+            }
+        ],
+        "total_menus": 5
+    }
+}
+```
+
+### 10. Get Teacher Permissions
+
+**Endpoint:** `GET /teacher/permissions`
+
+**Description:** Retrieve all permissions assigned to the teacher based on their role.
+
+**Success Response (200):**
+```json
+{
+    "status": 1,
+    "message": "Permissions retrieved successfully.",
+    "data": {
+        "role": {
+            "id": 2,
+            "name": "Teacher",
+            "slug": "teacher",
+            "is_superadmin": false
+        },
+        "permissions": {
+            "student_information": {
+                "group_id": 1,
+                "group_name": "Student Information",
+                "permissions": {
+                    "student": {
+                        "permission_id": 1,
+                        "permission_name": "Student",
+                        "can_view": true,
+                        "can_add": false,
+                        "can_edit": true,
+                        "can_delete": false
+                    }
+                }
+            }
+        },
+        "summary": {
+            "total_permission_groups": 5,
+            "total_permissions": 25,
+            "active_permissions": 15
+        }
+    }
+}
+```
+
+### 11. Get Accessible Modules
+
+**Endpoint:** `GET /teacher/modules`
+
+**Description:** Get list of modules/features accessible to the teacher.
+
+**Success Response (200):**
+```json
+{
+    "status": 1,
+    "message": "Accessible modules retrieved successfully.",
+    "data": {
+        "role": {
+            "id": 2,
+            "name": "Teacher",
+            "slug": "teacher",
+            "is_superadmin": false
+        },
+        "modules": [
+            {
+                "group_id": 1,
+                "group_name": "Student Information",
+                "group_code": "student_information",
+                "status": "active",
+                "permissions_count": 5
+            }
+        ],
+        "total_modules": 8
+    }
+}
+```
+
+### 12. Check Specific Permission
+
+**Endpoint:** `POST /teacher/check-permission`
+
+**Description:** Check if teacher has a specific permission.
+
+**Request Body:**
+```json
+{
+    "category": "student_information",
+    "permission": "view"
+}
+```
+
+**Success Response (200):**
+```json
+{
+    "status": 1,
+    "message": "Permission check completed.",
+    "data": {
+        "category": "student_information",
+        "permission": "view",
+        "has_permission": true,
+        "role": {
+            "id": 2,
+            "name": "Teacher",
+            "is_superadmin": false
+        }
+    }
+}
+```
+
+### 13. Get Teacher Role Information
+
+**Endpoint:** `GET /teacher/role`
+
+**Description:** Get detailed role information for the authenticated teacher.
+
+**Success Response (200):**
+```json
+{
+    "status": 1,
+    "message": "Role information retrieved successfully.",
+    "data": {
+        "role": {
+            "id": 2,
+            "name": "Teacher",
+            "slug": "teacher",
+            "is_superadmin": false
+        },
+        "staff_info": {
+            "id": 456,
+            "employee_id": "EMP001",
+            "name": "John Doe",
+            "designation": "Mathematics Teacher",
+            "department": "Science Department"
+        }
+    }
+}
+```
+
+### 14. Get System Settings
+
+**Endpoint:** `GET /teacher/settings`
+
+**Description:** Get system settings relevant to teachers.
+
+**Success Response (200):**
+```json
+{
+    "status": 1,
+    "message": "System settings retrieved successfully.",
+    "data": {
+        "school_name": "Smart School",
+        "school_code": "SS001",
+        "session_id": 1,
+        "currency_symbol": "$",
+        "currency": "USD",
+        "date_format": "d-m-Y",
+        "time_format": "H:i",
+        "timezone": "UTC",
+        "language": "English",
+        "is_rtl": "0",
+        "theme": "default.jpg",
+        "start_week": "Monday"
+    }
+}
+```
+
 ## Testing
 
 Use the provided Postman collection for comprehensive API testing. The collection includes:
 - Authentication flows
 - Profile management
+- Menu and permission management
+- Module access testing
 - Error scenarios
 - JWT token operations
 ```

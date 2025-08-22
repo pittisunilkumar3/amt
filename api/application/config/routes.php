@@ -63,3 +63,19 @@ $route['teacher/change-password'] = 'teacher_auth/change_password';
 $route['teacher/dashboard'] = 'teacher_auth/dashboard';
 $route['teacher/refresh-token'] = 'teacher_auth/refresh_token';
 $route['teacher/validate-token'] = 'teacher_auth/validate_token';
+
+// Teacher Webservice Routes
+$route['teacher/menu'] = 'teacher_webservice/menu';
+$route['teacher/permissions'] = 'teacher_webservice/permissions';
+$route['teacher/modules'] = 'teacher_webservice/modules';
+$route['teacher/check-permission'] = 'teacher_webservice/check_permission';
+$route['teacher/role'] = 'teacher_webservice/role';
+$route['teacher/settings'] = 'teacher_webservice/settings';
+$route['teacher/sidebar-menu'] = 'teacher_webservice/sidebar_menu';
+$route['teacher/breadcrumb'] = 'teacher_webservice/breadcrumb';
+$route['teacher/permission-groups'] = 'teacher_webservice/permission_groups';
+$route['teacher/group-permissions'] = 'teacher_webservice/group_permissions';
+$route['teacher/bulk-permission-check'] = 'teacher_webservice/bulk_permission_check';
+$route['teacher/module-status'] = 'teacher_webservice/module_status';
+$route['teacher/features'] = 'teacher_webservice/features';
+$route['teacher/dashboard-summary'] = 'teacher_webservice/dashboard_summary';
