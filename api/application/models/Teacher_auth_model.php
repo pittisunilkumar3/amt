@@ -176,11 +176,16 @@ class Teacher_auth_model extends CI_Model
 
             // Use the same password verification approach as main project
             // Staff_model->checkLogin() uses $this->enc_lib->passHashDyc($password, $record->password)
-            $pass_verify = $this->enc_lib->passHashDyc($password, $staff->password);
+            try {
+                $pass_verify = $this->enc_lib->passHashDyc($password, $staff->password);
 
-            if ($pass_verify) {
-                return $staff;
-            } else {
+                if ($pass_verify) {
+                    return $staff;
+                } else {
+                    return false;
+                }
+            } catch (Exception $e) {
+                log_message('error', 'Password verification error: ' . $e->getMessage());
                 return false;
             }
         } else {

@@ -9,6 +9,20 @@ The Teacher Authentication API provides secure authentication and profile manage
 http://{domain}/api/
 ```
 
+## Database Configuration
+
+The API connects to the following database:
+- **Database**: `digita90_testschool`
+- **Username**: `digita90_digidineuser`
+- **Password**: `Neelarani@@10`
+- **Host**: `localhost`
+
+## Test Credentials
+
+For testing purposes, use these credentials:
+- **Email**: `teacher@gmail.com`
+- **Password**: `teacher`
+
 ## Authentication Headers
 
 All API requests require the following headers:
@@ -26,21 +40,96 @@ Authorization: {token}
 JWT-Token: {jwt_token} (optional, for JWT authentication)
 ```
 
-## Endpoints
+## Postman Testing Guide
 
-### 1. Teacher Login
+### Quick Setup for Postman
+
+1. **Import Collection**: Copy the cURL commands below and import them into Postman
+2. **Set Base URL**: Create an environment variable `{{base_url}}` = `http://localhost/amt/api`
+3. **Test Credentials**: Use `teacher@gmail.com` / `teacher` for testing
+
+## API Endpoints
+
+### 1. Connectivity Test
+
+**Endpoint:** `GET /teacher/test`
+
+**Description:** Basic connectivity test to verify API is working.
+
+**cURL Command:**
+```bash
+curl -X GET "{{base_url}}/teacher/test" \
+  -H "Client-Service: smartschool" \
+  -H "Auth-Key: schoolAdmin@" \
+  -H "Content-Type: application/json"
+```
+
+**Success Response (200):**
+```json
+{
+    "status": 1,
+    "message": "Teacher Auth Controller is working",
+    "timestamp": "2025-08-22 06:29:15",
+    "database_connected": true,
+    "models_loaded": {
+        "teacher_auth_model": true,
+        "staff_model": true,
+        "setting_model": true
+    }
+}
+```
+
+### 2. Simple Login (Token-based)
+
+**Endpoint:** `POST /teacher/simple-login`
+
+**Description:** Simple login without JWT, returns basic token.
+
+**cURL Command:**
+```bash
+curl -X POST "{{base_url}}/teacher/simple-login" \
+  -H "Client-Service: smartschool" \
+  -H "Auth-Key: schoolAdmin@" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "email=teacher@gmail.com&password=teacher"
+```
+
+**Success Response (200):**
+```json
+{
+    "status": 1,
+    "message": "Login successful",
+    "staff_id": "31",
+    "name": "teacher ",
+    "email": "teacher@gmail.com"
+}
+```
+
+**Error Response (401):**
+```json
+{
+    "status": 0,
+    "message": "Invalid email or password."
+}
+```
+
+### 3. Full Login (JWT-enabled)
 
 **Endpoint:** `POST /teacher/login`
 
-**Description:** Authenticate a teacher and receive authentication tokens.
+**Description:** Complete login with JWT token and full user information.
 
-**Request Body:**
-```json
-{
-    "email": "teacher@school.com",
-    "password": "teacher_password",
+**cURL Command:**
+```bash
+curl -X POST "{{base_url}}/teacher/login" \
+  -H "Client-Service: smartschool" \
+  -H "Auth-Key: schoolAdmin@" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "teacher@gmail.com",
+    "password": "teacher",
     "deviceToken": "optional_device_token"
-}
+  }'
 ```
 
 **Success Response (200):**
@@ -48,46 +137,108 @@ JWT-Token: {jwt_token} (optional, for JWT authentication)
 {
     "status": 1,
     "message": "Successfully logged in.",
-    "id": 123,
-    "token": "simple_auth_token",
-    "jwt_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "id": "31",
+    "token": "NppK+b2i0lBOQATtDfP6dBCsca2Lgz1w",
+    "jwt_token": null,
     "role": "teacher",
     "record": {
-        "id": 456,
-        "staff_id": 456,
-        "employee_id": "EMP001",
+        "id": "31",
+        "staff_id": "31",
+        "employee_id": "322",
         "role": "teacher",
-        "email": "teacher@school.com",
-        "contact_no": "1234567890",
-        "username": "John Doe",
-        "name": "John",
-        "surname": "Doe",
-        "designation": "Mathematics Teacher",
-        "department": "Science",
-        "date_format": "d-m-Y",
-        "currency_symbol": "$",
-        "currency_short_name": "USD",
-        "currency_id": 1,
-        "timezone": "UTC",
-        "sch_name": "Smart School",
+        "email": "teacher@gmail.com",
+        "contact_no": "",
+        "username": "teacher",
+        "name": "teacher",
+        "surname": "",
+        "designation": null,
+        "department": null,
+        "date_format": "d/m/Y",
+        "currency_symbol": "₹",
+        "currency_short_name": "68",
+        "currency_id": "68",
+        "timezone": "Asia/Kolkata",
+        "sch_name": "MGM School",
         "language": {
-            "lang_id": 1,
+            "lang_id": "4",
             "language": "English",
             "short_code": "en"
         },
-        "is_rtl": "0",
-        "theme": "default.jpg",
-        "image": "teacher_photo.jpg",
-        "start_week": "Monday",
-        "superadmin_restriction": "0"
+        "is_rtl": "disabled",
+        "theme": "white.jpg",
+        "image": "",
+        "start_week": "Thursday",
+        "superadmin_restriction": "enabled"
     }
 }
 ```
 
-**Error Responses:**
-- `400`: Bad request (missing email/password)
-- `401`: Invalid credentials
-- `403`: Account disabled
+**Error Response (401):**
+```json
+{
+    "status": 0,
+    "message": "Invalid Email or Password"
+}
+```
+
+### 4. Debug Login
+
+**Endpoint:** `POST /teacher/debug-login`
+
+**Description:** Debug endpoint that provides detailed information about the request.
+
+**cURL Command:**
+```bash
+curl -X POST "{{base_url}}/teacher/debug-login" \
+  -H "Client-Service: smartschool" \
+  -H "Auth-Key: schoolAdmin@" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "teacher@gmail.com",
+    "password": "teacher"
+  }'
+```
+
+**Success Response (200):**
+```json
+{
+    "status": 1,
+    "message": "Debug information",
+    "debug": {
+        "all_headers": {
+            "AUTHORIZATION": "",
+            "AUTH-KEY": "schoolAdmin@",
+            "CLIENT-SERVICE": "smartschool",
+            "USER-AGENT": "curl/7.68.0",
+            "HOST": "localhost"
+        },
+        "client_service": "smartschool",
+        "auth_key": "schoolAdmin@",
+        "expected_client_service": "smartschool",
+        "expected_auth_key": "schoolAdmin@",
+        "headers_valid": true,
+        "post_data": {
+            "email": "teacher@gmail.com",
+            "password": "teacher"
+        },
+        "auth_check_result": true,
+        "request_method": "POST",
+        "content_type": "application/json",
+        "login_attempt": {
+            "email": "teacher@gmail.com",
+            "password_length": 7,
+            "login_result": {
+                "status": 1,
+                "message": "Successfully logged in.",
+                "id": "31",
+                "token": "generated_token_here",
+                "jwt_token": null,
+                "role": "teacher"
+            }
+        }
+    }
+}
+```
 
 ### 2. Teacher Logout
 
