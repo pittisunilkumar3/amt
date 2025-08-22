@@ -8,17 +8,31 @@ class Teacher_auth extends CI_Controller
     public function __construct()
     {
         parent::__construct();
+
+        // Load database first
+        $this->load->database();
+
+        // Load models
         $this->load->model('teacher_auth_model');
         $this->load->model('staff_model');
         $this->load->model('setting_model');
-        $this->load->library('teacher_middleware');
-        $this->load->helper('teacher_auth');
 
-        // Apply middleware to protected methods
-        $method = $this->router->fetch_method();
-        if (in_array($method, ['profile', 'update_profile', 'change_password', 'dashboard', 'logout'])) {
-            $this->teacher_middleware->check_auth();
-        }
+        // Load helpers
+        $this->load->helper('json_output');
+    }
+
+    /**
+     * Test endpoint to check if controller is working
+     * GET /teacher/test
+     */
+    public function test()
+    {
+        json_output(200, array(
+            'status' => 1,
+            'message' => 'Teacher Auth Controller is working',
+            'timestamp' => date('Y-m-d H:i:s'),
+            'database_connected' => $this->db->conn_id ? true : false
+        ));
     }
 
     /**

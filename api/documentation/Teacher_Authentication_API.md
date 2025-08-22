@@ -6,7 +6,7 @@ The Teacher Authentication API provides secure authentication and profile manage
 
 ## Base URL
 ```
-http://your-domain.com/api/
+http://{domain}/api/
 ```
 
 ## Authentication Headers

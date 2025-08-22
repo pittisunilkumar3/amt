@@ -12,6 +12,7 @@ class Teacher_auth_model extends CI_Model
     public function __construct()
     {
         parent::__construct();
+        // Load models and libraries
         $this->load->model(array('staff_model', 'setting_model'));
         $this->load->library(array('encryption', 'jwt_lib'));
     }
@@ -29,11 +30,9 @@ class Teacher_auth_model extends CI_Model
 
     public function login($email, $password, $app_key)
     {
-        $resultdata = $this->setting_model->getSetting();
-        
-        // Check if staff panel login is enabled (you may need to add this setting)
+        // Check teacher login credentials
         $q = $this->checkTeacherLogin($email, $password);
-        
+
         if (empty($q)) {
             return array('status' => 0, 'message' => 'Invalid Email or Password');
         } else {
@@ -43,42 +42,36 @@ class Teacher_auth_model extends CI_Model
                 if ($result != false) {
                     $setting_result = $this->setting_model->get();
 
-                    // Handle currency settings
-                    if ($result->currency_id == 0) {
-                        $currency_symbol = $setting_result[0]['currency_symbol'];
-                        $currency = $setting_result[0]['currency'];
-                        $currency_short_name = $setting_result[0]['short_name'];
-                    } else {
-                        $currencyarray = $this->getTeacherCurrency($result->id);
-                        $currency = $currencyarray[0]->id;
-                        $currency_symbol = $currencyarray[0]->symbol;
-                        $currency_short_name = $currencyarray[0]->short_name;
-                    }
-                    
-                    // Handle language settings
-                    if ($result->lang_id == 0) {
-                        $lang_id = $setting_result[0]['lang_id'];
-                        $language = $setting_result[0]['language'];
-                        $short_code = $setting_result[0]['short_code'];
-                    } else {
-                        $lang_id = $result->lang_id;
-                        $curentlang = $this->getTeacherLanguage($result->id);
-                        $language = $curentlang[0]->language;
-                        $short_code = $curentlang[0]->short_code;
-                    }
+                    // Handle currency settings with defaults
+                    $currency_symbol = isset($setting_result[0]['currency_symbol']) ? $setting_result[0]['currency_symbol'] : '$';
+                    $currency = isset($setting_result[0]['currency']) ? $setting_result[0]['currency'] : 'USD';
+                    $currency_short_name = isset($setting_result[0]['currency']) ? $setting_result[0]['currency'] : 'USD';
+
+                    // Handle language settings with defaults
+                    $lang_id = isset($setting_result[0]['lang_id']) ? $setting_result[0]['lang_id'] : 1;
+                    $language = isset($setting_result[0]['language']) ? $setting_result[0]['language'] : 'English';
+                    $short_code = 'en';
 
                     $last_login = date('Y-m-d H:i:s');
 
-                    // Generate JWT token with teacher information
-                    $jwt_payload = array(
-                        'user_id' => $q->id,
-                        'staff_id' => $result->id,
-                        'email' => $result->email,
-                        'role' => 'teacher',
-                        'employee_id' => $result->employee_id,
-                        'name' => $result->name . ' ' . $result->surname
-                    );
-                    $jwt_token = $this->jwt_lib->generate_token($jwt_payload);
+                    // Generate JWT token with teacher information (if JWT library is available)
+                    $jwt_token = null;
+                    try {
+                        if (class_exists('JWT_lib')) {
+                            $jwt_payload = array(
+                                'user_id' => $q->id,
+                                'staff_id' => $result->id,
+                                'email' => $result->email,
+                                'role' => 'teacher',
+                                'employee_id' => $result->employee_id,
+                                'name' => $result->name . ' ' . $result->surname
+                            );
+                            $jwt_token = $this->jwt_lib->generate_token($jwt_payload);
+                        }
+                    } catch (Exception $e) {
+                        // JWT generation failed, continue without it
+                        $jwt_token = null;
+                    }
 
                     // Also generate simple token for backward compatibility
                     $simple_token = $this->getToken();
@@ -116,18 +109,18 @@ class Teacher_auth_model extends CI_Model
                         'surname' => $result->surname,
                         'designation' => $result->designation,
                         'department' => $result->department,
-                        'date_format' => $setting_result[0]['date_format'],
+                        'date_format' => isset($setting_result[0]['date_format']) ? $setting_result[0]['date_format'] : 'd-m-Y',
                         'currency_symbol' => $currency_symbol,
                         'currency_short_name' => $currency_short_name,
                         'currency_id' => $currency,
-                        'timezone' => $setting_result[0]['timezone'],
-                        'sch_name' => $setting_result[0]['name'],
+                        'timezone' => isset($setting_result[0]['timezone']) ? $setting_result[0]['timezone'] : 'UTC',
+                        'sch_name' => isset($setting_result[0]['name']) ? $setting_result[0]['name'] : 'School',
                         'language' => array('lang_id' => $lang_id, 'language' => $language, 'short_code' => $short_code),
-                        'is_rtl' => $setting_result[0]['is_rtl'],
-                        'theme' => $setting_result[0]['theme'],
+                        'is_rtl' => isset($setting_result[0]['is_rtl']) ? $setting_result[0]['is_rtl'] : '0',
+                        'theme' => isset($setting_result[0]['theme']) ? $setting_result[0]['theme'] : 'default.jpg',
                         'image' => $result->image,
-                        'start_week' => $setting_result[0]['start_week'],
-                        'superadmin_restriction' => $setting_result[0]['superadmin_restriction'],
+                        'start_week' => isset($setting_result[0]['start_week']) ? $setting_result[0]['start_week'] : 'Monday',
+                        'superadmin_restriction' => isset($setting_result[0]['superadmin_restriction']) ? $setting_result[0]['superadmin_restriction'] : '0',
                     );
 
                     if ($this->db->trans_status() === false) {

@@ -54,7 +54,14 @@ $route['default_controller'] = 'welcome';
 $route['404_override'] = '';
 $route['translate_uri_dashes'] = FALSE;
 
+// Test Routes
+$route['test-db'] = 'test_db/index';
+$route['test-db/staff'] = 'test_db/test_staff';
+$route['test-db/settings'] = 'test_db/test_settings';
+$route['test-db/auth-tables'] = 'test_db/test_auth_tables';
+
 // Teacher Authentication Routes
+$route['teacher/test'] = 'teacher_auth/test';
 $route['teacher/login'] = 'teacher_auth/login';
 $route['teacher/logout'] = 'teacher_auth/logout';
 $route['teacher/profile'] = 'teacher_auth/profile';
