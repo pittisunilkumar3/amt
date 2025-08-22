@@ -240,23 +240,70 @@ curl -X POST "{{base_url}}/teacher/debug-login" \
 }
 ```
 
-### 2. Teacher Logout
+## Postman Collection Setup
+
+### Environment Variables
+Create a Postman environment with these variables:
+```
+base_url: http://localhost/amt/api
+client_service: smartschool
+auth_key: schoolAdmin@
+test_email: teacher@gmail.com
+test_password: teacher
+```
+
+### Pre-request Scripts
+For authenticated endpoints, add this pre-request script:
+```javascript
+// Set authentication headers
+pm.request.headers.add({
+    key: "Client-Service",
+    value: pm.environment.get("client_service")
+});
+pm.request.headers.add({
+    key: "Auth-Key",
+    value: pm.environment.get("auth_key")
+});
+```
+
+### Test Scripts
+Add this test script to verify responses:
+```javascript
+pm.test("Status code is 200", function () {
+    pm.response.to.have.status(200);
+});
+
+pm.test("Response has status field", function () {
+    var jsonData = pm.response.json();
+    pm.expect(jsonData).to.have.property('status');
+});
+
+// For login endpoints, save token
+if (pm.response.json().token) {
+    pm.environment.set("auth_token", pm.response.json().token);
+    pm.environment.set("user_id", pm.response.json().id);
+}
+```
+
+## Authenticated Endpoints
+
+### 5. Teacher Logout
 
 **Endpoint:** `POST /teacher/logout`
 
 **Description:** Logout teacher and invalidate tokens.
 
-**Headers Required:**
-```
-User-ID: {user_id}
-Authorization: {token}
-```
-
-**Request Body:**
-```json
-{
+**cURL Command:**
+```bash
+curl -X POST "{{base_url}}/teacher/logout" \
+  -H "Client-Service: smartschool" \
+  -H "Auth-Key: schoolAdmin@" \
+  -H "Content-Type: application/json" \
+  -H "User-ID: {{user_id}}" \
+  -H "Authorization: {{auth_token}}" \
+  -d '{
     "deviceToken": "optional_device_token"
-}
+  }'
 ```
 
 **Success Response (200):**
@@ -267,17 +314,20 @@ Authorization: {token}
 }
 ```
 
-### 3. Get Teacher Profile
+### 6. Get Teacher Profile
 
 **Endpoint:** `GET /teacher/profile`
 
 **Description:** Retrieve authenticated teacher's profile information.
 
-**Headers Required:**
-```
-User-ID: {user_id}
-Authorization: {token}
-JWT-Token: {jwt_token} (alternative to User-ID/Authorization)
+**cURL Command:**
+```bash
+curl -X GET "{{base_url}}/teacher/profile" \
+  -H "Client-Service: smartschool" \
+  -H "Auth-Key: schoolAdmin@" \
+  -H "Content-Type: application/json" \
+  -H "User-ID: {{user_id}}" \
+  -H "Authorization: {{auth_token}}"
 ```
 
 **Success Response (200):**
@@ -286,38 +336,38 @@ JWT-Token: {jwt_token} (alternative to User-ID/Authorization)
     "status": 1,
     "message": "Profile retrieved successfully.",
     "data": {
-        "id": 456,
-        "employee_id": "EMP001",
-        "name": "John",
-        "surname": "Doe",
-        "father_name": "Robert Doe",
-        "mother_name": "Mary Doe",
-        "email": "teacher@school.com",
-        "contact_no": "1234567890",
-        "emergency_contact_no": "0987654321",
-        "dob": "1985-05-15",
-        "marital_status": "Married",
-        "date_of_joining": "2020-01-15",
-        "designation": "Mathematics Teacher",
-        "department": "Science Department",
-        "qualification": "M.Sc Mathematics",
-        "work_exp": "5 years",
-        "local_address": "123 Main St, City",
-        "permanent_address": "456 Home St, Town",
-        "image": "teacher_photo.jpg",
-        "gender": "Male",
-        "account_title": "John Doe",
-        "bank_account_no": "1234567890",
-        "bank_name": "ABC Bank",
-        "ifsc_code": "ABC123456",
-        "bank_branch": "Main Branch",
-        "payscale": "Grade A",
-        "basic_salary": 50000,
-        "epf_no": "EPF123456",
-        "contract_type": "Permanent",
-        "work_shift": "Morning",
-        "work_location": "Main Campus",
-        "note": "Excellent teacher",
+        "id": 31,
+        "employee_id": "322",
+        "name": "teacher",
+        "surname": "",
+        "father_name": null,
+        "mother_name": null,
+        "email": "teacher@gmail.com",
+        "contact_no": "",
+        "emergency_contact_no": null,
+        "dob": null,
+        "marital_status": null,
+        "date_of_joining": null,
+        "designation": null,
+        "department": null,
+        "qualification": null,
+        "work_exp": null,
+        "local_address": null,
+        "permanent_address": null,
+        "image": "",
+        "gender": null,
+        "account_title": null,
+        "bank_account_no": null,
+        "bank_name": null,
+        "ifsc_code": null,
+        "bank_branch": null,
+        "payscale": null,
+        "basic_salary": null,
+        "epf_no": null,
+        "contract_type": null,
+        "work_shift": null,
+        "work_location": null,
+        "note": null,
         "is_active": 1
     }
 }
@@ -825,13 +875,205 @@ JWT-Token: {jwt_token} (alternative)
 }
 ```
 
-## Testing
+## Troubleshooting
 
-Use the provided Postman collection for comprehensive API testing. The collection includes:
-- Authentication flows
-- Profile management
-- Menu and permission management
-- Module access testing
-- Error scenarios
-- JWT token operations
+### Common Issues and Solutions
+
+#### 1. "Unauthorized access" Error
+**Problem:** Getting `{"status": 0, "message": "Unauthorized access."}`
+**Solution:**
+- Verify headers: `Client-Service: smartschool` and `Auth-Key: schoolAdmin@`
+- Check header spelling and case sensitivity
+
+#### 2. "Invalid Email or Password" Error
+**Problem:** Getting `{"status": 0, "message": "Invalid Email or Password"}`
+**Solutions:**
+- Use correct test credentials: `teacher@gmail.com` / `teacher`
+- Verify database connection is working (use `/teacher/test` endpoint)
+- Check if staff record exists and is active in database
+
+#### 3. Database Connection Issues
+**Problem:** API returns database-related errors
+**Solutions:**
+- Verify database credentials in `api/application/config/database.php`
+- Ensure MySQL service is running
+- Check database name: `digita90_testschool`
+- Test connection with `/teacher/test` endpoint
+
+#### 4. Empty Response or 500 Error
+**Problem:** No response or internal server error
+**Solutions:**
+- Check PHP error logs
+- Verify CodeIgniter installation
+- Ensure all required files are present
+- Check file permissions
+
+#### 5. Headers Not Being Sent
+**Problem:** Headers not reaching the API
+**Solutions:**
+- Use proper header format in Postman
+- For form data, use `application/x-www-form-urlencoded`
+- For JSON data, use `application/json`
+- Check server configuration for header handling
+
+### Testing Checklist
+
+Before testing, ensure:
+- [ ] XAMPP/WAMP is running
+- [ ] MySQL service is active
+- [ ] Database `digita90_testschool` exists
+- [ ] Staff record with email `teacher@gmail.com` exists
+- [ ] API files are in correct directory structure
+- [ ] Postman environment variables are set
+
+### Quick Test Sequence
+
+1. **Test Connectivity**: `GET /teacher/test`
+2. **Test Simple Login**: `POST /teacher/simple-login` (form data)
+3. **Test Full Login**: `POST /teacher/login` (JSON data)
+4. **Test Debug Info**: `POST /teacher/debug-login`
+5. **Test Profile** (after login): `GET /teacher/profile`
+
+### Sample Postman Collection JSON
+
+```json
+{
+    "info": {
+        "name": "Teacher Authentication API",
+        "description": "Complete API testing collection for teacher authentication"
+    },
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost/amt/api"
+        },
+        {
+            "key": "client_service",
+            "value": "smartschool"
+        },
+        {
+            "key": "auth_key",
+            "value": "schoolAdmin@"
+        },
+        {
+            "key": "test_email",
+            "value": "teacher@gmail.com"
+        },
+        {
+            "key": "test_password",
+            "value": "teacher"
+        }
+    ],
+    "item": [
+        {
+            "name": "1. Test Connectivity",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Client-Service",
+                        "value": "{{client_service}}"
+                    },
+                    {
+                        "key": "Auth-Key",
+                        "value": "{{auth_key}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/teacher/test",
+                    "host": ["{{base_url}}"],
+                    "path": ["teacher", "test"]
+                }
+            }
+        },
+        {
+            "name": "2. Simple Login",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Client-Service",
+                        "value": "{{client_service}}"
+                    },
+                    {
+                        "key": "Auth-Key",
+                        "value": "{{auth_key}}"
+                    }
+                ],
+                "body": {
+                    "mode": "urlencoded",
+                    "urlencoded": [
+                        {
+                            "key": "email",
+                            "value": "{{test_email}}"
+                        },
+                        {
+                            "key": "password",
+                            "value": "{{test_password}}"
+                        }
+                    ]
+                },
+                "url": {
+                    "raw": "{{base_url}}/teacher/simple-login",
+                    "host": ["{{base_url}}"],
+                    "path": ["teacher", "simple-login"]
+                }
+            }
+        },
+        {
+            "name": "3. Full Login",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Client-Service",
+                        "value": "{{client_service}}"
+                    },
+                    {
+                        "key": "Auth-Key",
+                        "value": "{{auth_key}}"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"email\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/teacher/login",
+                    "host": ["{{base_url}}"],
+                    "path": ["teacher", "login"]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "if (pm.response.json().token) {",
+                            "    pm.environment.set('auth_token', pm.response.json().token);",
+                            "    pm.environment.set('user_id', pm.response.json().id);",
+                            "}"
+                        ]
+                    }
+                }
+            ]
+        }
+    ]
+}
 ```
+
+## API Testing Summary
+
+The Teacher Authentication API provides comprehensive authentication and profile management capabilities. Use the provided cURL commands and Postman collection for thorough testing. All endpoints follow consistent patterns for headers, request/response formats, and error handling.
+
+For production deployment:
+1. Change database credentials
+2. Update base URL
+3. Implement proper SSL/TLS
+4. Add rate limiting
+5. Enable comprehensive logging
+6. Implement proper error handling
