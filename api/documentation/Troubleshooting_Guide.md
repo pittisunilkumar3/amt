@@ -10,17 +10,26 @@ The error you encountered was a database connection issue. Here are the fixes ap
 **Fixed:** Typo in `api/application/config/database.php`
 - Changed `'prodcution'` to `'production'` on line 18
 
-### 2. Model Dependencies
+### 2. JWT Library Loading Error
+**Fixed:** "Unable to load the requested class: Jwt_lib"
+- Fixed case sensitivity issue (jwt_lib → JWT_lib)
+- Added file existence check before loading
+- Made JWT library completely optional
+- Added proper error handling for JWT operations
+
+### 3. Model Dependencies
 **Fixed:** Simplified model loading and added error handling
 - Removed complex dependency chains
 - Added safe defaults for settings
 - Made JWT token generation optional
+- Fixed library loading with try-catch blocks
 
-### 3. Controller Initialization
+### 4. Controller Initialization
 **Fixed:** Improved controller constructor
 - Added explicit database loading
 - Simplified dependency loading
 - Added error handling
+- Removed problematic model dependencies
 
 ## Testing Steps
 
@@ -60,8 +69,30 @@ http://your-domain.com/api/teacher/test
 }
 ```
 
-### Step 3: Test Teacher Login
-Use this endpoint to test login:
+### Step 3: Test Simple Teacher Login (No JWT)
+Use this endpoint to test basic login without JWT:
+
+```
+POST http://your-domain.com/api/teacher/simple-login
+```
+
+**Headers:**
+```
+Client-Service: smartschool
+Auth-Key: schoolAdmin@
+Content-Type: application/json
+```
+
+**Body:**
+```json
+{
+    "email": "teacher@school.com",
+    "password": "teacher123"
+}
+```
+
+### Step 4: Test Full Teacher Login (With JWT)
+Once simple login works, test the full login:
 
 ```
 POST http://your-domain.com/api/teacher/login

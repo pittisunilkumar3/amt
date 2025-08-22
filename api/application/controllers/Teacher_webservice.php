@@ -9,10 +9,22 @@ class Teacher_webservice extends CI_Controller
     {
         parent::__construct();
         $this->load->model(array(
-            'teacher_auth_model', 'teacher_permission_model', 'staff_model', 
-            'setting_model', 'role_model', 'rolepermission_model'
+            'teacher_auth_model', 'teacher_permission_model', 'staff_model',
+            'setting_model'
         ));
-        $this->load->library(array('teacher_middleware', 'customlib'));
+
+        // Load libraries with error handling
+        try {
+            $this->load->library('teacher_middleware');
+        } catch (Exception $e) {
+            log_message('error', 'Teacher middleware not available: ' . $e->getMessage());
+        }
+
+        try {
+            $this->load->library('customlib');
+        } catch (Exception $e) {
+            log_message('error', 'Customlib not available: ' . $e->getMessage());
+        }
         $this->load->helper('teacher_auth');
 
         $setting = $this->setting_model->getSchoolDetail();

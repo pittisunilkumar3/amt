@@ -27,12 +27,67 @@ class Teacher_auth extends CI_Controller
      */
     public function test()
     {
+        // Test model loading
+        $models_loaded = array(
+            'teacher_auth_model' => isset($this->teacher_auth_model),
+            'staff_model' => isset($this->staff_model),
+            'setting_model' => isset($this->setting_model)
+        );
+
         json_output(200, array(
             'status' => 1,
             'message' => 'Teacher Auth Controller is working',
             'timestamp' => date('Y-m-d H:i:s'),
-            'database_connected' => $this->db->conn_id ? true : false
+            'database_connected' => $this->db->conn_id ? true : false,
+            'models_loaded' => $models_loaded
         ));
+    }
+
+    /**
+     * Simple login test without JWT
+     * POST /teacher/simple-login
+     */
+    public function simple_login()
+    {
+        // Check authentication headers
+        $client_service = $this->input->get_request_header('Client-Service', true);
+        $auth_key = $this->input->get_request_header('Auth-Key', true);
+
+        if ($client_service != 'smartschool' || $auth_key != 'schoolAdmin@') {
+            json_output(401, array('status' => 0, 'message' => 'Unauthorized access.'));
+            return;
+        }
+
+        // Get POST data
+        $email = $this->input->post('email');
+        $password = $this->input->post('password');
+
+        if (empty($email) || empty($password)) {
+            json_output(400, array('status' => 0, 'message' => 'Email and password are required.'));
+            return;
+        }
+
+        // Simple database check
+        $this->db->select('id, email, name, surname, is_active');
+        $this->db->from('staff');
+        $this->db->where('email', $email);
+        $this->db->where('password', $password);
+        $this->db->where('is_active', 1);
+        $this->db->limit(1);
+        $query = $this->db->get();
+
+        if ($query->num_rows() == 1) {
+            $staff = $query->row();
+            json_output(200, array(
+                'status' => 1,
+                'message' => 'Login successful',
+                'staff_id' => $staff->id,
+                'name' => $staff->name . ' ' . $staff->surname,
+                'email' => $staff->email
+            ));
+        } else {
+            json_output(401, array('status' => 0, 'message' => 'Invalid email or password.'));
+        }
     }
 
     /**

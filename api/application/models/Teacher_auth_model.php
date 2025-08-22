@@ -12,9 +12,21 @@ class Teacher_auth_model extends CI_Model
     public function __construct()
     {
         parent::__construct();
-        // Load models and libraries
+        // Load models
         $this->load->model(array('staff_model', 'setting_model'));
-        $this->load->library(array('encryption', 'jwt_lib'));
+
+        // Load libraries with error handling
+        $this->load->library('encryption');
+
+        // Try to load JWT library, but don't fail if it's not available
+        if (file_exists(APPPATH . 'libraries/JWT_lib.php')) {
+            try {
+                $this->load->library('JWT_lib');
+            } catch (Exception $e) {
+                // JWT library not available, continue without it
+                log_message('info', 'JWT library not available: ' . $e->getMessage());
+            }
+        }
     }
 
     public function check_auth_client()
@@ -56,8 +68,8 @@ class Teacher_auth_model extends CI_Model
 
                     // Generate JWT token with teacher information (if JWT library is available)
                     $jwt_token = null;
-                    try {
-                        if (class_exists('JWT_lib')) {
+                    if (isset($this->JWT_lib) && is_object($this->JWT_lib)) {
+                        try {
                             $jwt_payload = array(
                                 'user_id' => $q->id,
                                 'staff_id' => $result->id,
@@ -66,11 +78,12 @@ class Teacher_auth_model extends CI_Model
                                 'employee_id' => $result->employee_id,
                                 'name' => $result->name . ' ' . $result->surname
                             );
-                            $jwt_token = $this->jwt_lib->generate_token($jwt_payload);
+                            $jwt_token = $this->JWT_lib->generate_token($jwt_payload);
+                        } catch (Exception $e) {
+                            // JWT generation failed, continue without it
+                            $jwt_token = null;
+                            log_message('error', 'JWT token generation failed: ' . $e->getMessage());
                         }
-                    } catch (Exception $e) {
-                        // JWT generation failed, continue without it
-                        $jwt_token = null;
                     }
 
                     // Also generate simple token for backward compatibility
@@ -247,19 +260,24 @@ class Teacher_auth_model extends CI_Model
             $token = $this->input->get_request_header('Authorization', true);
             $jwt_token = $this->input->get_request_header('JWT-Token', true);
 
-            // Try JWT authentication first
-            if ($jwt_token) {
-                $jwt_payload = $this->jwt_lib->verify_token($jwt_token);
-                if ($jwt_payload) {
-                    return array(
-                        'status' => 200,
-                        'message' => 'Authorized via JWT.',
-                        'staff_id' => $jwt_payload['staff_id'],
-                        'user_id' => $jwt_payload['user_id'],
-                        'auth_type' => 'jwt'
-                    );
-                } else {
-                    return array('status' => 401, 'message' => 'Invalid or expired JWT token.');
+            // Try JWT authentication first (if JWT library is available)
+            if ($jwt_token && isset($this->JWT_lib) && is_object($this->JWT_lib)) {
+                try {
+                    $jwt_payload = $this->JWT_lib->verify_token($jwt_token);
+                    if ($jwt_payload) {
+                        return array(
+                            'status' => 200,
+                            'message' => 'Authorized via JWT.',
+                            'staff_id' => $jwt_payload['staff_id'],
+                            'user_id' => $jwt_payload['user_id'],
+                            'auth_type' => 'jwt'
+                        );
+                    } else {
+                        return array('status' => 401, 'message' => 'Invalid or expired JWT token.');
+                    }
+                } catch (Exception $e) {
+                    // JWT verification failed, fall back to traditional auth
+                    log_message('error', 'JWT verification failed: ' . $e->getMessage());
                 }
             }
 
@@ -470,38 +488,54 @@ class Teacher_auth_model extends CI_Model
 
     public function refresh_jwt_token($jwt_token)
     {
-        $new_token = $this->jwt_lib->refresh_token($jwt_token);
+        if (!isset($this->JWT_lib) || !is_object($this->JWT_lib)) {
+            return array('status' => 0, 'message' => 'JWT library not available.');
+        }
 
-        if ($new_token) {
-            return array(
-                'status' => 1,
-                'message' => 'Token refreshed successfully.',
-                'jwt_token' => $new_token,
-                'expires_in' => $this->jwt_lib->get_expiration_time() * 3600 // Convert hours to seconds
-            );
-        } else {
-            return array('status' => 0, 'message' => 'Invalid or expired token. Please login again.');
+        try {
+            $new_token = $this->JWT_lib->refresh_token($jwt_token);
+
+            if ($new_token) {
+                return array(
+                    'status' => 1,
+                    'message' => 'Token refreshed successfully.',
+                    'jwt_token' => $new_token,
+                    'expires_in' => $this->JWT_lib->get_expiration_time() * 3600 // Convert hours to seconds
+                );
+            } else {
+                return array('status' => 0, 'message' => 'Invalid or expired token. Please login again.');
+            }
+        } catch (Exception $e) {
+            return array('status' => 0, 'message' => 'Token refresh failed: ' . $e->getMessage());
         }
     }
 
     public function validate_jwt_token($jwt_token)
     {
-        $payload = $this->jwt_lib->verify_token($jwt_token);
+        if (!isset($this->JWT_lib) || !is_object($this->JWT_lib)) {
+            return array('status' => 0, 'message' => 'JWT library not available.');
+        }
 
-        if ($payload) {
-            $remaining_time = $this->jwt_lib->get_remaining_time($jwt_token);
-            $is_expiring_soon = $this->jwt_lib->is_token_expiring_soon($jwt_token);
+        try {
+            $payload = $this->JWT_lib->verify_token($jwt_token);
 
-            return array(
-                'status' => 1,
-                'message' => 'Token is valid.',
-                'payload' => $payload,
-                'remaining_time' => $remaining_time,
-                'expires_in_hours' => round($remaining_time / 3600, 2),
-                'is_expiring_soon' => $is_expiring_soon
-            );
-        } else {
-            return array('status' => 0, 'message' => 'Invalid or expired token.');
+            if ($payload) {
+                $remaining_time = $this->JWT_lib->get_remaining_time($jwt_token);
+                $is_expiring_soon = $this->JWT_lib->is_token_expiring_soon($jwt_token);
+
+                return array(
+                    'status' => 1,
+                    'message' => 'Token is valid.',
+                    'payload' => $payload,
+                    'remaining_time' => $remaining_time,
+                    'expires_in_hours' => round($remaining_time / 3600, 2),
+                    'is_expiring_soon' => $is_expiring_soon
+                );
+            } else {
+                return array('status' => 0, 'message' => 'Invalid or expired token.');
+            }
+        } catch (Exception $e) {
+            return array('status' => 0, 'message' => 'Token validation failed: ' . $e->getMessage());
         }
     }
 }
