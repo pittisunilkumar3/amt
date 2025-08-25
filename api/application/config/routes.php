@@ -74,6 +74,12 @@ $route['teacher/dashboard'] = 'teacher_auth/dashboard';
 $route['teacher/refresh-token'] = 'teacher_auth/refresh_token';
 $route['teacher/validate-token'] = 'teacher_auth/validate_token';
 
+// Staff/Employee Detail Routes
+$route['teacher/staff/(:num)'] = 'teacher_auth/staff/$1';
+$route['teacher/staff-search'] = 'teacher_auth/staff_search';
+$route['teacher/staff-by-role/(:num)'] = 'teacher_auth/staff_by_role/$1';
+$route['teacher/staff-by-employee-id/(.+)'] = 'teacher_auth/staff_by_employee_id/$1';
+
 // Teacher Webservice Routes
 $route['teacher/menu'] = 'teacher_webservice/menu';
 $route['teacher/permissions'] = 'teacher_webservice/permissions';

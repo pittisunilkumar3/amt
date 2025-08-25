@@ -25,6 +25,36 @@ class Teacher_auth extends CI_Controller
     }
 
     /**
+     * Hybrid authentication helper method
+     * Supports both header-based and JSON body authentication
+     * Returns authentication result or sends error response
+     */
+    private function authenticate_hybrid()
+    {
+        $auth_result = $this->teacher_auth_model->authenticate_request();
+
+        if ($auth_result['status'] != 200) {
+            json_output(401, $auth_result);
+            return false;
+        }
+
+        return $auth_result;
+    }
+
+    /**
+     * Check client authentication only
+     */
+    private function check_client_auth()
+    {
+        $check_auth_client = $this->teacher_auth_model->check_auth_client();
+        if (!$check_auth_client) {
+            json_output(401, array('status' => 0, 'message' => 'Unauthorized access. Invalid client credentials.'));
+            return false;
+        }
+        return true;
+    }
+
+    /**
      * Test endpoint to check if controller is working
      * GET /teacher/test
      */
@@ -275,17 +305,13 @@ class Teacher_auth extends CI_Controller
         if ($method != 'POST') {
             json_output(400, array('status' => 400, 'message' => 'Bad request.'));
         } else {
-            $check_auth_client = $this->teacher_auth_model->check_auth_client();
-            if ($check_auth_client == true) {
-                $auth_check = $this->teacher_auth_model->auth();
-                if ($auth_check['status'] == 200) {
-                    $params = json_decode(file_get_contents('php://input'), true);
-                    $deviceToken = isset($params['deviceToken']) ? $params['deviceToken'] : null;
-                    $response = $this->teacher_auth_model->logout($deviceToken);
-                    json_output(200, $response);
-                } else {
-                    json_output(401, $auth_check);
-                }
+            // Use hybrid authentication
+            $auth_result = $this->authenticate_hybrid();
+            if ($auth_result !== false) {
+                $params = json_decode(file_get_contents('php://input'), true);
+                $deviceToken = isset($params['deviceToken']) ? $params['deviceToken'] : null;
+                $response = $this->teacher_auth_model->logout($deviceToken);
+                json_output(200, $response);
             }
         }
     }
@@ -301,15 +327,11 @@ class Teacher_auth extends CI_Controller
         if ($method != 'GET') {
             json_output(400, array('status' => 400, 'message' => 'Bad request.'));
         } else {
-            $check_auth_client = $this->teacher_auth_model->check_auth_client();
-            if ($check_auth_client == true) {
-                $auth_check = $this->teacher_auth_model->auth();
-                if ($auth_check['status'] == 200) {
-                    $response = $this->teacher_auth_model->get_profile();
-                    json_output(200, $response);
-                } else {
-                    json_output(401, $auth_check);
-                }
+            // Use hybrid authentication
+            $auth_result = $this->authenticate_hybrid();
+            if ($auth_result !== false) {
+                $response = $this->teacher_auth_model->get_profile();
+                json_output(200, $response);
             }
         }
     }
@@ -440,6 +462,168 @@ class Teacher_auth extends CI_Controller
 
                 $response = $this->teacher_auth_model->validate_jwt_token($params['jwt_token']);
                 json_output(200, $response);
+            }
+        }
+    }
+
+    /**
+     * Get Staff/Employee Details by ID
+     * GET /teacher/staff/{id}
+     */
+    public function staff($id = null)
+    {
+        $method = $this->input->server('REQUEST_METHOD');
+
+        if ($method != 'GET') {
+            json_output(400, array('status' => 400, 'message' => 'Bad request.'));
+        } else {
+            // Use hybrid authentication
+            $auth_result = $this->authenticate_hybrid();
+            if ($auth_result !== false) {
+                if (empty($id)) {
+                    json_output(400, array('status' => 0, 'message' => 'Staff ID is required.'));
+                    return;
+                }
+
+                $staff_details = $this->staff_model->getProfile($id);
+
+                if ($staff_details) {
+                    $response = array(
+                        'status' => 1,
+                        'message' => 'Staff details retrieved successfully.',
+                        'data' => $staff_details
+                    );
+                    json_output(200, $response);
+                } else {
+                    json_output(404, array('status' => 0, 'message' => 'Staff not found.'));
+                }
+            }
+        }
+    }
+
+    /**
+     * Search Staff/Employees
+     * GET /teacher/staff-search
+     */
+    public function staff_search()
+    {
+        $method = $this->input->server('REQUEST_METHOD');
+
+        if ($method != 'GET') {
+            json_output(400, array('status' => 400, 'message' => 'Bad request.'));
+        } else {
+            // Use hybrid authentication
+            $auth_result = $this->authenticate_hybrid();
+            if ($auth_result !== false) {
+                // Get search parameters
+                $search_term = $this->input->get('search');
+                $role_id = $this->input->get('role_id');
+                $is_active = $this->input->get('is_active', true) !== null ? $this->input->get('is_active') : 1;
+                $limit = $this->input->get('limit') ? (int)$this->input->get('limit') : 20;
+                $offset = $this->input->get('offset') ? (int)$this->input->get('offset') : 0;
+
+                // Validate limit
+                if ($limit > 100) {
+                    $limit = 100; // Maximum limit for performance
+                }
+
+                $staff_list = $this->staff_model->searchStaff($search_term, $role_id, $is_active, $limit, $offset);
+                $total_count = $this->staff_model->getStaffCount($search_term, $role_id, $is_active);
+
+                $response = array(
+                    'status' => 1,
+                    'message' => 'Staff search completed successfully.',
+                    'data' => array(
+                        'staff' => $staff_list,
+                        'pagination' => array(
+                            'total_records' => $total_count,
+                            'current_page' => floor($offset / $limit) + 1,
+                            'per_page' => $limit,
+                            'total_pages' => ceil($total_count / $limit),
+                            'has_next' => ($offset + $limit) < $total_count,
+                            'has_previous' => $offset > 0
+                        ),
+                        'search_params' => array(
+                            'search_term' => $search_term,
+                            'role_id' => $role_id,
+                            'is_active' => $is_active
+                        )
+                    )
+                );
+
+                json_output(200, $response);
+            }
+        }
+    }
+
+    /**
+     * Get Staff List by Role
+     * GET /teacher/staff-by-role/{role_id}
+     */
+    public function staff_by_role($role_id = null)
+    {
+        $method = $this->input->server('REQUEST_METHOD');
+
+        if ($method != 'GET') {
+            json_output(400, array('status' => 400, 'message' => 'Bad request.'));
+        } else {
+            // Use hybrid authentication
+            $auth_result = $this->authenticate_hybrid();
+            if ($auth_result !== false) {
+                if (empty($role_id)) {
+                    json_output(400, array('status' => 0, 'message' => 'Role ID is required.'));
+                    return;
+                }
+
+                $is_active = $this->input->get('is_active', true) !== null ? $this->input->get('is_active') : 1;
+                $staff_list = $this->staff_model->getStaffByRole($role_id, $is_active);
+
+                $response = array(
+                    'status' => 1,
+                    'message' => 'Staff list retrieved successfully.',
+                    'data' => array(
+                        'role_id' => $role_id,
+                        'staff_count' => count($staff_list),
+                        'staff' => $staff_list
+                    )
+                );
+
+                json_output(200, $response);
+            }
+        }
+    }
+
+    /**
+     * Get Staff by Employee ID
+     * GET /teacher/staff-by-employee-id/{employee_id}
+     */
+    public function staff_by_employee_id($employee_id = null)
+    {
+        $method = $this->input->server('REQUEST_METHOD');
+
+        if ($method != 'GET') {
+            json_output(400, array('status' => 400, 'message' => 'Bad request.'));
+        } else {
+            // Use hybrid authentication
+            $auth_result = $this->authenticate_hybrid();
+            if ($auth_result !== false) {
+                if (empty($employee_id)) {
+                    json_output(400, array('status' => 0, 'message' => 'Employee ID is required.'));
+                    return;
+                }
+
+                $staff_details = $this->staff_model->getByEmployeeId($employee_id);
+
+                if ($staff_details) {
+                    $response = array(
+                        'status' => 1,
+                        'message' => 'Staff details retrieved successfully.',
+                        'data' => $staff_details
+                    );
+                    json_output(200, $response);
+                } else {
+                    json_output(404, array('status' => 0, 'message' => 'Staff not found with the given employee ID.'));
+                }
             }
         }
     }

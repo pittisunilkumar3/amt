@@ -272,12 +272,28 @@ class Teacher_auth_model extends CI_Model
     public function auth()
     {
         if ($this->security_authentication_flag) {
+            // Try to get authentication data from headers first
             $users_id = $this->input->get_request_header('User-ID', true);
             $token = $this->input->get_request_header('Authorization', true);
             $jwt_token = $this->input->get_request_header('JWT-Token', true);
 
-            // Try JWT authentication first (if JWT library is available)
-            if ($jwt_token && isset($this->JWT_lib) && is_object($this->JWT_lib)) {
+            // If not in headers, try to get from JSON body (for POST requests)
+            if (empty($users_id) || empty($token)) {
+                $json_input = json_decode(file_get_contents('php://input'), true);
+                if ($json_input && is_array($json_input)) {
+                    $users_id = isset($json_input['user_id']) ? $json_input['user_id'] : $users_id;
+                    $token = isset($json_input['token']) ? $json_input['token'] : $token;
+                    $jwt_token = isset($json_input['jwt_token']) ? $json_input['jwt_token'] : $jwt_token;
+                }
+            }
+
+            // If still no authentication data, return unauthorized
+            if (empty($users_id) && empty($token) && empty($jwt_token)) {
+                return array('status' => 401, 'message' => 'Authentication required. Please provide User-ID and Authorization token in headers or request body.');
+            }
+
+            // Try JWT authentication first (if JWT library is available and JWT token provided)
+            if (!empty($jwt_token) && isset($this->JWT_lib) && is_object($this->JWT_lib)) {
                 try {
                     $jwt_payload = $this->JWT_lib->verify_token($jwt_token);
                     if ($jwt_payload) {
@@ -292,42 +308,50 @@ class Teacher_auth_model extends CI_Model
                         return array('status' => 401, 'message' => 'Invalid or expired JWT token.');
                     }
                 } catch (Exception $e) {
-                    // JWT verification failed, fall back to traditional auth
+                    // JWT verification failed, fall back to traditional auth if available
                     log_message('error', 'JWT verification failed: ' . $e->getMessage());
+                    if (empty($users_id) || empty($token)) {
+                        return array('status' => 401, 'message' => 'JWT token invalid and no fallback authentication provided.');
+                    }
                 }
             }
 
-            // Fallback to traditional token authentication
-            $q = $this->db->select('expired_at, staff_id, users_id')
-                          ->from('users_authentication')
-                          ->where('users_id', $users_id)
-                          ->where('token', $token)
-                          ->get()->row();
+            // Traditional token authentication
+            if (!empty($users_id) && !empty($token)) {
+                $q = $this->db->select('expired_at, staff_id, users_id')
+                              ->from('users_authentication')
+                              ->where('users_id', $users_id)
+                              ->where('token', $token)
+                              ->get()->row();
 
-            if ($q == "") {
-                return array('status' => 401, 'message' => 'Unauthorized.');
-            } else {
-                if ($q->expired_at < date('Y-m-d H:i:s')) {
-                    return array('status' => 401, 'message' => 'Your session has expired.');
+                if (empty($q)) {
+                    return array('status' => 401, 'message' => 'Invalid authentication credentials.');
                 } else {
-                    // Update token expiration
-                    $updated_at = date('Y-m-d H:i:s');
-                    $expired_at = date("Y-m-d H:i:s", strtotime('+8760 hours'));
-                    $this->db->where('users_id', $users_id)
-                             ->where('token', $token)
-                             ->update('users_authentication', array(
-                                 'expired_at' => $expired_at,
-                                 'updated_at' => $updated_at
-                             ));
-                    return array(
-                        'status' => 200,
-                        'message' => 'Authorized via token.',
-                        'staff_id' => $q->staff_id,
-                        'user_id' => $q->users_id,
-                        'auth_type' => 'token'
-                    );
+                    if ($q->expired_at < date('Y-m-d H:i:s')) {
+                        return array('status' => 401, 'message' => 'Your session has expired. Please login again.');
+                    } else {
+                        // Update token expiration
+                        $updated_at = date('Y-m-d H:i:s');
+                        $expired_at = date("Y-m-d H:i:s", strtotime('+8760 hours'));
+                        $this->db->where('users_id', $users_id)
+                                 ->where('token', $token)
+                                 ->update('users_authentication', array(
+                                     'expired_at' => $expired_at,
+                                     'updated_at' => $updated_at
+                                 ));
+                        return array(
+                            'status' => 200,
+                            'message' => 'Authorized via token.',
+                            'staff_id' => $q->staff_id,
+                            'user_id' => $q->users_id,
+                            'auth_type' => 'token'
+                        );
+                    }
                 }
             }
+
+            // If we reach here, authentication failed
+            return array('status' => 401, 'message' => 'Authentication failed. Please provide valid credentials.');
         } else {
             return array('status' => 200, 'message' => 'Authorized.');
         }
@@ -553,5 +577,54 @@ class Teacher_auth_model extends CI_Model
         } catch (Exception $e) {
             return array('status' => 0, 'message' => 'Token validation failed: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Hybrid authentication method that supports both header-based and JSON body authentication
+     * This method can be used by all authenticated endpoints
+     */
+    public function authenticate_request()
+    {
+        // First check if client authentication is valid
+        if (!$this->check_auth_client()) {
+            return array('status' => 401, 'message' => 'Unauthorized access. Invalid client credentials.');
+        }
+
+        // Then check user authentication
+        $auth_result = $this->auth();
+
+        if ($auth_result['status'] != 200) {
+            return $auth_result;
+        }
+
+        return $auth_result;
+    }
+
+    /**
+     * Get authentication data from either headers or JSON body
+     * Returns array with user_id, token, and jwt_token
+     */
+    public function get_auth_data()
+    {
+        // Try to get authentication data from headers first
+        $users_id = $this->input->get_request_header('User-ID', true);
+        $token = $this->input->get_request_header('Authorization', true);
+        $jwt_token = $this->input->get_request_header('JWT-Token', true);
+
+        // If not in headers, try to get from JSON body (for POST requests)
+        if (empty($users_id) || empty($token)) {
+            $json_input = json_decode(file_get_contents('php://input'), true);
+            if ($json_input && is_array($json_input)) {
+                $users_id = isset($json_input['user_id']) ? $json_input['user_id'] : $users_id;
+                $token = isset($json_input['token']) ? $json_input['token'] : $token;
+                $jwt_token = isset($json_input['jwt_token']) ? $json_input['jwt_token'] : $jwt_token;
+            }
+        }
+
+        return array(
+            'user_id' => $users_id,
+            'token' => $token,
+            'jwt_token' => $jwt_token
+        );
     }
 }
