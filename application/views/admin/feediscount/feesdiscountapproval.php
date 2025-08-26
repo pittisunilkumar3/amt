@@ -155,6 +155,34 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
         padding: 10px 12px;
     }
 }
+
+/* Success highlight animation for updated rows */
+.table tbody tr.success {
+    background-color: #d4edda !important;
+    transition: background-color 0.3s ease;
+}
+
+.table tbody tr.success td {
+    border-color: #c3e6cb !important;
+}
+
+/* Alert message styling */
+.alert-message {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    border-radius: 4px;
+}
+
+.alert-message .close {
+    font-size: 18px;
+    font-weight: bold;
+    line-height: 1;
+    color: inherit;
+    opacity: 0.8;
+}
+
+.alert-message .close:hover {
+    opacity: 1;
+}
 </style>
 
 
@@ -417,7 +445,7 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
             console.log('🔴 Disapproval button clicked, Student ID:', studentID);
 
             if (!studentID) {
-                alert('Error: Student ID not found');
+                showMessage('Error: Student ID not found', 'error');
                 return;
             }
 
@@ -434,16 +462,26 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
 
                     if (response.status === 'success') {
                         $('#confirm-delete').modal('hide');
-                        location.reload();
+
+                        // Update the DataTable row instead of reloading
+                        try {
+                            updateDataTableRow(studentID, 'rejected');
+                            showMessage('Discount rejected successfully!', 'success');
+                        } catch (error) {
+                            console.error('Error updating row:', error);
+                            // Fallback to table refresh
+                            refreshDataTable();
+                            showMessage('Discount rejected successfully!', 'success');
+                        }
                     } else {
-                        alert('Failed to disapprove discount: ' + (response.message || 'Unknown error'));
+                        showMessage('Failed to disapprove discount: ' + (response.message || 'Unknown error'), 'error');
                     }
                 },
                 error: function (xhr, status, error) {
                     console.error('❌ Disapproval AJAX error:', status, error);
                     console.error('Response:', xhr.responseText);
                     $modalDiv.removeClass('modalloading');
-                    alert('Network error occurred while disapproving. Please try again.');
+                    showMessage('Network error occurred while disapproving. Please try again.', 'error');
                 }
             });
         });
@@ -455,7 +493,7 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
             console.log('🟢 Approval button clicked, Student ID:', studentID);
 
             if (!studentID) {
-                alert('Error: Student ID not found');
+                showMessage('Error: Student ID not found', 'error');
                 return;
             }
 
@@ -472,16 +510,26 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
 
                     if (response.status === 'success') {
                         $('#confirm-approved').modal('hide');
-                        location.reload();
+
+                        // Update the DataTable row instead of reloading
+                        try {
+                            updateDataTableRow(studentID, 'approved');
+                            showMessage('Discount approved successfully!', 'success');
+                        } catch (error) {
+                            console.error('Error updating row:', error);
+                            // Fallback to table refresh
+                            refreshDataTable();
+                            showMessage('Discount approved successfully!', 'success');
+                        }
                     } else {
-                        alert('Failed to approve discount: ' + (response.message || 'Unknown error'));
+                        showMessage('Failed to approve discount: ' + (response.message || 'Unknown error'), 'error');
                     }
                 },
                 error: function (xhr, status, error) {
                     console.error('❌ Approval AJAX error:', status, error);
                     console.error('Response:', xhr.responseText);
                     $modalDiv.removeClass('modalloading');
-                    alert('Network error occurred while approving. Please try again.');
+                    showMessage('Network error occurred while approving. Please try again.', 'error');
                 }
             });
         });
@@ -494,7 +542,7 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
             console.log('🔄 Revert button clicked, Student ID:', studentID, 'Payment ID:', certificateId);
 
             if (!studentID) {
-                alert('Error: Student ID not found');
+                showMessage('Error: Student ID not found', 'error');
                 return;
             }
 
@@ -511,16 +559,26 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
 
                     if (response.status === 'success') {
                         $('#confirm-retrive').modal('hide');
-                        location.reload();
+
+                        // Update the DataTable row instead of reloading
+                        try {
+                            updateDataTableRow(studentID, 'pending');
+                            showMessage('Discount reverted to pending status successfully!', 'success');
+                        } catch (error) {
+                            console.error('Error updating row:', error);
+                            // Fallback to table refresh
+                            refreshDataTable();
+                            showMessage('Discount reverted to pending status successfully!', 'success');
+                        }
                     } else {
-                        alert('Failed to revert discount: ' + (response.message || 'Unknown error'));
+                        showMessage('Failed to revert discount: ' + (response.message || 'Unknown error'), 'error');
                     }
                 },
                 error: function (xhr, status, error) {
                     console.error('❌ Revert AJAX error:', status, error);
                     console.error('Response:', xhr.responseText);
                     $modalDiv.removeClass('modalloading');
-                    alert('Network error occurred while reverting. Please try again.');
+                    showMessage('Network error occurred while reverting. Please try again.', 'error');
                 }
             });
         });
@@ -630,7 +688,12 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                     dataType: "html",
                     data: {'data': JSON.stringify(array_to_print), 'class_id': classId,'certificate_id': certificateId},
                     success: function (response) {
-                        location.reload();
+                        // Refresh the DataTable instead of reloading the page
+                        refreshDataTable();
+                        showMessage('Multiple discounts approved successfully!', 'success');
+                    },
+                    error: function() {
+                        showMessage('Error occurred while processing bulk approval.', 'error');
                     }
                 });
             }
@@ -663,7 +726,12 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                     dataType: "html",
                     data: {'data': JSON.stringify(array_to_print), 'class_id': classId,'certificate_id': certificateId},
                     success: function (response) {
-                        location.reload();
+                        // Refresh the DataTable instead of reloading the page
+                        refreshDataTable();
+                        showMessage('Multiple discounts rejected successfully!', 'success');
+                    },
+                    error: function() {
+                        showMessage('Error occurred while processing bulk rejection.', 'error');
                     }
                 });
             }
@@ -758,7 +826,12 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                         dataType: "html",
                         data: {'data': studentID, 'class_id': classId,'certificate_id': certificateId},
                         success: function (response) {
-                            location.reload();
+                            // Refresh the DataTable instead of reloading the page
+                            refreshDataTable();
+                            showMessage('Fee added and discount approved successfully!', 'success');
+                        },
+                        error: function() {
+                            showMessage('Error occurred while approving discount.', 'error');
                         }
                     });
                     // alert('Status: ' + response.status + '\nMessage: ' + response.message);
@@ -892,6 +965,9 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
 </script>
 
 <script type="text/javascript">
+// Global variables
+var baseurl = '<?php echo base_url() ?>';
+
 $(document).ready(function(){
     console.log('🚀 Fees Discount Approval Page Loaded');
 
@@ -1068,6 +1144,202 @@ function emptyDatatable(selector, message) {
             "emptyTable": "Please search to view results"
         }
     });
+}
+
+// Helper function to show success/error messages
+function showMessage(message, type) {
+    // Remove any existing messages
+    $('.alert-message').remove();
+
+    var alertClass = 'alert-danger';
+    var iconClass = 'fa-exclamation-triangle';
+
+    if (type === 'success') {
+        alertClass = 'alert-success';
+        iconClass = 'fa-check-circle';
+    } else if (type === 'info') {
+        alertClass = 'alert-info';
+        iconClass = 'fa-info-circle';
+    }
+
+    var alertHtml = '<div class="alert ' + alertClass + ' alert-dismissible alert-message" style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">' +
+                    '<button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>' +
+                    '<i class="fa ' + iconClass + '"></i> ' + message +
+                    '</div>';
+
+    $('body').append(alertHtml);
+
+    // Auto-hide after 5 seconds
+    setTimeout(function() {
+        $('.alert-message').fadeOut(500, function() {
+            $(this).remove();
+        });
+    }, 5000);
+}
+
+// Helper function to refresh DataTable
+function refreshDataTable() {
+    console.log('🔄 Refreshing DataTable...');
+    var table = $('.fees-discount-list').DataTable();
+
+    // Check if the table has ajax reload capability
+    if (table.ajax && typeof table.ajax.reload === 'function') {
+        console.log('📡 Using AJAX reload');
+        table.ajax.reload(null, false);
+    } else {
+        // If no ajax, trigger a form resubmission to reload data
+        console.log('📝 Using form resubmission');
+        var $form = $('form');
+        if ($form.length > 0) {
+            $form.trigger('submit');
+        } else {
+            // Last resort - reload the page but preserve search parameters
+            console.log('🔄 Reloading page with current parameters');
+            var currentUrl = window.location.href;
+            window.location.href = currentUrl;
+        }
+    }
+}
+
+// Alternative function to update row by refreshing table data
+function updateRowByRefresh(studentID, newStatus, successMessage) {
+    console.log('🔄 Updating row by refreshing table data for student ID:', studentID);
+
+    // Show loading indicator
+    showMessage('Updating...', 'info');
+
+    // Refresh the entire table
+    setTimeout(function() {
+        refreshDataTable();
+
+        // Show success message after refresh
+        setTimeout(function() {
+            showMessage(successMessage, 'success');
+        }, 500);
+    }, 100);
+}
+
+// Helper function to update DataTable row after status change
+function updateDataTableRow(studentID, newStatus) {
+    console.log('🔄 Updating row for student ID:', studentID, 'to status:', newStatus);
+
+    var table = $('.fees-discount-list').DataTable();
+    var updated = false;
+
+    // First try to find the row using DataTable API
+    table.rows().every(function(rowIdx, tableLoop, rowLoop) {
+        var $row = $(this.node());
+        var $actionCell = $row.find('td:last-child');
+
+        // Check if this row contains the student ID in action buttons
+        if ($actionCell.find('[data-studentid="' + studentID + '"]').length > 0) {
+            console.log('✅ Found row to update for student ID:', studentID);
+
+            // Find status column (second to last column)
+            var $statusCell = $row.find('td:nth-last-child(2)');
+            var $checkboxCell = $row.find('td:first-child');
+
+            // Generate new status HTML
+            var newStatusHtml = '';
+            var newActionHtml = '';
+
+            // Get the existing view button to preserve the correct student ID for the link
+            var $existingViewBtn = $actionCell.find('a[href*="student/view"]');
+            var viewBtnHtml = '';
+            if ($existingViewBtn.length > 0) {
+                viewBtnHtml = $existingViewBtn[0].outerHTML + ' ';
+            } else {
+                // Fallback if no existing view button found
+                viewBtnHtml = '<a href="' + baseurl + 'student/view/' + studentID + '" class="btn btn-default btn-xs" data-toggle="tooltip" title="View"><i class="fa fa-reorder"></i></a> ';
+            }
+
+            if (newStatus === 'approved') {
+                newStatusHtml = '<span class="label label-success">Approved</span>';
+                // For approved status, show view and revert buttons
+                newActionHtml = viewBtnHtml +
+                               '<button class="btn btn-default btn-xs" data-toggle="modal" data-target="#confirm-retrive" title="Revert" data-studentid="' + studentID + '" data-paymentid=""><i class="fa fa-undo"></i></button>';
+                // Remove checkbox for approved items
+                $checkboxCell.html('');
+
+            } else if (newStatus === 'rejected') {
+                newStatusHtml = '<span class="label label-danger">Rejected</span>';
+                // For rejected status, show only view button
+                newActionHtml = viewBtnHtml;
+                // Remove checkbox for rejected items
+                $checkboxCell.html('');
+
+            } else if (newStatus === 'pending') {
+                newStatusHtml = '<span class="label label-warning">Pending</span>';
+                // For pending status, show all action buttons
+                newActionHtml = viewBtnHtml +
+                               '<span style="margin-right:3px; cursor:pointer;" class="label label-success approve-btn" data-toggle="modal" data-target="#confirm-approved" data-studentid="' + studentID + '">Approve</span> ' +
+                               '<span style="cursor:pointer;" class="label label-danger disapprove-btn" data-studentid="' + studentID + '" data-toggle="modal" data-target="#confirm-delete">Disapprove</span>';
+                // Add checkbox back for pending items - get the original student ID from existing checkbox if available
+                var $existingCheckbox = $checkboxCell.find('input[type="checkbox"]');
+                var checkboxStudentId = studentID;
+                if ($existingCheckbox.length > 0) {
+                    checkboxStudentId = $existingCheckbox.val() || studentID;
+                }
+                $checkboxCell.html('<input type="checkbox" class="checkbox center-block" name="check" data-student_id="' + checkboxStudentId + '" value="' + checkboxStudentId + '">');
+            }
+
+            // Update the DOM directly
+            console.log('🔄 Updating status cell with:', newStatusHtml);
+            console.log('🔄 Updating action cell with:', newActionHtml);
+
+            $statusCell.html(newStatusHtml);
+            $actionCell.html(newActionHtml);
+
+            // Add visual highlight effect
+            $row.addClass('success');
+            setTimeout(function() {
+                $row.removeClass('success');
+            }, 3000);
+
+            updated = true;
+            console.log('✅ Row updated successfully for student ID:', studentID);
+            return false; // Break the loop
+        }
+    });
+
+    // If DataTable API didn't work, try direct DOM search as fallback
+    if (!updated) {
+        console.log('⚠️ DataTable API search failed, trying direct DOM search...');
+        $('.fees-discount-list tbody tr').each(function() {
+            var $row = $(this);
+            var $actionCell = $row.find('td:last-child');
+
+            if ($actionCell.find('[data-studentid="' + studentID + '"]').length > 0) {
+                console.log('✅ Found row via DOM search for student ID:', studentID);
+
+                var $statusCell = $row.find('td:nth-last-child(2)');
+                var newStatusHtml = '';
+
+                if (newStatus === 'approved') {
+                    newStatusHtml = '<span class="label label-success">Approved</span>';
+                } else if (newStatus === 'rejected') {
+                    newStatusHtml = '<span class="label label-danger">Rejected</span>';
+                } else if (newStatus === 'pending') {
+                    newStatusHtml = '<span class="label label-warning">Pending</span>';
+                }
+
+                $statusCell.html(newStatusHtml);
+                $row.addClass('success');
+                setTimeout(function() {
+                    $row.removeClass('success');
+                }, 3000);
+
+                updated = true;
+                console.log('✅ Row updated via DOM search for student ID:', studentID);
+                return false;
+            }
+        });
+    }
+
+    if (!updated) {
+        console.warn('⚠️ Could not find row to update for student ID:', studentID, '- will refresh table');
+        throw new Error('Row not found for update');
+    }
 }
 </script>
 
