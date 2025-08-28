@@ -20,7 +20,7 @@ class AdvancePayment_model extends MY_Model
     public function get($id = null)
     {
         $this->db->select('sap.*, ss.student_id, s.firstname, s.middlename, s.lastname, s.admission_no, c.class, sec.section')
-                 ->from('advance_payments sap')
+                 ->from('student_advance_payments sap')
                  ->join('student_session ss', 'sap.student_session_id = ss.id')
                  ->join('students s', 'ss.student_id = s.id')
                  ->join('classes c', 'ss.class_id = c.id')
@@ -44,7 +44,7 @@ class AdvancePayment_model extends MY_Model
     public function getAdvanceBalance($student_session_id)
     {
         $this->db->select('SUM(balance) as total_balance')
-                 ->from('advance_payments')
+                 ->from('student_advance_payments')
                  ->where('student_session_id', $student_session_id)
                  ->where('is_active', 'yes')
                  ->where('balance >', 0);
@@ -61,7 +61,7 @@ class AdvancePayment_model extends MY_Model
     public function getStudentAdvancePayments($student_session_id)
     {
         $this->db->select('*')
-                 ->from('advance_payments')
+                 ->from('student_advance_payments')
                  ->where('student_session_id', $student_session_id)
                  ->where('is_active', 'yes')
                  ->order_by('payment_date', 'DESC');
@@ -81,7 +81,7 @@ class AdvancePayment_model extends MY_Model
 
         if (isset($data['id'])) {
             $this->db->where('id', $data['id']);
-            $this->db->update('advance_payments', $data);
+            $this->db->update('student_advance_payments', $data);
             $message = UPDATE_RECORD_CONSTANT . " On advance payment id " . $data['id'];
             $action = "Update";
             $record_id = $data['id'];
@@ -92,7 +92,7 @@ class AdvancePayment_model extends MY_Model
                 $data['balance'] = $data['amount'];
             }
             
-            $this->db->insert('advance_payments', $data);
+            $this->db->insert('student_advance_payments', $data);
             $id = $this->db->insert_id();
             $message = INSERT_RECORD_CONSTANT . " On advance payment id " . $id;
             $action = "Insert";
@@ -125,7 +125,7 @@ class AdvancePayment_model extends MY_Model
         $this->db->trans_strict(false);
 
         // Get current advance payment
-        $advance_payment = $this->db->get_where('advance_payments', array('id' => $advance_payment_id))->row();
+        $advance_payment = $this->db->get_where('student_advance_payments', array('id' => $advance_payment_id))->row();
         
         if (!$advance_payment || $advance_payment->balance < $amount_to_use) {
             return false;
@@ -134,7 +134,7 @@ class AdvancePayment_model extends MY_Model
         // Update advance payment balance
         $new_balance = $advance_payment->balance - $amount_to_use;
         $this->db->where('id', $advance_payment_id);
-        $this->db->update('advance_payments', array('balance' => $new_balance));
+        $this->db->update('student_advance_payments', array('balance' => $new_balance));
 
         // Record usage
         $usage_data = array(
@@ -172,7 +172,7 @@ class AdvancePayment_model extends MY_Model
     public function getAvailableAdvancePayments($student_session_id)
     {
         $this->db->select('*')
-                 ->from('advance_payments')
+                 ->from('student_advance_payments')
                  ->where('student_session_id', $student_session_id)
                  ->where('is_active', 'yes')
                  ->where('balance >', 0)
@@ -190,7 +190,7 @@ class AdvancePayment_model extends MY_Model
     {
         $this->db->select('apu.*, sap.invoice_id as advance_invoice_id, sap.payment_date as advance_payment_date')
                  ->from('advance_payment_usage apu')
-                 ->join('advance_payments sap', 'apu.advance_payment_id = sap.id');
+                 ->join('student_advance_payments sap', 'apu.advance_payment_id = sap.id');
         
         if ($advance_payment_id) {
             $this->db->where('apu.advance_payment_id', $advance_payment_id);
@@ -216,7 +216,7 @@ class AdvancePayment_model extends MY_Model
         
         // Get the last invoice number for this month
         $this->db->select('invoice_id')
-                 ->from('advance_payments')
+                 ->from('student_advance_payments')
                  ->like('invoice_id', $prefix . $year . $month, 'after')
                  ->order_by('id', 'DESC')
                  ->limit(1);
@@ -244,7 +244,7 @@ class AdvancePayment_model extends MY_Model
         $this->db->trans_strict(false);
 
         $this->db->where('id', $id);
-        $this->db->update('advance_payments', array('is_active' => 'no'));
+        $this->db->update('student_advance_payments', array('is_active' => 'no'));
         
         $message = DELETE_RECORD_CONSTANT . " On advance payment id " . $id;
         $action = "Delete";
@@ -271,27 +271,104 @@ class AdvancePayment_model extends MY_Model
     public function getAdvancePaymentReport($start_date = null, $end_date = null, $class_id = null, $section_id = null)
     {
         $this->db->select('sap.*, ss.student_id, s.firstname, s.middlename, s.lastname, s.admission_no, c.class, sec.section')
-                 ->from('advance_payments sap')
+                 ->from('student_advance_payments sap')
                  ->join('student_session ss', 'sap.student_session_id = ss.id')
                  ->join('students s', 'ss.student_id = s.id')
                  ->join('classes c', 'ss.class_id = c.id')
                  ->join('sections sec', 'ss.section_id = sec.id')
                  ->where('sap.is_active', 'yes');
-        
+
         if ($start_date && $end_date) {
             $this->db->where('sap.payment_date >=', $start_date);
             $this->db->where('sap.payment_date <=', $end_date);
         }
-        
+
         if ($class_id) {
             $this->db->where('ss.class_id', $class_id);
         }
-        
+
         if ($section_id) {
             $this->db->where('ss.section_id', $section_id);
         }
-        
+
         $this->db->order_by('sap.payment_date', 'DESC');
+        return $this->db->get()->result();
+    }
+
+    /**
+     * Revert advance payment usage
+     * @param int $usage_id
+     * @param string $reason
+     * @return bool
+     */
+    public function revertAdvanceUsage($usage_id, $reason = '')
+    {
+        $this->db->trans_start();
+        $this->db->trans_strict(false);
+
+        // Get usage record
+        $usage = $this->db->get_where('advance_payment_usage', array('id' => $usage_id))->row();
+
+        if (!$usage) {
+            return false;
+        }
+
+        // Get the advance payment record
+        $advance_payment = $this->db->get_where('student_advance_payments', array('id' => $usage->advance_payment_id))->row();
+
+        if (!$advance_payment) {
+            return false;
+        }
+
+        // Restore the balance to the advance payment
+        $new_balance = $advance_payment->balance + $usage->amount_used;
+        $this->db->where('id', $usage->advance_payment_id);
+        $this->db->update('student_advance_payments', array('balance' => $new_balance));
+
+        // Mark the usage record as reverted (soft delete)
+        $this->db->where('id', $usage_id);
+        $this->db->update('advance_payment_usage', array(
+            'is_reverted' => 'yes',
+            'revert_reason' => $reason,
+            'reverted_at' => date('Y-m-d H:i:s')
+        ));
+
+        // Log the revert action
+        $message = "Reverted advance payment usage of " . $usage->amount_used . " for usage ID " . $usage_id . ". Reason: " . $reason;
+        $this->log($message, $usage_id, "Revert");
+
+        $this->db->trans_complete();
+
+        if ($this->db->trans_status() === FALSE) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Get advance usage history with revert information
+     * @param int $advance_payment_id
+     * @param int $student_session_id
+     * @return array
+     */
+    public function getAdvanceUsageHistoryWithReverts($advance_payment_id = null, $student_session_id = null)
+    {
+        $this->db->select('apu.*, sap.invoice_id as advance_invoice_id, sap.payment_date as advance_payment_date,
+                          CASE WHEN apu.is_reverted = "yes" THEN "Reverted" ELSE "Applied" END as status')
+                 ->from('advance_payment_usage apu')
+                 ->join('student_advance_payments sap', 'apu.advance_payment_id = sap.id');
+
+        if ($advance_payment_id) {
+            $this->db->where('apu.advance_payment_id', $advance_payment_id);
+        }
+
+        if ($student_session_id) {
+            $this->db->where('sap.student_session_id', $student_session_id);
+        }
+
+        $this->db->order_by('apu.usage_date', 'DESC');
+
         return $this->db->get()->result();
     }
 }

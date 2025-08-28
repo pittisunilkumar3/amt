@@ -570,6 +570,16 @@ class Studentfee extends Admin_Controller
             }
         }
 
+        // Get advance payment information for the student
+        $advance_balance = $this->AdvancePayment_model->getAdvanceBalance($student_session_id);
+        $advance_payments = $this->AdvancePayment_model->getStudentAdvancePayments($student_session_id);
+        $advance_usage_history = $this->AdvancePayment_model->getAdvanceUsageHistory(null, $student_session_id);
+
+        $data['advance_balance'] = $advance_balance;
+        $data['advance_payments'] = $advance_payments;
+        $data['advance_usage_history'] = $advance_usage_history;
+        $data['student_session_id'] = $student_session_id;
+
         $this->load->view('layout/header', $data);
         $this->load->view('studentfee/studentAddfee', $data);
         $this->load->view('layout/footer', $data);
@@ -2722,6 +2732,71 @@ class Studentfee extends Admin_Controller
 
         echo json_encode(array(
             'status' => 'success',
+            'advance_payments' => $advance_payments,
+            'usage_history' => $usage_history
+        ));
+    }
+
+    /**
+     * Revert advance payment usage
+     */
+    public function revertAdvancePayment()
+    {
+        if (!$this->rbac->hasPrivilege('collect_fees', 'can_add')) {
+            echo json_encode(array('status' => 'fail', 'error' => 'Access denied'));
+            return;
+        }
+
+        $usage_id = $this->input->post('usage_id');
+        $reason = $this->input->post('reason');
+
+        if (!$usage_id) {
+            echo json_encode(array('status' => 'fail', 'error' => 'Usage ID required'));
+            return;
+        }
+
+        try {
+            $result = $this->AdvancePayment_model->revertAdvanceUsage($usage_id, $reason);
+
+            if ($result) {
+                echo json_encode(array(
+                    'status' => 'success',
+                    'message' => 'Advance payment usage reverted successfully'
+                ));
+            } else {
+                echo json_encode(array(
+                    'status' => 'fail',
+                    'error' => 'Failed to revert advance payment usage'
+                ));
+            }
+        } catch (Exception $e) {
+            echo json_encode(array(
+                'status' => 'fail',
+                'error' => 'Error: ' . $e->getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Get advance payment details for fee collection page
+     */
+    public function getAdvancePaymentDetails()
+    {
+        $student_session_id = $this->input->post('student_session_id');
+
+        if (!$student_session_id) {
+            echo json_encode(array('status' => 'fail', 'error' => 'Student session ID required'));
+            return;
+        }
+
+        $advance_balance = $this->AdvancePayment_model->getAdvanceBalance($student_session_id);
+        $advance_payments = $this->AdvancePayment_model->getStudentAdvancePayments($student_session_id);
+        $usage_history = $this->AdvancePayment_model->getAdvanceUsageHistory(null, $student_session_id);
+
+        echo json_encode(array(
+            'status' => 'success',
+            'balance' => $advance_balance,
+            'formatted_balance' => amountFormat($advance_balance),
             'advance_payments' => $advance_payments,
             'usage_history' => $usage_history
         ));

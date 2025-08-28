@@ -43,6 +43,9 @@ CREATE TABLE IF NOT EXISTS `advance_payment_usage` (
   `usage_date` date NOT NULL,
   `fee_category` varchar(50) NOT NULL DEFAULT 'fees',
   `description` text DEFAULT NULL,
+  `is_reverted` varchar(10) NOT NULL DEFAULT 'no',
+  `revert_reason` text DEFAULT NULL,
+  `reverted_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `idx_advance_payment_id` (`advance_payment_id`),
@@ -50,6 +53,7 @@ CREATE TABLE IF NOT EXISTS `advance_payment_usage` (
   KEY `idx_student_fees_depositeadding_id` (`student_fees_depositeadding_id`),
   KEY `idx_usage_date` (`usage_date`),
   KEY `idx_fee_category` (`fee_category`),
+  KEY `idx_is_reverted` (`is_reverted`),
   CONSTRAINT `fk_advance_usage_advance_payment` FOREIGN KEY (`advance_payment_id`) REFERENCES `student_advance_payments` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_advance_usage_fees_deposite` FOREIGN KEY (`student_fees_deposite_id`) REFERENCES `student_fees_deposite` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_advance_usage_fees_depositeadding` FOREIGN KEY (`student_fees_depositeadding_id`) REFERENCES `student_fees_depositeadding` (`id`) ON DELETE CASCADE

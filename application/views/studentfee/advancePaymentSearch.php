@@ -345,6 +345,135 @@ if (!empty($fields)) {
     </section>
 </div>
 
+<!-- Advance Payment Modal -->
+<div class="modal fade" id="advancePaymentModal" tabindex="-1" role="dialog" aria-labelledby="advancePaymentModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title" id="advancePaymentModalLabel">
+                    <i class="fa fa-plus"></i> <?php echo $this->lang->line('add_advance_payment'); ?>
+                </h4>
+            </div>
+            <form id="advancePaymentForm" method="post" action="<?php echo site_url('studentfee/createAdvancePayment'); ?>">
+                <div class="modal-body">
+                    <?php echo $this->customlib->getCSRF(); ?>
+                    <input type="hidden" id="modal_student_session_id" name="student_session_id" value="">
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label><?php echo $this->lang->line('student_name'); ?> <span class="req">*</span></label>
+                                <input type="text" id="modal_student_name" class="form-control" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label><?php echo $this->lang->line('admission_no'); ?></label>
+                                <input type="text" id="modal_admission_no" class="form-control" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label><?php echo $this->lang->line('class'); ?></label>
+                                <input type="text" id="modal_class_section" class="form-control" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label><?php echo $this->lang->line('father_name'); ?></label>
+                                <input type="text" id="modal_father_name" class="form-control" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label><?php echo $this->lang->line('amount'); ?> <span class="req">*</span></label>
+                                <input type="number" step="0.01" name="amount" id="advance_amount" class="form-control" placeholder="0.00" required>
+                                <span class="text-danger" id="error_amount"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label><?php echo $this->lang->line('date'); ?> <span class="req">*</span></label>
+                                <input type="text" name="date" id="advance_date" class="form-control date" value="<?php echo date($this->customlib->getSchoolDateFormat()); ?>" required>
+                                <span class="text-danger" id="error_date"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label><?php echo $this->lang->line('payment_mode'); ?> <span class="req">*</span></label>
+                                <select name="payment_mode" id="advance_payment_mode" class="form-control" required>
+                                    <option value=""><?php echo $this->lang->line('select'); ?></option>
+                                    <option value="cash"><?php echo $this->lang->line('cash'); ?></option>
+                                    <option value="cheque"><?php echo $this->lang->line('cheque'); ?></option>
+                                    <option value="dd"><?php echo $this->lang->line('dd'); ?></option>
+                                    <option value="bank_transfer"><?php echo $this->lang->line('bank_transfer'); ?></option>
+                                </select>
+                                <span class="text-danger" id="error_payment_mode"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label><?php echo $this->lang->line('reference_no'); ?></label>
+                                <input type="text" name="reference_no" id="advance_reference_no" class="form-control">
+                                <span class="text-danger" id="error_reference_no"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label><?php echo $this->lang->line('description'); ?></label>
+                                <textarea name="description" id="advance_description" class="form-control" rows="3" placeholder="<?php echo $this->lang->line('description'); ?>"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo $this->lang->line('cancel'); ?></button>
+                    <button type="submit" class="btn btn-primary" id="advancePaymentSubmitBtn">
+                        <i class="fa fa-save"></i> <?php echo $this->lang->line('save'); ?>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Advance History Modal -->
+<div class="modal fade" id="advanceHistoryModal" tabindex="-1" role="dialog" aria-labelledby="advanceHistoryModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title" id="advanceHistoryModalLabel">
+                    <i class="fa fa-history"></i> <?php echo $this->lang->line('advance_payment_history'); ?>
+                </h4>
+            </div>
+            <div class="modal-body" id="advanceHistoryContent">
+                <!-- Content will be loaded via AJAX -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo $this->lang->line('close'); ?></button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script type="text/javascript">
 
 function getSectionByClass(class_id, section_id) {
@@ -638,4 +767,147 @@ $(document).on('submit','.class_search_form',function(e){
         $(selector).prop('disabled', false);
         $(selector).next('.SumoSelect').removeClass('loading');
     }
+
+    // Advance Payment Modal Functions
+    function openAdvancePaymentModal(studentSessionId, studentName, admissionNo, classSection, fatherName) {
+        console.log('Opening advance payment modal for:', studentName);
+
+        // Clear previous form data and errors
+        $('#advancePaymentForm')[0].reset();
+        $('[id^=error_]').html('');
+
+        // Set student information
+        $('#modal_student_session_id').val(studentSessionId);
+        $('#modal_student_name').val(studentName);
+        $('#modal_admission_no').val(admissionNo);
+        $('#modal_class_section').val(classSection);
+        $('#modal_father_name').val(fatherName);
+
+        // Set default date
+        $('#advance_date').val('<?php echo date($this->customlib->getSchoolDateFormat()); ?>');
+
+        // Show modal
+        $('#advancePaymentModal').modal('show');
+    }
+
+    function viewAdvanceHistory(studentSessionId) {
+        console.log('Viewing advance history for student session:', studentSessionId);
+
+        $('#advanceHistoryContent').html('<div class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading...</div>');
+        $('#advanceHistoryModal').modal('show');
+
+        $.ajax({
+            url: '<?php echo site_url("studentfee/getAdvanceHistory"); ?>',
+            type: 'POST',
+            data: {
+                student_session_id: studentSessionId,
+                '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    let content = '<div class="table-responsive">';
+                    content += '<table class="table table-striped table-bordered">';
+                    content += '<thead><tr>';
+                    content += '<th><?php echo $this->lang->line("date"); ?></th>';
+                    content += '<th><?php echo $this->lang->line("amount"); ?></th>';
+                    content += '<th><?php echo $this->lang->line("balance"); ?></th>';
+                    content += '<th><?php echo $this->lang->line("payment_mode"); ?></th>';
+                    content += '<th><?php echo $this->lang->line("description"); ?></th>';
+                    content += '</tr></thead><tbody>';
+
+                    if (response.advance_payments && response.advance_payments.length > 0) {
+                        $.each(response.advance_payments, function(index, payment) {
+                            content += '<tr>';
+                            content += '<td>' + payment.payment_date + '</td>';
+                            content += '<td><?php echo $currency_symbol; ?>' + parseFloat(payment.amount).toFixed(2) + '</td>';
+                            content += '<td><?php echo $currency_symbol; ?>' + parseFloat(payment.balance).toFixed(2) + '</td>';
+                            content += '<td>' + payment.payment_mode + '</td>';
+                            content += '<td>' + (payment.description || '') + '</td>';
+                            content += '</tr>';
+                        });
+                    } else {
+                        content += '<tr><td colspan="5" class="text-center"><?php echo $this->lang->line("no_record_found"); ?></td></tr>';
+                    }
+
+                    content += '</tbody></table></div>';
+                    $('#advanceHistoryContent').html(content);
+                } else {
+                    $('#advanceHistoryContent').html('<div class="alert alert-danger">' + (response.error || 'Error loading history') + '</div>');
+                }
+            },
+            error: function() {
+                $('#advanceHistoryContent').html('<div class="alert alert-danger">Error loading advance payment history</div>');
+            }
+        });
+    }
+
+    // Form submission handler
+    $(document).ready(function() {
+        // Initialize date picker
+        $('.date').datepicker({
+            format: '<?php echo $this->customlib->getSchoolDateFormat(); ?>',
+            autoclose: true,
+            todayHighlight: true
+        });
+
+        // Handle advance payment form submission
+        $('#advancePaymentForm').on('submit', function(e) {
+            e.preventDefault();
+
+            var form = $(this);
+            var submitBtn = $('#advancePaymentSubmitBtn');
+            var formData = form.serialize();
+
+            // Clear previous errors
+            $('[id^=error_]').html('');
+
+            // Show loading state
+            submitBtn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> <?php echo $this->lang->line("processing"); ?>');
+
+            $.ajax({
+                url: form.attr('action'),
+                type: 'POST',
+                data: formData,
+                dataType: 'json',
+                success: function(response) {
+                    if (response.status === 'success') {
+                        // Show success message
+                        showSuccessMessage(response.message || '<?php echo $this->lang->line("advance_payment_added_successfully"); ?>');
+
+                        // Close modal
+                        $('#advancePaymentModal').modal('hide');
+
+                        // Refresh the student list to show updated balance
+                        if (typeof initDatatable === 'function') {
+                            // Get current search parameters and refresh
+                            var currentParams = $('#student-list').data('params') || {};
+                            initDatatable('student-list', 'studentfee/ajaxAdvanceSearch', currentParams, [], 100);
+                        }
+
+                        // Reset form
+                        form[0].reset();
+
+                    } else if (response.status === 'fail') {
+                        // Show validation errors
+                        if (response.error) {
+                            $.each(response.error, function(key, value) {
+                                $('#error_' + key).html(value);
+                            });
+                        }
+                    } else {
+                        showErrorMessage(response.message || '<?php echo $this->lang->line("something_went_wrong"); ?>');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX Error:', status, error);
+                    showErrorMessage('<?php echo $this->lang->line("network_error"); ?>');
+                },
+                complete: function() {
+                    // Reset button state
+                    submitBtn.prop('disabled', false).html('<i class="fa fa-save"></i> <?php echo $this->lang->line("save"); ?>');
+                }
+            });
+        });
+    });
 </script>
