@@ -147,16 +147,16 @@ if (!function_exists('main_menu_array')) {
                 'disable_reason'  => array('index','edit'),                              
             ),
             
-            'fees_collection' => array(                             
-                'studentfee'     => array('index','addfee','searchpayment','feesearch'),                            
-                'feemaster'      => array('index','assign','edit'),                               
-                'feegroup'       => array('index','edit'),                               
-                'feetype'        => array('index','edit'),                               
-                'feediscount'    => array('index','edit','assign'),                               
-                'feesforward'    => array('index'),                               
-                'feereminder'    => array('setting'), 
-                'offlinepayment' => array('index'), 				
-            ), 
+            'fees_collection' => array(
+                'studentfee'     => array('index','addfee','searchpayment','feesearch','advancePayment','advanceSearch','ajaxAdvanceSearch','createAdvancePayment','getAdvanceBalance','printAdvanceReceipt','getAdvanceHistory'),
+                'feemaster'      => array('index','assign','edit'),
+                'feegroup'       => array('index','edit'),
+                'feetype'        => array('index','edit'),
+                'feediscount'    => array('index','edit','assign'),
+                'feesforward'    => array('index'),
+                'feereminder'    => array('setting'),
+                'offlinepayment' => array('index'),
+            ),
             
             'income' => array(                                 
                 'income'        => array('index','edit','incomesearch'),             

@@ -250,6 +250,17 @@ $(document).ready(function(){
         "dataSrc": dataSrc,
         "type": "POST",
         'data': params,
+        "error": function(xhr, error, code) {
+            console.error('DataTables AJAX Error:', {
+                url: baseurl+_url,
+                status: xhr.status,
+                statusText: xhr.statusText,
+                responseText: xhr.responseText,
+                error: error,
+                code: code,
+                params: params
+            });
+        }
      }
      
     });

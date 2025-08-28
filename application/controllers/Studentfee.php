@@ -19,6 +19,7 @@ class Studentfee extends Admin_Controller
          $this->load->model('addaccount_model');
          $this->load->model("studentfeemasteradding_model");
           $this->load->model("transportfee_model");
+          $this->load->model("AdvancePayment_model");
         $this->search_type        = $this->config->item('search_type');
         $this->sch_setting_detail = $this->setting_model->getSetting();
         $this->current_session = $this->setting_model->getCurrentSession();
@@ -734,22 +735,66 @@ class Studentfee extends Admin_Controller
             $email              = $this->input->post('guardian_email');
             $parent_app_key     = $this->input->post('parent_app_key');
             $student_session_id = $this->input->post('student_session_id');
+
+            // Apply advance payment if available
+            $original_amount = convertCurrencyFormatToBaseAmount($this->input->post('amount'));
+            $advance_applied = 0;
+            $advance_balance = $this->AdvancePayment_model->getAdvanceBalance($student_session_id);
+
+            if ($advance_balance > 0 && $original_amount > 0) {
+                $advance_to_apply = min($advance_balance, $original_amount);
+                $advance_applied = $advance_to_apply;
+
+                // Update the amount in json_array to reflect advance payment application
+                $json_array['amount'] = $original_amount - $advance_to_apply;
+                $json_array['advance_applied'] = $advance_to_apply;
+                $json_array['original_amount'] = $original_amount;
+
+                // Update data array
+                $data['amount_detail'] = $json_array;
+            }
+
             $inserted_id        = $this->studentfeemaster_model->fee_deposit($data, $send_to, $student_fees_discount_id);
 
             $receipt_data1           = json_decode($inserted_id);
 
+            // Apply advance payment if any was calculated
+            if ($advance_applied > 0 && $receipt_data1) {
+                $available_advances = $this->AdvancePayment_model->getAvailableAdvancePayments($student_session_id);
+                $remaining_to_apply = $advance_applied;
+
+                foreach ($available_advances as $advance) {
+                    if ($remaining_to_apply <= 0) break;
+
+                    $amount_to_use = min($advance->balance, $remaining_to_apply);
+                    if ($amount_to_use > 0) {
+                        $this->AdvancePayment_model->applyAdvanceToFee(
+                            $advance->id,
+                            $amount_to_use,
+                            $receipt_data1->invoice_id,
+                            null,
+                            $fee_category,
+                            'Applied to fee payment - Invoice: ' . $receipt_data1->invoice_id . '/' . $receipt_data1->sub_invoice_id
+                        );
+                        $remaining_to_apply -= $amount_to_use;
+                    }
+                }
+            }
+
             $accounttranscationarray = array(
                 'receiptid'=> $receipt_data1->invoice_id . '/' . $receipt_data1->sub_invoice_id,
                 'accountid'=>$this->input->post('accountname'),
-                'amount' => convertCurrencyFormatToBaseAmount($this->input->post('amount')),
+                'amount' => convertCurrencyFormatToBaseAmount($this->input->post('amount')) - $advance_applied,
                 'date' => date('Y-m-d', $this->customlib->datetostrtotime($this->input->post('date'))),
                 'type' => 'fees',
-                'description'     => $this->input->post('description'),
+                'description'     => $this->input->post('description') . ($advance_applied > 0 ? ' (Advance Applied: ' . amountFormat($advance_applied) . ')' : ''),
                 'status' => 'credit',
             );
 
-
-            $accounttranscation = $this->addaccount_model->addingtranscation($accounttranscationarray);
+            // Only add account transaction if there's an actual cash payment
+            if (convertCurrencyFormatToBaseAmount($this->input->post('amount')) - $advance_applied > 0) {
+                $accounttranscation = $this->addaccount_model->addingtranscation($accounttranscationarray);
+            }
 
 
 
@@ -2412,8 +2457,438 @@ class Studentfee extends Admin_Controller
 
 
 
+    /**
+     * Advance Payment Management Methods
+     */
 
+    /**
+     * Show advance payment form
+     */
+    public function advancePayment()
+    {
+        if (!$this->rbac->hasPrivilege('collect_fees', 'can_add')) {
+            access_denied();
+        }
 
+        $this->session->set_userdata('top_menu', $this->lang->line('fees_collection'));
+        $this->session->set_userdata('sub_menu', 'studentfee/advancePayment');
+        $data['title'] = 'Advance Payment';
+        $data['sch_setting'] = $this->sch_setting_detail;
+        $data['fields'] = $this->customfield_model->get_custom_fields('students', 1);
+        $class = $this->class_model->get();
+        $data['classlist'] = $class;
+        $this->load->view('layout/header', $data);
+        $this->load->view('studentfee/advancePaymentSearch', $data);
+        $this->load->view('layout/footer', $data);
+    }
 
+    /**
+     * Search for advance payment students
+     */
+    public function advanceSearch()
+    {
+        // Enhanced error logging and debugging - following student search pattern
+        error_log('=== ADVANCE PAYMENT SEARCH VALIDATION STARTED ===');
+        error_log('POST data: ' . print_r($_POST, true));
+        error_log('Request method: ' . $_SERVER['REQUEST_METHOD']);
+
+        // Handle multi-select values - convert to arrays if needed
+        $class_id    = $this->input->post('class_id');
+        $section_id  = $this->input->post('section_id');
+        $search_type = $this->input->post('search_type');
+        $search_text = $this->input->post('search_text');
+
+        // Ensure arrays for multi-select values
+        if (!is_array($class_id)) {
+            $class_id = !empty($class_id) ? array($class_id) : array();
+        }
+        if (!is_array($section_id)) {
+            $section_id = !empty($section_id) ? array($section_id) : array();
+        }
+
+        // Remove empty values from arrays
+        $class_id = array_filter($class_id, function($value) { return !empty($value); });
+        $section_id = array_filter($section_id, function($value) { return !empty($value); });
+
+        error_log('Advance payment search validation - Processed: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+        log_message('debug', 'Advance payment search validation - Processed: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+
+        try {
+            if ($search_type == 'search_filter') {
+                // No mandatory validation - allow flexible report generation
+                $params = array('search_type' => $search_type, 'class_id' => $class_id, 'section_id' => $section_id);
+                $array  = array('status' => 1, 'error' => '', 'params' => $params);
+                error_log('Advance payment search validation - Success response: ' . json_encode($array));
+                log_message('debug', 'Advance payment search validation - Success response: ' . json_encode($array));
+                echo json_encode($array);
+            } else {
+                // For full text search, no validation needed
+                $params = array('search_type' => 'search_full', 'class_id' => $class_id, 'section_id' => $section_id, 'search_text' => $search_text);
+                $array  = array('status' => 1, 'error' => '', 'params' => $params);
+                error_log('Advance payment search validation - Full text search response: ' . json_encode($array));
+                log_message('debug', 'Advance payment search validation - Full text search response: ' . json_encode($array));
+                echo json_encode($array);
+            }
+        } catch (Exception $e) {
+            error_log('Advance payment search validation - Exception: ' . $e->getMessage());
+            log_message('error', 'Advance payment search validation - Exception: ' . $e->getMessage());
+            $array = array('status' => 0, 'error' => array('general' => 'An error occurred during validation'));
+            echo json_encode($array);
+        }
+    }
+
+    /**
+     * Search validation for advance payment - Following student search pattern exactly
+     */
+    public function searchvalidation()
+    {
+        // Enhanced error logging and debugging
+        error_log('=== ADVANCE PAYMENT SEARCH VALIDATION STARTED ===');
+        error_log('POST data: ' . print_r($_POST, true));
+        error_log('Request method: ' . $_SERVER['REQUEST_METHOD']);
+        error_log('Content type: ' . (isset($_SERVER['CONTENT_TYPE']) ? $_SERVER['CONTENT_TYPE'] : 'not set'));
+
+        // Handle multi-select values - convert to arrays if needed
+        $class_id    = $this->input->post('class_id');
+        $section_id  = $this->input->post('section_id');
+        $srch_type   = $this->input->post('search_type');
+        $search_text = $this->input->post('search_text');
+
+        // Ensure arrays for multi-select values
+        if (!is_array($class_id)) {
+            $class_id = !empty($class_id) ? array($class_id) : array();
+        }
+        if (!is_array($section_id)) {
+            $section_id = !empty($section_id) ? array($section_id) : array();
+        }
+
+        error_log('Processed parameters:');
+        error_log('- srch_type: ' . $srch_type);
+        error_log('- class_id: ' . print_r($class_id, true));
+        error_log('- section_id: ' . print_r($section_id, true));
+        error_log('- search_text: ' . $search_text);
+
+        try {
+            if ($srch_type == 'search_filter') {
+                // No mandatory validation - allow flexible report generation
+                $params = array('srch_type' => $srch_type, 'class_id' => $class_id, 'section_id' => $section_id);
+                $array  = array('status' => 1, 'error' => '', 'params' => $params);
+                error_log('Advance payment search validation - Success response: ' . json_encode($array));
+                log_message('debug', 'Advance payment search validation - Success response: ' . json_encode($array));
+                echo json_encode($array);
+            } else {
+                // For full text search, no validation needed
+                $params = array('srch_type' => 'search_full', 'class_id' => $class_id, 'section_id' => $section_id, 'search_text' => $search_text);
+                $array  = array('status' => 1, 'error' => '', 'params' => $params);
+                error_log('Advance payment search validation - Success response: ' . json_encode($array));
+                log_message('debug', 'Advance payment search validation - Success response: ' . json_encode($array));
+                echo json_encode($array);
+            }
+        } catch (Exception $e) {
+            error_log('Advance payment search validation - Exception: ' . $e->getMessage());
+            log_message('error', 'Advance payment search validation - Exception: ' . $e->getMessage());
+            $array = array('status' => 0, 'error' => array('general' => 'An error occurred during validation'));
+            echo json_encode($array);
+        }
+    }
+
+    /**
+     * Create advance payment
+     */
+    public function createAdvancePayment()
+    {
+        if (!$this->rbac->hasPrivilege('collect_fees', 'can_add')) {
+            access_denied();
+        }
+
+        $this->form_validation->set_rules('student_session_id', $this->lang->line('student'), 'required|trim|xss_clean');
+        $this->form_validation->set_rules('amount', $this->lang->line('amount'), 'required|trim|xss_clean|numeric|greater_than[0]');
+        $this->form_validation->set_rules('payment_mode', $this->lang->line('payment_mode'), 'required|trim|xss_clean');
+        $this->form_validation->set_rules('date', $this->lang->line('date'), 'required|trim|xss_clean');
+
+        if ($this->form_validation->run() == false) {
+            $data = array(
+                'student_session_id' => form_error('student_session_id'),
+                'amount' => form_error('amount'),
+                'payment_mode' => form_error('payment_mode'),
+                'date' => form_error('date'),
+            );
+            $array = array('status' => 'fail', 'error' => $data);
+            echo json_encode($array);
+        } else {
+            $staff_record = $this->staff_model->get($this->customlib->getStaffID());
+            $collected_by = $this->customlib->getAdminSessionUserName() . "(" . $staff_record['employee_id'] . ")";
+
+            $advance_data = array(
+                'student_session_id' => $this->input->post('student_session_id'),
+                'amount' => convertCurrencyFormatToBaseAmount($this->input->post('amount')),
+                'balance' => convertCurrencyFormatToBaseAmount($this->input->post('amount')),
+                'payment_date' => date('Y-m-d', $this->customlib->datetostrtotime($this->input->post('date'))),
+                'payment_mode' => $this->input->post('payment_mode'),
+                'description' => $this->input->post('description'),
+                'collected_by' => $collected_by,
+                'received_by' => $staff_record['id'],
+                'invoice_id' => $this->AdvancePayment_model->generateAdvanceInvoiceId(),
+                'reference_no' => $this->input->post('reference_no'),
+            );
+
+            $inserted_id = $this->AdvancePayment_model->add($advance_data);
+
+            if ($inserted_id) {
+                // Add to account transactions
+                $accounttranscationarray = array(
+                    'receiptid' => $advance_data['invoice_id'],
+                    'accountid' => $this->input->post('accountname'),
+                    'amount' => convertCurrencyFormatToBaseAmount($this->input->post('amount')),
+                    'date' => date('Y-m-d', $this->customlib->datetostrtotime($this->input->post('date'))),
+                    'type' => 'advance_fees',
+                    'description' => 'Advance Payment - ' . $this->input->post('description'),
+                    'status' => 'credit',
+                );
+
+                $this->addaccount_model->addingtranscation($accounttranscationarray);
+
+                $array = array('status' => 'success', 'error' => '', 'message' => 'Advance payment created successfully', 'advance_id' => $inserted_id);
+                echo json_encode($array);
+            } else {
+                $array = array('status' => 'fail', 'error' => 'Failed to create advance payment');
+                echo json_encode($array);
+            }
+        }
+    }
+
+    /**
+     * Get advance balance for a student
+     */
+    public function getAdvanceBalance()
+    {
+        $student_session_id = $this->input->post('student_session_id');
+
+        if (!$student_session_id) {
+            echo json_encode(array('status' => 'fail', 'error' => 'Student session ID required'));
+            return;
+        }
+
+        $balance = $this->AdvancePayment_model->getAdvanceBalance($student_session_id);
+        $advance_payments = $this->AdvancePayment_model->getStudentAdvancePayments($student_session_id);
+
+        echo json_encode(array(
+            'status' => 'success',
+            'balance' => $balance,
+            'formatted_balance' => amountFormat($balance),
+            'advance_payments' => $advance_payments
+        ));
+    }
+
+    /**
+     * Print advance payment receipt
+     */
+    public function printAdvanceReceipt()
+    {
+        $advance_id = $this->input->post('advance_id');
+
+        if (!$advance_id) {
+            echo json_encode(array('status' => 0, 'error' => 'Advance payment ID required'));
+            return;
+        }
+
+        $data['sch_setting'] = $this->sch_setting_detail;
+        $data['settinglist'] = $this->setting_model->get();
+        $data['advance_payment'] = $this->AdvancePayment_model->get($advance_id);
+
+        if (!$data['advance_payment']) {
+            echo json_encode(array('status' => 0, 'error' => 'Advance payment not found'));
+            return;
+        }
+
+        $page = $this->load->view('print/printAdvancePaymentReceipt', $data, true);
+        echo json_encode(array('status' => 1, 'page' => $page));
+    }
+
+    /**
+     * Get advance payment history for a student
+     */
+    public function getAdvanceHistory()
+    {
+        $student_session_id = $this->input->post('student_session_id');
+
+        if (!$student_session_id) {
+            echo json_encode(array('status' => 'fail', 'error' => 'Student session ID required'));
+            return;
+        }
+
+        $advance_payments = $this->AdvancePayment_model->getStudentAdvancePayments($student_session_id);
+        $usage_history = $this->AdvancePayment_model->getAdvanceUsageHistory(null, $student_session_id);
+
+        echo json_encode(array(
+            'status' => 'success',
+            'advance_payments' => $advance_payments,
+            'usage_history' => $usage_history
+        ));
+    }
+
+    /**
+     * AJAX search for advance payment students - Following student search pattern
+     */
+    public function ajaxAdvanceSearch()
+    {
+        // Enhanced error logging and debugging - following student search pattern
+        error_log('=== ADVANCE PAYMENT DATATABLE REQUEST STARTED ===');
+        error_log('POST data: ' . print_r($_POST, true));
+        error_log('Request method: ' . $_SERVER['REQUEST_METHOD']);
+
+        $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
+        $class_id        = $this->input->post('class_id');
+        $section_id      = $this->input->post('section_id');
+        $search_text     = $this->input->post('search_text');
+        $search_type     = $this->input->post('srch_type'); // Match the parameter name from searchvalidation
+
+        // Enhanced debug logging
+        error_log('Advance Payment DataTable - Raw input: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+        log_message('debug', 'Advance Payment DataTable - Raw input: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+
+        // Handle multi-select values - convert to arrays if needed (following student search pattern)
+        if (!is_array($class_id)) {
+            $class_id = !empty($class_id) ? array($class_id) : array();
+        }
+        if (!is_array($section_id)) {
+            $section_id = !empty($section_id) ? array($section_id) : array();
+        }
+
+        // Remove empty values from arrays
+        $class_id = array_filter($class_id, function($value) { return !empty($value); });
+        $section_id = array_filter($section_id, function($value) { return !empty($value); });
+
+        error_log('Advance Payment DataTable - Processed: class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+
+        $sch_setting = $this->sch_setting_detail;
+
+        try {
+            $resultlist = '';
+            // Use the same model methods as student search
+            if ($search_type == "search_filter") {
+                error_log('Advance Payment DataTable - Calling searchdtByClassSection with class_id=' . print_r($class_id, true) . ', section_id=' . print_r($section_id, true));
+                $resultlist = $this->student_model->searchdtByClassSection($class_id, $section_id);
+            } elseif ($search_type == "search_full") {
+                error_log('Advance Payment DataTable - Calling searchFullText with search_text=' . $search_text);
+                $resultlist = $this->student_model->searchFullText($search_text, array());
+            } else {
+                error_log('Advance Payment DataTable - Unknown search type: ' . $search_type);
+                throw new Exception('Unknown search type: ' . $search_type);
+            }
+
+            error_log('Advance Payment DataTable - Model result length: ' . strlen($resultlist));
+            error_log('Advance Payment DataTable - Model result preview: ' . substr($resultlist, 0, 300) . '...');
+
+            // Handle empty result from model
+            if (empty($resultlist) || trim($resultlist) === '') {
+                error_log('Advance Payment DataTable - Empty result from model, creating default structure');
+                $students = (object)array('data' => array(), 'draw' => 1, 'recordsTotal' => 0, 'recordsFiltered' => 0);
+            } else {
+                $students = json_decode($resultlist);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    error_log('Advance Payment DataTable - JSON decode error: ' . json_last_error_msg());
+                    error_log('Advance Payment DataTable - Raw result causing error: ' . $resultlist);
+                    throw new Exception('JSON decode failed: ' . json_last_error_msg());
+                }
+                error_log('Advance Payment DataTable - Decoded result: ' . print_r($students, true));
+            }
+        } catch (Exception $e) {
+            error_log('Advance Payment DataTable - Exception: ' . $e->getMessage());
+            $students = (object)array('data' => array(), 'draw' => 1, 'recordsTotal' => 0, 'recordsFiltered' => 0);
+        }
+
+        $dt_data = array();
+        $fields  = $this->customfield_model->get_custom_fields('students', 1);
+
+        if (!empty($students->data)) {
+            foreach ($students->data as $student_key => $student) {
+                try {
+                    // Get advance balance for each student
+                    $advance_balance = 0; // Default to 0 if model method fails
+                    if (method_exists($this->AdvancePayment_model, 'getAdvanceBalance')) {
+                        $advance_balance = $this->AdvancePayment_model->getAdvanceBalance($student->student_session_id);
+                    } else {
+                        error_log('Advance Payment DataTable - getAdvanceBalance method not found in AdvancePayment_model');
+                    }
+
+                    $row = array();
+                    // Follow exact same structure as student search
+                    $row[] = $student->admission_no;
+                    $row[] = "<a href='" . base_url() . "student/view/" . $student->id . "'>" . $this->customlib->getFullName($student->firstname, $student->middlename, $student->lastname, $sch_setting->middlename, $sch_setting->lastname) . "</a>";
+                    $row[] = $student->class . "(" . $student->section . ")";
+
+                    if ($sch_setting->father_name) {
+                        $row[] = $student->father_name;
+                    }
+
+                    $row[] = $this->customlib->dateformat($student->dob);
+
+                    if (!empty($student->gender)) {
+                        $row[] = $this->lang->line(strtolower($student->gender));
+                    } else {
+                        $row[] = '';
+                    }
+
+                    if ($sch_setting->category) {
+                        $row[] = $student->category;
+                    }
+
+                    if ($sch_setting->mobile_no) {
+                        $row[] = $student->mobileno;
+                    }
+
+                    // Add custom fields (same as student search)
+                    foreach ($fields as $fields_key => $fields_value) {
+                        $custom_name   = $fields_value->name;
+                        $display_field = $student->$custom_name;
+                        if ($fields_value->type == "link") {
+                            $display_field = "<a href=" . $student->$custom_name . " target='_blank'>" . $student->$custom_name . "</a>";
+                        }
+                        $row[] = $display_field;
+                    }
+
+                    // Add advance balance column
+                    $row[] = $currency_symbol . amountFormat($advance_balance);
+
+                    // Action buttons
+                    $action = '<div class="btn-group">';
+                    $action .= '<button type="button" class="btn btn-primary btn-xs" onclick="openAdvancePaymentModal(\'' . $student->student_session_id . '\', \'' . addslashes($this->customlib->getFullName($student->firstname, $student->middlename, $student->lastname, $sch_setting->middlename, $sch_setting->lastname)) . '\', \'' . $student->admission_no . '\', \'' . $student->class . ' (' . $student->section . ')\', \'' . addslashes($student->father_name) . '\')" title="' . $this->lang->line('add_advance_payment') . '">';
+                    $action .= '<i class="fa fa-plus"></i> ' . $this->lang->line('add_advance_payment');
+                    $action .= '</button>';
+
+                    if ($advance_balance > 0) {
+                        $action .= '<button type="button" class="btn btn-info btn-xs" onclick="viewAdvanceHistory(\'' . $student->student_session_id . '\')" title="' . $this->lang->line('view_history') . '">';
+                        $action .= '<i class="fa fa-history"></i>';
+                        $action .= '</button>';
+                    }
+
+                    $action .= '</div>';
+                    $row[] = $action;
+
+                    $dt_data[] = $row;
+                } catch (Exception $e) {
+                    error_log('Advance Payment DataTable - Error processing student: ' . $e->getMessage());
+                    continue;
+                }
+            }
+        }
+
+        // Follow the exact same JSON response pattern as student search
+        $json_data = array(
+            "draw"                => intval(isset($students->draw) ? $students->draw : 1),
+            "recordsTotal"        => intval(isset($students->recordsTotal) ? $students->recordsTotal : 0),
+            "recordsFiltered"     => intval(isset($students->recordsFiltered) ? $students->recordsFiltered : 0),
+            "data"                => $dt_data,
+        );
+
+        error_log('Advance Payment DataTable - Final JSON data: ' . print_r($json_data, true));
+        error_log('Advance Payment DataTable - Data rows count: ' . count($dt_data));
+
+        // Set proper JSON header
+        header('Content-Type: application/json');
+        echo json_encode($json_data);
+
+    }
 
 }

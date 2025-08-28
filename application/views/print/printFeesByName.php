@@ -428,7 +428,16 @@
                                                 <td class="text text-right">
                                                     <?php
                                                     $amount = $record->amount;
-                                                    echo $currency_symbol . (amountFormat($amount));
+                                                    // Show original amount if advance was applied
+                                                    if (isset($record->original_amount) && $record->original_amount > $amount) {
+                                                        echo '<small>Original: ' . $currency_symbol . amountFormat($record->original_amount) . '</small><br>';
+                                                        echo '<small>Cash: ' . $currency_symbol . amountFormat($amount) . '</small><br>';
+                                                        if (isset($record->advance_applied)) {
+                                                            echo '<small>Advance: ' . $currency_symbol . amountFormat($record->advance_applied) . '</small>';
+                                                        }
+                                                    } else {
+                                                        echo $currency_symbol . (amountFormat($amount));
+                                                    }
                                                     ?>
                                                 </td>
                                                 <td class="text text-right">
@@ -642,7 +651,16 @@
                                                 <td class="text text-right">
                                                     <?php
                                                     $amount = $record->amount;
-                                                    echo $currency_symbol . (amountFormat($amount));
+                                                    // Show original amount if advance was applied
+                                                    if (isset($record->original_amount) && $record->original_amount > $amount) {
+                                                        echo '<small>Original: ' . $currency_symbol . amountFormat($record->original_amount) . '</small><br>';
+                                                        echo '<small>Cash: ' . $currency_symbol . amountFormat($amount) . '</small><br>';
+                                                        if (isset($record->advance_applied)) {
+                                                            echo '<small>Advance: ' . $currency_symbol . amountFormat($record->advance_applied) . '</small>';
+                                                        }
+                                                    } else {
+                                                        echo $currency_symbol . (amountFormat($amount));
+                                                    }
                                                     ?>
                                                 </td>
                                                 <td class="text text-right">
@@ -850,7 +868,16 @@
                                                 <td class="text text-right">
                                                     <?php
                                                     $amount = $record->amount;
-                                                    echo $currency_symbol . (amountFormat($amount));
+                                                    // Show original amount if advance was applied
+                                                    if (isset($record->original_amount) && $record->original_amount > $amount) {
+                                                        echo '<small>Original: ' . $currency_symbol . amountFormat($record->original_amount) . '</small><br>';
+                                                        echo '<small>Cash: ' . $currency_symbol . amountFormat($amount) . '</small><br>';
+                                                        if (isset($record->advance_applied)) {
+                                                            echo '<small>Advance: ' . $currency_symbol . amountFormat($record->advance_applied) . '</small>';
+                                                        }
+                                                    } else {
+                                                        echo $currency_symbol . (amountFormat($amount));
+                                                    }
                                                     ?>
                                                 </td>
                                                 <td class="text text-right">
