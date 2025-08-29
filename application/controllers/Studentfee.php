@@ -2742,7 +2742,14 @@ class Studentfee extends Admin_Controller
      */
     public function revertAdvancePayment()
     {
+        // Set content type for JSON response
+        header('Content-Type: application/json');
+
+        // Log the request
+        log_message('info', 'Revert advance payment request received. POST data: ' . json_encode($this->input->post()));
+
         if (!$this->rbac->hasPrivilege('collect_fees', 'can_add')) {
+            log_message('error', 'Access denied for revert advance payment');
             echo json_encode(array('status' => 'fail', 'error' => 'Access denied'));
             return;
         }
@@ -2751,29 +2758,168 @@ class Studentfee extends Admin_Controller
         $reason = $this->input->post('reason');
 
         if (!$usage_id) {
+            log_message('error', 'Usage ID not provided in revert request');
             echo json_encode(array('status' => 'fail', 'error' => 'Usage ID required'));
             return;
         }
 
         try {
+            $this->load->model('AdvancePayment_model');
+
+            // Validate that the usage record exists and belongs to the current session
+            $student_session_id = $this->input->post('student_session_id');
+            if ($student_session_id) {
+                // Additional validation can be added here
+                log_message('info', 'Reverting usage ID: ' . $usage_id . ' for student session: ' . $student_session_id);
+            }
+
             $result = $this->AdvancePayment_model->revertAdvanceUsage($usage_id, $reason);
 
             if ($result) {
+                log_message('info', 'Successfully reverted advance usage ID: ' . $usage_id);
                 echo json_encode(array(
                     'status' => 'success',
                     'message' => 'Advance payment usage reverted successfully'
                 ));
             } else {
+                log_message('error', 'Failed to revert advance usage ID: ' . $usage_id);
                 echo json_encode(array(
                     'status' => 'fail',
-                    'error' => 'Failed to revert advance payment usage'
+                    'error' => 'Failed to revert advance payment usage. Please check if the record exists and is not already reverted.'
                 ));
             }
         } catch (Exception $e) {
+            log_message('error', 'Exception in revert advance payment: ' . $e->getMessage());
             echo json_encode(array(
                 'status' => 'fail',
                 'error' => 'Error: ' . $e->getMessage()
             ));
+        }
+    }
+
+    /**
+     * Delete advance payment
+     */
+    public function deleteAdvancePayment()
+    {
+        // Set content type for JSON response
+        header('Content-Type: application/json');
+
+        // Check permissions
+        if (!$this->rbac->hasPrivilege('collect_fees', 'can_delete')) {
+            echo json_encode(array('status' => 'error', 'message' => 'Access denied'));
+            return;
+        }
+
+        $advance_payment_id = $this->input->post('advance_payment_id');
+
+        if (!$advance_payment_id) {
+            echo json_encode(array('status' => 'error', 'message' => 'Advance payment ID required'));
+            return;
+        }
+
+        try {
+            $this->load->model('AdvancePayment_model');
+
+            $result = $this->AdvancePayment_model->deleteAdvancePayment($advance_payment_id);
+
+            echo json_encode($result);
+        } catch (Exception $e) {
+            log_message('error', 'Exception in delete advance payment: ' . $e->getMessage());
+            echo json_encode(array(
+                'status' => 'error',
+                'message' => 'Error: ' . $e->getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Alternative endpoint for revert advance usage (for compatibility)
+     */
+    public function revertAdvanceUsage()
+    {
+        // Call the main revert method
+        $this->revertAdvancePayment();
+    }
+
+    /**
+     * Debug endpoint to test revert functionality
+     * Remove this method in production
+     */
+    public function testRevert($usage_id = null)
+    {
+        if (!$this->rbac->hasPrivilege('collect_fees', 'can_add')) {
+            echo "Access denied";
+            return;
+        }
+
+        echo "<h2>Advance Payment Revert Test</h2>";
+
+        if (!$usage_id) {
+            echo "<p>Usage: /studentfee/testRevert/[usage_id]</p>";
+
+            // Show available usage records
+            $this->load->model('AdvancePayment_model');
+            $this->db->where('is_reverted !=', 'yes');
+            $this->db->or_where('is_reverted IS NULL');
+            $usage_records = $this->db->get('advance_payment_usage')->result();
+
+            if ($usage_records) {
+                echo "<h3>Available Usage Records for Testing:</h3>";
+                echo "<ul>";
+                foreach ($usage_records as $record) {
+                    echo "<li><a href='" . site_url('studentfee/testRevert/' . $record->id) . "'>Usage ID: " . $record->id . " (Amount: " . $record->amount_used . ")</a></li>";
+                }
+                echo "</ul>";
+            } else {
+                echo "<p>No usage records available for testing.</p>";
+            }
+            return;
+        }
+
+        // Test the revert functionality
+        echo "<h3>Testing Revert for Usage ID: $usage_id</h3>";
+
+        try {
+            $this->load->model('AdvancePayment_model');
+
+            // Get usage record details before revert
+            $usage_before = $this->db->get_where('advance_payment_usage', array('id' => $usage_id))->row();
+            if ($usage_before) {
+                echo "<h4>Before Revert:</h4>";
+                echo "<pre>" . print_r($usage_before, true) . "</pre>";
+
+                // Get advance payment details
+                $advance_payment_before = $this->db->get_where('student_advance_payments', array('id' => $usage_before->advance_payment_id))->row();
+                echo "<h4>Advance Payment Before:</h4>";
+                echo "<pre>" . print_r($advance_payment_before, true) . "</pre>";
+
+                // Perform revert
+                $result = $this->AdvancePayment_model->revertAdvanceUsage($usage_id, 'Test revert from debug endpoint');
+
+                if ($result) {
+                    echo "<h4 style='color: green;'>✅ Revert Successful!</h4>";
+
+                    // Get records after revert
+                    $usage_after = $this->db->get_where('advance_payment_usage', array('id' => $usage_id))->row();
+                    $advance_payment_after = $this->db->get_where('student_advance_payments', array('id' => $usage_before->advance_payment_id))->row();
+
+                    echo "<h4>After Revert:</h4>";
+                    echo "<h5>Usage Record:</h5>";
+                    echo "<pre>" . print_r($usage_after, true) . "</pre>";
+                    echo "<h5>Advance Payment:</h5>";
+                    echo "<pre>" . print_r($advance_payment_after, true) . "</pre>";
+
+                } else {
+                    echo "<h4 style='color: red;'>❌ Revert Failed!</h4>";
+                }
+
+            } else {
+                echo "<p style='color: red;'>Usage record not found!</p>";
+            }
+
+        } catch (Exception $e) {
+            echo "<h4 style='color: red;'>❌ Exception: " . $e->getMessage() . "</h4>";
         }
     }
 

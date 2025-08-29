@@ -1718,6 +1718,170 @@ $currency_symbol = $admin_session['currency_symbol'];
                             }
                             ?>
 
+                            <!-- Advance Payment Information Section -->
+                            <?php if (isset($advance_balance) || isset($advance_payments) || isset($advance_usage_history)) { ?>
+                            <div class="tshadow mb25 bozero">
+                                <div class="box-header with-border">
+                                    <h3 class="box-title">
+                                        <i class="fa fa-credit-card"></i> <?php echo $this->lang->line('advance_payment'); ?> Information
+                                    </h3>
+                                </div>
+                                <div class="box-body">
+                                    <!-- Summary Cards -->
+                                    <div class="row" style="margin-bottom: 20px;">
+                                        <div class="col-md-4">
+                                            <div class="info-box bg-green">
+                                                <span class="info-box-icon"><i class="fa fa-money"></i></span>
+                                                <div class="info-box-content">
+                                                    <span class="info-box-text"><?php echo $this->lang->line('available_advance_balance'); ?></span>
+                                                    <span class="info-box-number" id="advance-balance-display">
+                                                        <?php echo $currency_symbol . amountFormat(isset($advance_balance) ? $advance_balance : 0); ?>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="info-box bg-blue">
+                                                <span class="info-box-icon"><i class="fa fa-list"></i></span>
+                                                <div class="info-box-content">
+                                                    <span class="info-box-text"><?php echo $this->lang->line('total_advance_payments'); ?></span>
+                                                    <span class="info-box-number">
+                                                        <?php echo isset($advance_payments) ? count($advance_payments) : 0; ?>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="info-box bg-yellow">
+                                                <span class="info-box-icon"><i class="fa fa-exchange"></i></span>
+                                                <div class="info-box-content">
+                                                    <span class="info-box-text"><?php echo $this->lang->line('usage_transactions'); ?></span>
+                                                    <span class="info-box-number">
+                                                        <?php echo isset($advance_usage_history) ? count($advance_usage_history) : 0; ?>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <?php if (isset($advance_balance) && $advance_balance > 0) { ?>
+                                    <div class="alert alert-info">
+                                        <i class="fa fa-info-circle"></i> <?php echo $this->lang->line('advance_payment_auto_apply_note'); ?>
+                                    </div>
+                                    <?php } ?>
+
+                                    <!-- Advance Payment History Table -->
+                                    <?php if (isset($advance_payments) && !empty($advance_payments)) { ?>
+                                    <h4><i class="fa fa-list"></i> <?php echo $this->lang->line('advance_payment_details'); ?></h4>
+                                    <div class="table-responsive">
+                                        <table class="table table-hover table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th><?php echo $this->lang->line('date'); ?></th>
+                                                    <th><?php echo $this->lang->line('invoice_id'); ?></th>
+                                                    <th><?php echo $this->lang->line('description'); ?></th>
+                                                    <th><?php echo $this->lang->line('payment_mode'); ?></th>
+                                                    <th class="text-right"><?php echo $this->lang->line('amount'); ?> (<?php echo $currency_symbol; ?>)</th>
+                                                    <th class="text-right"><?php echo $this->lang->line('used'); ?> (<?php echo $currency_symbol; ?>)</th>
+                                                    <th class="text-right"><?php echo $this->lang->line('balance'); ?> (<?php echo $currency_symbol; ?>)</th>
+                                                    <th><?php echo $this->lang->line('status'); ?></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php
+                                                foreach ($advance_payments as $payment) {
+                                                    $used_amount = $payment->amount - $payment->balance;
+                                                    ?>
+                                                    <tr class="<?php echo ($payment->balance > 0) ? 'success' : 'default'; ?>">
+                                                        <td><?php echo date($this->customlib->getSchoolDateFormat(), strtotime($payment->payment_date)); ?></td>
+                                                        <td>
+                                                            <a href="#" data-toggle="popover" class="detail_popover">
+                                                                <?php echo $payment->invoice_id; ?>
+                                                            </a>
+                                                            <div class="fee_detail_popover" style="display: none">
+                                                                <?php if (isset($payment->collected_by)) { ?>
+                                                                <p><strong><?php echo $this->lang->line('collected_by'); ?>:</strong> <?php echo $payment->collected_by; ?></p>
+                                                                <?php } ?>
+                                                                <?php if (isset($payment->reference_no)) { ?>
+                                                                <p><strong><?php echo $this->lang->line('reference_no'); ?>:</strong> <?php echo $payment->reference_no; ?></p>
+                                                                <?php } ?>
+                                                            </div>
+                                                        </td>
+                                                        <td><?php echo isset($payment->description) ? $payment->description : ''; ?></td>
+                                                        <td><?php echo isset($payment->payment_mode) ? $this->lang->line(strtolower($payment->payment_mode)) : ''; ?></td>
+                                                        <td class="text-right"><?php echo amountFormat($payment->amount); ?></td>
+                                                        <td class="text-right"><?php echo amountFormat($used_amount); ?></td>
+                                                        <td class="text-right">
+                                                            <span class="<?php echo ($payment->balance > 0) ? 'text-success' : 'text-muted'; ?>">
+                                                                <?php echo amountFormat($payment->balance); ?>
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <?php if ($payment->balance > 0) { ?>
+                                                                <span class="label label-success"><?php echo $this->lang->line('available'); ?></span>
+                                                            <?php } else { ?>
+                                                                <span class="label label-default"><?php echo $this->lang->line('used'); ?></span>
+                                                            <?php } ?>
+                                                        </td>
+                                                    </tr>
+                                                    <?php
+                                                }
+                                                ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <?php } else { ?>
+                                        <div class="alert alert-info">
+                                            <i class="fa fa-info-circle"></i> <?php echo $this->lang->line('no_advance_payment_found'); ?>
+                                        </div>
+                                    <?php } ?>
+
+                                    <!-- Usage History Table -->
+                                    <?php if (isset($advance_usage_history) && !empty($advance_usage_history)) { ?>
+                                    <h4 style="margin-top: 30px;"><i class="fa fa-history"></i> <?php echo $this->lang->line('advance_payment_usage_history'); ?></h4>
+                                    <div class="table-responsive">
+                                        <table class="table table-hover table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th><?php echo $this->lang->line('date'); ?></th>
+                                                    <th><?php echo $this->lang->line('fee_group'); ?></th>
+                                                    <th><?php echo $this->lang->line('fee_code'); ?></th>
+                                                    <th><?php echo $this->lang->line('invoice_id'); ?></th>
+                                                    <th class="text-right"><?php echo $this->lang->line('amount'); ?> (<?php echo $currency_symbol; ?>)</th>
+                                                    <th><?php echo $this->lang->line('type'); ?></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($advance_usage_history as $history) { ?>
+                                                <tr class="<?php echo (isset($history->type) && $history->type == 'revert') ? 'warning' : 'info'; ?>">
+                                                    <td><?php echo date($this->customlib->getSchoolDateFormat(), strtotime($history->created_at)); ?></td>
+                                                    <td><?php echo isset($history->fee_groups_name) ? $history->fee_groups_name : ''; ?></td>
+                                                    <td><?php echo isset($history->fee_code) ? $history->fee_code : ''; ?></td>
+                                                    <td><?php echo isset($history->invoice_id) ? $history->invoice_id : ''; ?></td>
+                                                    <td class="text-right">
+                                                        <?php if (isset($history->type) && $history->type == 'revert') { ?>
+                                                            <span class="text-success">+<?php echo amountFormat($history->amount); ?></span>
+                                                        <?php } else { ?>
+                                                            <span class="text-danger">-<?php echo amountFormat($history->amount); ?></span>
+                                                        <?php } ?>
+                                                    </td>
+                                                    <td>
+                                                        <?php if (isset($history->type) && $history->type == 'revert') { ?>
+                                                            <span class="label label-warning"><?php echo $this->lang->line('reverted'); ?></span>
+                                                        <?php } else { ?>
+                                                            <span class="label label-info"><?php echo $this->lang->line('used'); ?></span>
+                                                        <?php } ?>
+                                                    </td>
+                                                </tr>
+                                                <?php } ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <?php } ?>
+                                </div>
+                            </div>
+                            <?php } ?>
+
                         </div>
                         <div class="tab-pane" id="documents">
                             <div class="timeline-header no-border">
@@ -4049,3 +4213,51 @@ function getCalculatedExam($array, $exam_id)
     $object->exam_status = $return_exam_status;
     return $object;
 }
+?>
+
+
+
+<script type="text/javascript">
+// Helper function to refresh advance payment information
+function refreshAdvancePaymentInfo() {
+    var studentSessionId = '<?php echo isset($student_session_id) ? $student_session_id : ""; ?>';
+
+    if (!studentSessionId) return;
+
+    $.ajax({
+        url: '<?php echo site_url("studentfee/getAdvancePaymentDetails"); ?>',
+        type: 'POST',
+        data: {
+            student_session_id: studentSessionId,
+            '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
+        },
+        dataType: 'json',
+        success: function(response) {
+            if (response.status === 'success') {
+                // Update balance display
+                $('#advance-balance-display').html('<?php echo $currency_symbol; ?>' + response.formatted_balance);
+            }
+        },
+        error: function() {
+            console.error('Failed to refresh advance payment information');
+        }
+    });
+}
+
+// Initialize popovers for payment details
+$(document).ready(function() {
+    // Load advance payment information when the page loads
+    refreshAdvancePaymentInfo();
+
+    // Initialize popovers for payment details
+    $('.detail_popover').popover({
+        placement: 'right',
+        trigger: 'hover',
+        container: 'body',
+        html: true,
+        content: function () {
+            return $(this).closest('td').find('.fee_detail_popover').html();
+        }
+    });
+});
+</script>

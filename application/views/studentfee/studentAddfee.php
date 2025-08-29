@@ -3987,7 +3987,7 @@ function viewAdvanceHistory(studentSessionId) {
     console.log('Viewing advance history for student session:', studentSessionId);
 
     $('#advanceHistoryContent').html('<div class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading...</div>');
-    $('#advanceHistoryModal').modal('show');
+    $('#advanceHistoryModal').data('student-session-id', studentSessionId).modal('show');
 
     $.ajax({
         url: '<?php echo site_url("studentfee/getAdvanceHistory"); ?>',
@@ -4007,6 +4007,7 @@ function viewAdvanceHistory(studentSessionId) {
                 content += '<th><?php echo $this->lang->line("balance"); ?></th>';
                 content += '<th><?php echo $this->lang->line("payment_mode"); ?></th>';
                 content += '<th><?php echo $this->lang->line("description"); ?></th>';
+                content += '<th><?php echo $this->lang->line("action"); ?></th>';
                 content += '</tr></thead><tbody>';
 
                 if (response.advance_payments && response.advance_payments.length > 0) {
@@ -4017,10 +4018,15 @@ function viewAdvanceHistory(studentSessionId) {
                         content += '<td><?php echo $currency_symbol; ?>' + parseFloat(payment.balance).toFixed(2) + '</td>';
                         content += '<td>' + payment.payment_mode + '</td>';
                         content += '<td>' + (payment.description || '') + '</td>';
+                        content += '<td class="text-center">';
+                        content += '<button type="button" class="btn btn-danger btn-xs" onclick="confirmRevertAdvancePayment(' + payment.id + ', \'' + payment.payment_date + '\', ' + parseFloat(payment.amount).toFixed(2) + ')" title="<?php echo $this->lang->line("revert"); ?>">';
+                        content += '<i class="fa fa-undo"></i> <?php echo $this->lang->line("revert"); ?>';
+                        content += '</button>';
+                        content += '</td>';
                         content += '</tr>';
                     });
                 } else {
-                    content += '<tr><td colspan="5" class="text-center"><?php echo $this->lang->line("no_record_found"); ?></td></tr>';
+                    content += '<tr><td colspan="6" class="text-center"><?php echo $this->lang->line("no_record_found"); ?></td></tr>';
                 }
 
                 content += '</tbody></table></div>';
@@ -4033,6 +4039,100 @@ function viewAdvanceHistory(studentSessionId) {
             $('#advanceHistoryContent').html('<div class="alert alert-danger">Error loading advance payment history</div>');
         }
     });
+}
+
+// Advance Payment Revert Functions
+function confirmRevertAdvancePayment(advancePaymentId, paymentDate, amount) {
+    console.log('Confirming revert for advance payment:', advancePaymentId);
+
+    // Create confirmation dialog
+    var confirmMessage = 'Are you sure you want to revert this advance payment?\n\n';
+    confirmMessage += 'Date: ' + paymentDate + '\n';
+    confirmMessage += 'Amount: <?php echo $currency_symbol; ?>' + amount + '\n\n';
+    confirmMessage += 'This action will:\n';
+    confirmMessage += '• Delete the advance payment if it is not assigned to any fees\n';
+    confirmMessage += '• Show an error if the advance payment is currently assigned to fees\n\n';
+    confirmMessage += 'This action cannot be undone. Do you want to proceed?';
+
+    if (confirm(confirmMessage)) {
+        revertAdvancePayment(advancePaymentId);
+    }
+}
+
+function revertAdvancePayment(advancePaymentId) {
+    console.log('Reverting advance payment:', advancePaymentId);
+
+    // Show loading state
+    $('button[onclick*="' + advancePaymentId + '"]').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Processing...');
+
+    $.ajax({
+        url: '<?php echo site_url("studentfee/deleteAdvancePayment"); ?>',
+        type: 'POST',
+        data: {
+            advance_payment_id: advancePaymentId,
+            '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
+        },
+        dataType: 'json',
+        success: function(response) {
+            if (response.status === 'success') {
+                // Show success message
+                showSuccessMessage(response.message || 'Advance payment reverted successfully');
+
+                // Refresh the advance history modal
+                var currentStudentSessionId = $('#advanceHistoryModal').data('student-session-id');
+                if (currentStudentSessionId) {
+                    viewAdvanceHistory(currentStudentSessionId);
+                }
+
+                // Refresh the advance balance display
+                refreshAdvanceBalance();
+
+            } else {
+                // Show error message
+                showErrorMessage(response.message || 'Failed to revert advance payment');
+
+                // Reset button state
+                $('button[onclick*="' + advancePaymentId + '"]').prop('disabled', false).html('<i class="fa fa-undo"></i> <?php echo $this->lang->line("revert"); ?>');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('AJAX error:', error);
+            showErrorMessage('Network error occurred. Please try again.');
+
+            // Reset button state
+            $('button[onclick*="' + advancePaymentId + '"]').prop('disabled', false).html('<i class="fa fa-undo"></i> <?php echo $this->lang->line("revert"); ?>');
+        }
+    });
+}
+
+function refreshAdvanceBalance() {
+    // Get current student session ID from the page
+    var studentSessionId = '<?php echo isset($student_session_id) ? $student_session_id : ""; ?>';
+
+    if (studentSessionId) {
+        $.ajax({
+            url: '<?php echo site_url("studentfee/getAdvancePaymentDetails"); ?>',
+            type: 'POST',
+            data: {
+                student_session_id: studentSessionId,
+                '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    // Update the balance display
+                    $('#advance-balance-display').text(response.formatted_balance || '<?php echo $currency_symbol; ?>0.00');
+
+                    // Update the payment count
+                    var paymentCount = response.advance_payments ? response.advance_payments.length : 0;
+                    $('.info-box-number').eq(1).text(paymentCount);
+                }
+            },
+            error: function() {
+                console.log('Failed to refresh advance balance');
+            }
+        });
+    }
 }
 
 function openAdvanceManagementModal(studentSessionId) {
@@ -4192,17 +4292,41 @@ $(document).ready(function() {
 
         var form = $(this);
         var submitBtn = $('#confirmRevertBtn');
-        var formData = form.serialize();
+        var usageId = $('#revert_usage_id').val();
+        var reason = $('#revert_reason').val();
+
+        // Validate required fields
+        if (!usageId) {
+            showErrorMessage('Usage ID is required');
+            return;
+        }
+
+        if (!reason.trim()) {
+            showErrorMessage('Reason for revert is required');
+            return;
+        }
 
         // Show loading state
         submitBtn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> <?php echo $this->lang->line("processing"); ?>');
 
+        // Prepare data
+        var postData = {
+            usage_id: usageId,
+            reason: reason,
+            student_session_id: '<?php echo isset($student_session_id) ? $student_session_id : ""; ?>',
+            '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
+        };
+
+        console.log('Sending revert request:', postData);
+
         $.ajax({
             url: '<?php echo site_url("studentfee/revertAdvancePayment"); ?>',
             type: 'POST',
-            data: formData + '&<?php echo $this->security->get_csrf_token_name(); ?>=<?php echo $this->security->get_csrf_hash(); ?>',
+            data: postData,
             dataType: 'json',
             success: function(response) {
+                console.log('Revert response:', response);
+
                 if (response.status === 'success') {
                     // Show success message
                     showSuccessMessage(response.message || '<?php echo $this->lang->line("advance_payment_reverted_successfully"); ?>');
@@ -4222,12 +4346,19 @@ $(document).ready(function() {
                     form[0].reset();
 
                 } else {
-                    showErrorMessage(response.error || '<?php echo $this->lang->line("something_went_wrong"); ?>');
+                    showErrorMessage(response.error || response.message || '<?php echo $this->lang->line("something_went_wrong"); ?>');
                 }
             },
             error: function(xhr, status, error) {
                 console.error('AJAX Error:', status, error);
-                showErrorMessage('<?php echo $this->lang->line("network_error"); ?>');
+                console.error('Response Text:', xhr.responseText);
+
+                try {
+                    var errorResponse = JSON.parse(xhr.responseText);
+                    showErrorMessage(errorResponse.error || errorResponse.message || '<?php echo $this->lang->line("network_error"); ?>');
+                } catch(e) {
+                    showErrorMessage('<?php echo $this->lang->line("network_error"); ?>: ' + error);
+                }
             },
             complete: function() {
                 // Reset button state

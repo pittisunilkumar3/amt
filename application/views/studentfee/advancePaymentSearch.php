@@ -794,7 +794,7 @@ $(document).on('submit','.class_search_form',function(e){
         console.log('Viewing advance history for student session:', studentSessionId);
 
         $('#advanceHistoryContent').html('<div class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading...</div>');
-        $('#advanceHistoryModal').modal('show');
+        $('#advanceHistoryModal').data('student-session-id', studentSessionId).modal('show');
 
         $.ajax({
             url: '<?php echo site_url("studentfee/getAdvanceHistory"); ?>',
@@ -814,6 +814,7 @@ $(document).on('submit','.class_search_form',function(e){
                     content += '<th><?php echo $this->lang->line("balance"); ?></th>';
                     content += '<th><?php echo $this->lang->line("payment_mode"); ?></th>';
                     content += '<th><?php echo $this->lang->line("description"); ?></th>';
+                    content += '<th><?php echo $this->lang->line("action"); ?></th>';
                     content += '</tr></thead><tbody>';
 
                     if (response.advance_payments && response.advance_payments.length > 0) {
@@ -824,10 +825,15 @@ $(document).on('submit','.class_search_form',function(e){
                             content += '<td><?php echo $currency_symbol; ?>' + parseFloat(payment.balance).toFixed(2) + '</td>';
                             content += '<td>' + payment.payment_mode + '</td>';
                             content += '<td>' + (payment.description || '') + '</td>';
+                            content += '<td class="text-center">';
+                            content += '<button type="button" class="btn btn-danger btn-xs" onclick="confirmRevertAdvancePayment(' + payment.id + ', \'' + payment.payment_date + '\', ' + parseFloat(payment.amount).toFixed(2) + ')" title="<?php echo $this->lang->line("revert"); ?>">';
+                            content += '<i class="fa fa-undo"></i> <?php echo $this->lang->line("revert"); ?>';
+                            content += '</button>';
+                            content += '</td>';
                             content += '</tr>';
                         });
                     } else {
-                        content += '<tr><td colspan="5" class="text-center"><?php echo $this->lang->line("no_record_found"); ?></td></tr>';
+                        content += '<tr><td colspan="6" class="text-center"><?php echo $this->lang->line("no_record_found"); ?></td></tr>';
                     }
 
                     content += '</tbody></table></div>';
@@ -838,6 +844,73 @@ $(document).on('submit','.class_search_form',function(e){
             },
             error: function() {
                 $('#advanceHistoryContent').html('<div class="alert alert-danger">Error loading advance payment history</div>');
+            }
+        });
+    }
+
+    // Advance Payment Revert Functions
+    function confirmRevertAdvancePayment(advancePaymentId, paymentDate, amount) {
+        console.log('Confirming revert for advance payment:', advancePaymentId);
+
+        // Create confirmation dialog
+        var confirmMessage = 'Are you sure you want to revert this advance payment?\n\n';
+        confirmMessage += 'Date: ' + paymentDate + '\n';
+        confirmMessage += 'Amount: <?php echo $currency_symbol; ?>' + amount + '\n\n';
+        confirmMessage += 'This action will:\n';
+        confirmMessage += '• Delete the advance payment if it is not assigned to any fees\n';
+        confirmMessage += '• Show an error if the advance payment is currently assigned to fees\n\n';
+        confirmMessage += 'This action cannot be undone. Do you want to proceed?';
+
+        if (confirm(confirmMessage)) {
+            revertAdvancePayment(advancePaymentId);
+        }
+    }
+
+    function revertAdvancePayment(advancePaymentId) {
+        console.log('Reverting advance payment:', advancePaymentId);
+
+        // Show loading state
+        $('button[onclick*="' + advancePaymentId + '"]').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Processing...');
+
+        $.ajax({
+            url: '<?php echo site_url("studentfee/deleteAdvancePayment"); ?>',
+            type: 'POST',
+            data: {
+                advance_payment_id: advancePaymentId,
+                '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    // Show success message
+                    showSuccessMessage(response.message || 'Advance payment reverted successfully');
+
+                    // Refresh the advance history modal
+                    var currentStudentSessionId = $('#advanceHistoryModal').data('student-session-id');
+                    if (currentStudentSessionId) {
+                        viewAdvanceHistory(currentStudentSessionId);
+                    }
+
+                    // Refresh the student list to show updated balance
+                    if (typeof initDatatable === 'function') {
+                        var currentParams = $('#student-list').data('params') || {};
+                        initDatatable('student-list', 'studentfee/ajaxAdvanceSearch', currentParams, [], 100);
+                    }
+
+                } else {
+                    // Show error message
+                    showErrorMessage(response.message || 'Failed to revert advance payment');
+
+                    // Reset button state
+                    $('button[onclick*="' + advancePaymentId + '"]').prop('disabled', false).html('<i class="fa fa-undo"></i> <?php echo $this->lang->line("revert"); ?>');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX error:', error);
+                showErrorMessage('Network error occurred. Please try again.');
+
+                // Reset button state
+                $('button[onclick*="' + advancePaymentId + '"]').prop('disabled', false).html('<i class="fa fa-undo"></i> <?php echo $this->lang->line("revert"); ?>');
             }
         });
     }

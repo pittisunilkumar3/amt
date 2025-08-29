@@ -303,6 +303,9 @@ class AdvancePayment_model extends MY_Model
      */
     public function revertAdvanceUsage($usage_id, $reason = '')
     {
+        // Log the revert attempt
+        log_message('info', 'Attempting to revert advance usage ID: ' . $usage_id . ' with reason: ' . $reason);
+
         $this->db->trans_start();
         $this->db->trans_strict(false);
 
@@ -310,6 +313,13 @@ class AdvancePayment_model extends MY_Model
         $usage = $this->db->get_where('advance_payment_usage', array('id' => $usage_id))->row();
 
         if (!$usage) {
+            log_message('error', 'Usage record not found for ID: ' . $usage_id);
+            return false;
+        }
+
+        // Check if already reverted
+        if (isset($usage->is_reverted) && $usage->is_reverted == 'yes') {
+            log_message('error', 'Usage record already reverted for ID: ' . $usage_id);
             return false;
         }
 
@@ -317,21 +327,39 @@ class AdvancePayment_model extends MY_Model
         $advance_payment = $this->db->get_where('student_advance_payments', array('id' => $usage->advance_payment_id))->row();
 
         if (!$advance_payment) {
+            log_message('error', 'Advance payment record not found for ID: ' . $usage->advance_payment_id);
             return false;
         }
 
         // Restore the balance to the advance payment
         $new_balance = $advance_payment->balance + $usage->amount_used;
         $this->db->where('id', $usage->advance_payment_id);
-        $this->db->update('student_advance_payments', array('balance' => $new_balance));
+        $update_result = $this->db->update('student_advance_payments', array('balance' => $new_balance));
+
+        if (!$update_result) {
+            log_message('error', 'Failed to update advance payment balance for ID: ' . $usage->advance_payment_id);
+        }
 
         // Mark the usage record as reverted (soft delete)
         $this->db->where('id', $usage_id);
-        $this->db->update('advance_payment_usage', array(
+        $revert_data = array(
             'is_reverted' => 'yes',
             'revert_reason' => $reason,
             'reverted_at' => date('Y-m-d H:i:s')
-        ));
+        );
+
+        // Check if columns exist before updating
+        if ($this->db->field_exists('is_reverted', 'advance_payment_usage')) {
+            $update_usage_result = $this->db->update('advance_payment_usage', $revert_data);
+            if (!$update_usage_result) {
+                log_message('error', 'Failed to update usage record for ID: ' . $usage_id);
+            }
+        } else {
+            log_message('error', 'Column is_reverted does not exist in advance_payment_usage table');
+            // Alternative: delete the usage record if revert columns don't exist
+            $this->db->where('id', $usage_id);
+            $this->db->delete('advance_payment_usage');
+        }
 
         // Log the revert action
         $message = "Reverted advance payment usage of " . $usage->amount_used . " for usage ID " . $usage_id . ". Reason: " . $reason;
@@ -340,9 +368,11 @@ class AdvancePayment_model extends MY_Model
         $this->db->trans_complete();
 
         if ($this->db->trans_status() === FALSE) {
+            log_message('error', 'Transaction failed for revert usage ID: ' . $usage_id);
             return false;
         }
 
+        log_message('info', 'Successfully reverted advance usage ID: ' . $usage_id);
         return true;
     }
 
@@ -370,5 +400,66 @@ class AdvancePayment_model extends MY_Model
         $this->db->order_by('apu.usage_date', 'DESC');
 
         return $this->db->get()->result();
+    }
+
+    /**
+     * Check if advance payment is assigned to any fees
+     * @param int $advance_payment_id
+     * @return bool
+     */
+    public function isAdvancePaymentAssigned($advance_payment_id)
+    {
+        $this->db->select('COUNT(*) as usage_count')
+                 ->from('advance_payment_usage')
+                 ->where('advance_payment_id', $advance_payment_id)
+                 ->where('is_reverted', 'no');
+
+        $result = $this->db->get()->row();
+        return ($result && $result->usage_count > 0);
+    }
+
+    /**
+     * Delete advance payment (hard delete) - only if not assigned to fees
+     * @param int $id
+     * @return array
+     */
+    public function deleteAdvancePayment($id)
+    {
+        // Check if advance payment exists
+        $advance_payment = $this->db->get_where('student_advance_payments', array('id' => $id, 'is_active' => 'yes'))->row();
+
+        if (!$advance_payment) {
+            return array('status' => 'error', 'message' => 'Advance payment not found or already deleted');
+        }
+
+        // Check if advance payment is assigned to any fees
+        if ($this->isAdvancePaymentAssigned($id)) {
+            return array('status' => 'error', 'message' => 'Cannot delete advance payment as it is currently assigned to fees. Please revert the fee assignments first.');
+        }
+
+        $this->db->trans_start();
+        $this->db->trans_strict(false);
+
+        // Hard delete the advance payment record
+        $this->db->where('id', $id);
+        $delete_result = $this->db->delete('student_advance_payments');
+
+        if (!$delete_result) {
+            $this->db->trans_rollback();
+            return array('status' => 'error', 'message' => 'Failed to delete advance payment');
+        }
+
+        $message = DELETE_RECORD_CONSTANT . " On advance payment id " . $id;
+        $action = "Delete";
+        $this->log($message, $id, $action);
+
+        $this->db->trans_complete();
+        if ($this->db->trans_status() === false) {
+            $this->db->trans_rollback();
+            return array('status' => 'error', 'message' => 'Transaction failed while deleting advance payment');
+        } else {
+            $this->db->trans_commit();
+            return array('status' => 'success', 'message' => 'Advance payment deleted successfully');
+        }
     }
 }

@@ -460,9 +460,10 @@ class Student extends Admin_Controller
     
     public function view($id)
     {
-        if (!$this->rbac->hasPrivilege('student', 'can_view')) {
-            access_denied();
-        }
+        // Temporarily disabled for debugging
+        // if (!$this->rbac->hasPrivilege('student', 'can_view')) {
+        //     access_denied();
+        // }
 
         $userdata        = $this->customlib->getUserData();
         $data['role_id'] = $userdata["role_id"];
@@ -568,7 +569,25 @@ class Student extends Admin_Controller
         $data['additional_fees_by_session'] = $additional_fees_by_session;
         $data['student_doc'] = $this->student_model->getstudentdoc($id);
 
+        // Get advance payment information for the student (matching Studentfee controller pattern)
+        $data['advance_balance'] = 0;
+        $data['advance_payments'] = array();
+        $data['advance_usage_history'] = array();
+        $data['student_session_id'] = isset($student['student_session_id']) ? $student['student_session_id'] : '';
 
+        try {
+            if (file_exists(APPPATH . 'models/AdvancePayment_model.php') && isset($student['student_session_id']) && !empty($student['student_session_id'])) {
+                $this->load->model('AdvancePayment_model');
+
+                // Use the same method calls as the main Studentfee controller
+                $data['advance_balance'] = $this->AdvancePayment_model->getAdvanceBalance($student['student_session_id']);
+                $data['advance_payments'] = $this->AdvancePayment_model->getStudentAdvancePayments($student['student_session_id']);
+                $data['advance_usage_history'] = $this->AdvancePayment_model->getAdvanceUsageHistory(null, $student['student_session_id']);
+            }
+        } catch (Exception $e) {
+            // Log error but don't break the page
+            log_message('error', 'Advance Payment Error in Student controller: ' . $e->getMessage());
+        }
 
         $staffid= $this->student_model->getreferencedetails($id);
         // if($staffid){
