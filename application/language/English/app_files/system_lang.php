@@ -2732,3 +2732,14 @@ $lang['fee_collection_report_column_wise']="Fee Collection Report Column Wise";
 
 $lang['admission_no_search']="Addmission No Search";
 
+// Hostel Fee Master Language Strings
+$lang['hostel_fees_master'] = "Hostel Fees Master";
+$lang['hostel_fee'] = "Hostel Fee";
+$lang['hostel_fees'] = "Hostel Fees";
+$lang['hostel_fee_collection'] = "Hostel Fee Collection";
+$lang['hostel_fee_report'] = "Hostel Fee Report";
+$lang['assign_hostel_fees'] = "Assign Hostel Fees";
+$lang['hostel_fee_master'] = "Hostel Fee Master";
+$lang['hostel_room'] = "Hostel Room";
+$lang['room_cost'] = "Room Cost";
+$lang['hostel_fee_details'] = "Hostel Fee Details";

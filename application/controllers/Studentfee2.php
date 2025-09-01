@@ -18,6 +18,8 @@ class Studentfee extends Admin_Controller
          $this->load->model('test_model');
          $this->load->model("studentfeemasteradding_model");
           $this->load->model("transportfee_model");
+         $this->load->model("hostelfee_model");
+         $this->load->model("studenthostelfee_model");
         $this->search_type        = $this->config->item('search_type');
         $this->sch_setting_detail = $this->setting_model->getSetting();
         $this->current_session = $this->setting_model->getCurrentSession();
@@ -146,7 +148,20 @@ class Studentfee extends Admin_Controller
         $feesessiongroup[count($feesessiongroup)]=(object)array('id'=>'Transport','group_name'=>'Transport Fees','is_system'=>0,'feetypes'=>$transportfesstype);
         }
         }
-        
+
+        // Add Hostel Fees
+        $hostel_module = $this->module_model->getPermissionByModulename('hostel');
+        $currentsessionhostelfee = $this->hostelfee_model->getSessionFees($this->current_session);
+        if(!empty($currentsessionhostelfee)){
+        if($hostel_module['is_active']){
+        $month_list= $this->customlib->getMonthDropdown($this->sch_setting_detail->start_month);
+        foreach($month_list as $key=>$value){
+            $hostelfesstype[]=$this->hostelfee_model->hostelfesstype($this->current_session,$value);
+        }
+        $feesessiongroup[count($feesessiongroup)]=(object)array('id'=>'Hostel','group_name'=>'Hostel Fees','is_system'=>0,'feetypes'=>$hostelfesstype);
+        }
+        }
+
         $data['feesessiongrouplist'] = $feesessiongroup;
         $data['fees_group']          = "";
         if (isset($_POST['feegroup_id']) && $_POST['feegroup_id'] != '') {
@@ -169,14 +184,17 @@ class Studentfee extends Admin_Controller
             $fee_group_array          = array();
             $fee_groups_feetype_array = array();
             $transport_groups_feetype_array=array();
+            $hostel_groups_feetype_array=array();
             foreach ($feegroups as $fee_grp_key => $fee_grp_value) {
                 $feegroup                   = explode("-", $fee_grp_value);
-                
+
                 if($feegroup[0]=="Transport"){
-                    $transport_groups_feetype_array[] = $feegroup[1]; 
+                    $transport_groups_feetype_array[] = $feegroup[1];
+                }elseif($feegroup[0]=="Hostel"){
+                    $hostel_groups_feetype_array[] = $feegroup[1];
                 }else{
                    $fee_group_array[]          = $feegroup[0];
-                $fee_groups_feetype_array[] = $feegroup[1]; 
+                $fee_groups_feetype_array[] = $feegroup[1];
                 }
             }
 
@@ -188,7 +206,7 @@ class Studentfee extends Admin_Controller
             $class_id   = $this->input->post('class_id');
             $section_id = $this->input->post('section_id');
            
-            $student_due_fee = $this->studentfee_model->getMultipleDueFees($fee_group_comma, $fee_groups_feetype_comma,$transport_groups_feetype_array, $class_id, $section_id);
+            $student_due_fee = $this->studentfee_model->getMultipleDueFees($fee_group_comma, $fee_groups_feetype_comma,$transport_groups_feetype_array, $hostel_groups_feetype_array, $class_id, $section_id);
             $students = array();
 
             if (!empty($student_due_fee)) {
@@ -386,8 +404,12 @@ class Studentfee extends Admin_Controller
             if ($fee_category == "transport") {
                 $feeList               = $this->studentfeemaster_model->getTransportFeeByID($trans_fee_id);
                 $feeList->fee_category = $fee_category;
-                
-            }else if($otherfeecat == "otherfee"){ 
+
+            } else if ($fee_category == "hostel") {
+                $feeList               = $this->studentfeemaster_model->getHostelFeeByID($trans_fee_id);
+                $feeList->fee_category = $fee_category;
+
+            }else if($otherfeecat == "otherfee"){
                 $feeList               = $this->studentfeemasteradding_model->getDueFeeByFeeSessionGroupFeetype($fee_session_group_id, $fee_master_id, $fee_groups_feetype_id,$value->student_session_id);
                 $feeList->fee_category = $fee_category;
                 

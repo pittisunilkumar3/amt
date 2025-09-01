@@ -627,10 +627,10 @@ $language_name = $language["short_code"];
                                                 </td>
                                                 <td class="text text-right">
                                                     <?php
-                                                    $display_none = "ss-none";
+                                                    // Separate display logic for payment collection buttons vs other buttons
+                                                    $payment_buttons_display = "ss-none"; // Hide payment buttons for fully paid fees
                                                     if ($feetype_balance > 0) {
-                                                        $display_none = "";
-
+                                                        $payment_buttons_display = "";
                                                         echo amountFormat($feetype_balance);
                                                     }
                                                     ?>
@@ -655,7 +655,7 @@ $language_name = $language["short_code"];
                                                                     data-fee_groups_feetype_id="<?php echo $fee_value->fee_groups_feetype_id; ?>"
                                                                     data-group="<?php echo ($fee_value->is_system) ? $this->lang->line($fee_value->name) . " (" . $this->lang->line($fee_value->type) . ")" : $fee_value->name . " (" . $fee_value->type . ")"; ?>"
                                                                     data-type="<?php echo ($fee_value->is_system) ? $this->lang->line($fee_value->type) : $fee_value->code; ?>"
-                                                                    class="<?php echo $discount_button_class; ?> <?php echo $display_none; ?>"
+                                                                    class="<?php echo $discount_button_class; ?> <?php echo $payment_buttons_display; ?>"
                                                                     title="<?php echo $discount_button_title; ?>"
                                                                     <?php echo $discount_modal_target; ?>
                                                                     <?php echo $discount_button_disabled; ?>
@@ -672,11 +672,26 @@ $language_name = $language["short_code"];
                                                                     data-fee_groups_feetype_id="<?php echo $fee_value->fee_groups_feetype_id; ?>"
                                                                     data-group="<?php echo ($fee_value->is_system) ? $this->lang->line($fee_value->name) . " (" . $this->lang->line($fee_value->type) . ")" : $fee_value->name . " (" . $fee_value->type . ")"; ?>"
                                                                     data-type="<?php echo ($fee_value->is_system) ? $this->lang->line($fee_value->type) : $fee_value->code; ?>"
-                                                                    class="btn btn-xs btn-default myCollectFeeBtn <?php echo $display_none; ?>"
+                                                                    class="btn btn-xs btn-default myCollectFeeBtn <?php echo $payment_buttons_display; ?>"
                                                                     title="<?php echo $this->lang->line('add_fees'); ?>"
                                                                     data-toggle="modal" data-target="#myFeesModal"
                                                                     data-fee-category="fees" data-trans_fee_id="0"><i
                                                                         class="fa fa-plus"></i></button>
+                                                            <?php } ?>
+
+                                                            <?php
+                                                            // Add View History button for fees that have payment history
+                                                            if (!empty($fee_value->amount_detail)) { ?>
+                                                                <button type="button" class="btn btn-xs btn-info viewFeeHistory"
+                                                                    data-student_session_id="<?php echo $fee->student_session_id; ?>"
+                                                                    data-student_fees_master_id="<?php echo $fee->id; ?>"
+                                                                    data-fee_groups_feetype_id="<?php echo $fee_value->fee_groups_feetype_id; ?>"
+                                                                    data-fee_session_group_id="<?php echo $fee_value->fee_session_group_id; ?>"
+                                                                    data-group="<?php echo ($fee_value->is_system) ? $this->lang->line($fee_value->name) . " (" . $this->lang->line($fee_value->type) . ")" : $fee_value->name . " (" . $fee_value->type . ")"; ?>"
+                                                                    title="<?php echo $this->lang->line('view_history'); ?>"
+                                                                    data-toggle="modal" data-target="#feeHistoryModal">
+                                                                    <i class="fa fa-history"></i>
+                                                                </button>
                                                             <?php } ?>
 
                                                             <button class="btn btn-xs btn-default printInv"
@@ -916,10 +931,10 @@ $language_name = $language["short_code"];
                                                 </td>
                                                 <td class="text text-right">
                                                     <?php
-                                                    $display_none = "ss-none";
+                                                    // Separate display logic for payment collection buttons vs other buttons
+                                                    $payment_buttons_display = "ss-none"; // Hide payment buttons for fully paid fees
                                                     if ($feetype_balance > 0) {
-                                                        $display_none = "";
-
+                                                        $payment_buttons_display = "";
                                                         echo amountFormat($feetype_balance);
                                                     }
                                                     ?>
@@ -932,11 +947,25 @@ $language_name = $language["short_code"];
                                                             data-student_fees_master_id="0" data-fee_groups_feetype_id="0"
                                                             data-group="<?php echo $this->lang->line('transport_fees'); ?>"
                                                             data-type="<?php echo $transport_fee_value->month; ?>"
-                                                            class="btn btn-xs btn-default myCollectFeeBtn <?php echo $display_none; ?>"
+                                                            class="btn btn-xs btn-default myCollectFeeBtn <?php echo $payment_buttons_display; ?>"
                                                             title="<?php echo $this->lang->line('add_fees'); ?>" data-toggle="modal"
                                                             data-target="#myFeesModal" data-fee-category="transport"
                                                             data-trans_fee_id="<?php echo $transport_fee_value->id; ?>"><i
                                                                 class="fa fa-plus"></i></button>
+                                                    <?php } ?>
+
+                                                    <?php
+                                                    // Add View History button for transport fees that have payment history
+                                                    if (!empty($transport_fee_value->amount_detail)) { ?>
+                                                        <button type="button" class="btn btn-xs btn-info viewTransportFeeHistory"
+                                                            data-student_session_id="<?php echo $transport_fee_value->student_session_id; ?>"
+                                                            data-trans_fee_id="<?php echo $transport_fee_value->id; ?>"
+                                                            data-group="<?php echo $this->lang->line('transport_fees'); ?>"
+                                                            data-type="<?php echo $transport_fee_value->month; ?>"
+                                                            title="<?php echo $this->lang->line('view_history'); ?>"
+                                                            data-toggle="modal" data-target="#transportFeeHistoryModal">
+                                                            <i class="fa fa-history"></i>
+                                                        </button>
                                                     <?php } ?>
 
                                                     <button class="btn btn-xs btn-default printInv"
@@ -1037,6 +1066,263 @@ $language_name = $language["short_code"];
                                                     <?php
                                                 }
                                             }
+                                            ?>
+
+                                            <?php
+                                        }
+                                    }
+
+                                    ?>
+
+                                    <?php
+                                    // Debug information for hostel fees (remove in production)
+                                    if (ENVIRONMENT === 'development') {
+                                        echo "<!-- DEBUG: Hostel fees count: " . (isset($hostel_fees) ? count($hostel_fees) : 'not set') . " -->";
+                                        if (isset($hostel_fees) && !empty($hostel_fees)) {
+                                            echo "<!-- DEBUG: First hostel fee ID: " . $hostel_fees[0]->id . " -->";
+                                        }
+                                    }
+
+                                    if (!empty($hostel_fees)) {
+                                        foreach ($hostel_fees as $hostel_fee_key => $hostel_fee_value) {
+
+                                            $fee_paid = 0;
+                                            $fee_discount = 0;
+                                            $fee_fine = 0;
+                                            $fees_fine_amount = 0;
+                                            $feetype_balance = 0;
+
+                                            if (!empty($hostel_fee_value->amount_detail)) {
+                                                $fee_deposits = json_decode(($hostel_fee_value->amount_detail));
+                                                foreach ($fee_deposits as $fee_deposits_key => $fee_deposits_value) {
+                                                    $fee_paid = $fee_paid + $fee_deposits_value->amount;
+                                                    $fee_discount = $fee_discount + $fee_deposits_value->amount_discount;
+                                                    $fee_fine = $fee_fine + $fee_deposits_value->amount_fine;
+                                                }
+                                            }
+
+                                            $feetype_balance = $hostel_fee_value->fees - ($fee_paid + $fee_discount);
+
+                                            if (($hostel_fee_value->due_date != "0000-00-00" && $hostel_fee_value->due_date != null) && (strtotime($hostel_fee_value->due_date) < strtotime(date('Y-m-d')))) {
+                                                $fees_fine_amount = is_null($hostel_fee_value->fine_percentage) ? $hostel_fee_value->fine_amount : percentageAmount($hostel_fee_value->fees, $hostel_fee_value->fine_percentage);
+                                                $total_fees_fine_amount = $total_fees_fine_amount + $fees_fine_amount;
+                                            }
+
+                                            $total_amount += $hostel_fee_value->fees;
+                                            $total_discount_amount += $fee_discount;
+                                            $total_deposite_amount += $fee_paid;
+                                            $total_fine_amount += $fee_fine;
+                                            $total_balance_amount += $feetype_balance;
+
+                                            if (strtotime($hostel_fee_value->due_date) < strtotime(date('Y-m-d'))) {
+                                                ?>
+                                                <tr class="danger font12">
+                                                    <?php
+                                            } else {
+                                                ?>
+                                                <tr class="dark-gray">
+                                                    <?php
+                                            }
+                                            ?>
+                                                <td>
+                                                    <input class="checkbox" type="checkbox" name="fee_checkbox"
+                                                        data-fee_master_id="0" data-fee_session_group_id="0"
+                                                        data-fee_groups_feetype_id="0" data-fee_category="hostel"
+                                                        data-otherfeecat=""
+                                                        data-hostel_fee_id="<?php echo $hostel_fee_value->id; ?>">
+
+                                                </td>
+                                                <td align="left" class="text-rtl-right">
+                                                    <?php echo $this->lang->line('hostel_fees'); ?>
+                                                </td>
+                                                <td align="left" class="text-rtl-right">
+                                                    <?php echo $hostel_fee_value->month; ?>
+                                                </td>
+                                                <td align="left" class="text text-left">
+                                                    <?php echo $this->customlib->dateformat($hostel_fee_value->due_date); ?>
+                                                </td>
+                                                <td align="left" class="text text-left width85">
+                                                    <?php
+                                                    if ($feetype_balance == 0) {
+                                                        ?><span class="label label-success">
+                                                            <?php echo $this->lang->line('paid'); ?>
+                                                        </span>
+                                                        <?php
+                                                    } else if (!empty($hostel_fee_value->amount_detail)) {
+                                                        ?><span class="label label-warning">
+                                                            <?php echo $this->lang->line('partial'); ?>
+                                                            </span>
+                                                        <?php
+                                                    } else {
+                                                        ?><span class="label label-danger">
+                                                            <?php echo $this->lang->line('unpaid'); ?>
+                                                        </span>
+                                                        <?php
+                                                    }
+                                                    ?>
+                                                </td>
+                                                <td class="text text-right">
+                                                    <?php
+
+                                                    echo amountFormat($hostel_fee_value->fees);
+
+                                                    if (($hostel_fee_value->due_date != "0000-00-00" && $hostel_fee_value->due_date != null) && (strtotime($hostel_fee_value->due_date) < strtotime(date('Y-m-d')))) {
+                                                        $hr_fine_amount = $hostel_fee_value->fine_amount;
+                                                        if ($hostel_fee_value->fine_type != "" && $hostel_fee_value->fine_type == "percentage") {
+
+                                                            $hr_fine_amount = percentageAmount($hostel_fee_value->fees, $hostel_fee_value->fine_percentage);
+                                                        }
+                                                        ?>
+
+                                                        <span data-toggle="popover" class="text text-danger detail_popover">
+                                                            <?php echo " + " . amountFormat($hr_fine_amount); ?>
+                                                        </span>
+
+                                                        <div class="fee_detail_popover" style="display: none">
+                                                            <?php
+                                                            if ($hostel_fee_value->fine_type == "none") {
+                                                                $fine_title = $this->lang->line('fine');
+                                                            } else {
+                                                                $fine_title = $this->lang->line('fine') . " @" . $hostel_fee_value->fine_percentage . "%";
+                                                            }
+                                                            ?>
+                                                            <p class="text text-danger"><?php echo $fine_title . " : " . amountFormat($hr_fine_amount); ?></p>
+                                                        </div>
+                                                        <?php
+                                                    }
+                                                    ?>
+                                                </td>
+                                                <td></td>
+                                                <td></td>
+                                                <td></td>
+                                                <td class="text text-right"><?php echo amountFormat($fee_discount); ?></td>
+                                                <td class="text text-right"><?php echo amountFormat($fee_fine); ?></td>
+                                                <td class="text text-right"><?php echo amountFormat($fee_paid); ?></td>
+                                                <td class="text text-right">
+                                                    <?php
+                                                    // Separate display logic for payment collection buttons vs other buttons
+                                                    $payment_buttons_display = "ss-none"; // Hide payment buttons for fully paid fees
+                                                    if ($feetype_balance > 0) {
+                                                        $payment_buttons_display = "";
+                                                        echo amountFormat($feetype_balance);
+                                                    }
+                                                    ?>
+                                                </td>
+                                                <td width="100">
+
+                                                    <?php if ($this->rbac->hasPrivilege('collect_fees', 'can_add')) { ?>
+                                                        <button type="button"
+                                                            data-student_session_id="<?php echo $hostel_fee_value->student_session_id; ?>"
+                                                            data-student_fees_master_id="0" data-fee_groups_feetype_id="0"
+                                                            data-group="<?php echo $this->lang->line('hostel_fees'); ?>"
+                                                            data-type="<?php echo $hostel_fee_value->month; ?>"
+                                                            class="btn btn-xs btn-default myCollectFeeBtn <?php echo $payment_buttons_display; ?>"
+                                                            title="<?php echo $this->lang->line('add_fees'); ?>" data-toggle="modal"
+                                                            data-target="#myFeesModal" data-fee-category="hostel"
+                                                            data-hostel_fee_id="<?php echo $hostel_fee_value->id; ?>"><i
+                                                                class="fa fa-plus"></i></button>
+                                                    <?php } ?>
+
+                                                    <?php
+                                                    // Add View History button for hostel fees that have payment history
+                                                    if (!empty($hostel_fee_value->amount_detail)) { ?>
+                                                        <button type="button" class="btn btn-xs btn-info viewHostelFeeHistory"
+                                                            data-student_session_id="<?php echo $hostel_fee_value->student_session_id; ?>"
+                                                            data-trans_fee_id="<?php echo $hostel_fee_value->id; ?>"
+                                                            data-group="<?php echo $this->lang->line('hostel_fees'); ?>"
+                                                            data-type="<?php echo $hostel_fee_value->month; ?>"
+                                                            title="<?php echo $this->lang->line('view_history'); ?>"
+                                                            data-toggle="modal" data-target="#hostelFeeHistoryModal">
+                                                            <i class="fa fa-history"></i>
+                                                        </button>
+                                                    <?php } ?>
+
+                                                    <button class="btn btn-xs btn-default printInv"
+                                                        data-student_session_id="<?php echo $hostel_fee_value->student_session_id; ?>"
+                                                        data-fee_master_id="0" data-fee_session_group_id="0"
+                                                        data-fee_groups_feetype_id="0" data-fee-category="hostel"
+                                                        data-trans_fee_id="<?php echo $hostel_fee_value->id; ?>"
+                                                        title="<?php echo $this->lang->line('print'); ?>"
+                                                        data-loading-text="<i class='fa fa-spinner fa-spin '></i>"><i
+                                                            class="fa fa-print"></i> </button>
+
+                                                </td>
+                                            </tr>
+
+                                            <?php
+                                            if (!empty($hostel_fee_value->amount_detail)) {
+
+                                                $fee_deposits = json_decode(($hostel_fee_value->amount_detail));
+
+                                                foreach ($fee_deposits as $fee_deposits_key => $fee_deposits_value) {
+                                                    ?>
+                                                    <tr class="dark-gray">
+                                                        <td align="left"></td>
+                                                        <td align="left" class="text-rtl-right">
+                                                            <img
+                                                                src="<?php echo base_url(); ?>backend/images/table-arrow.png" alt="" />
+                                                        </td>
+                                                        <td class="text text-left">
+
+                                                            <a href="#" data-toggle="popover" class="detail_popover">
+                                                                <?php echo $hostel_fee_value->student_fees_deposite_id . "/" . $fee_deposits_value->inv_no; ?>
+                                                            </a>
+                                                            <div class="fee_detail_popover" style="display: none">
+                                                                <?php
+                                                                if ($fee_deposits_value->description == "") {
+                                                                    ?>
+                                                                    <p class="text text-info"><?php echo $this->lang->line('description') . ": " . $this->lang->line('no_description'); ?></p>
+                                                                    <?php
+                                                                } else {
+                                                                    ?>
+                                                                    <p class="text text-info"><?php echo $this->lang->line('description') . ": " . $fee_deposits_value->description; ?></p>
+                                                                    <?php
+                                                                }
+                                                                ?>
+                                                                <p class="text text-info"><?php echo $this->lang->line('payment_mode') . ": " . $this->lang->line(strtolower($fee_deposits_value->payment_mode)); ?></p>
+                                                                <p class="text text-danger"><?php echo $this->lang->line('fine') . " : " . amountFormat($fee_deposits_value->amount_fine); ?></p>
+                                                                <p class="text text-warning"><?php echo $this->lang->line('discount') . " : " . amountFormat($fee_deposits_value->amount_discount); ?></p>
+                                                                <p class="text text-info"><?php echo $this->lang->line('date') . " : " . $this->customlib->dateformat($fee_deposits_value->date); ?></p>
+                                                            </div>
+
+                                                        </td>
+                                                        <td class="text text-left"><?php echo $this->customlib->dateformat($fee_deposits_value->date); ?></td>
+                                                        <td class="text text-left"></td>
+                                                        <td class="text text-right"><?php echo amountFormat($fee_deposits_value->amount_discount); ?></td>
+                                                        <td class="text text-right"><?php echo amountFormat($fee_deposits_value->amount_fine); ?></td>
+                                                        <td class="text text-right"><?php echo amountFormat($fee_deposits_value->amount); ?></td>
+                                                        <td class="text text-right"></td>
+                                                        <td class="text text-right">
+                                                            <div class="btn-group ">
+                                                                <div class="pull-right">
+                                                                    <?php if ($this->rbac->hasPrivilege('collect_fees', 'can_delete')) { ?>
+                                                                        <button class="btn btn-default btn-xs"
+                                                                            data-invoiceno="<?php echo $hostel_fee_value->student_fees_deposite_id . "/" . $fee_deposits_value->inv_no; ?>"
+                                                                            data-main_invoice="<?php echo $hostel_fee_value->student_fees_deposite_id ?>"
+                                                                            data-sub_invoice="<?php echo $fee_deposits_value->inv_no ?>"
+                                                                            data-toggle="modal" data-target="#confirm-delete"
+                                                                            title="<?php echo $this->lang->line('revert'); ?>">
+                                                                            <i class="fa fa-undo"> </i>
+                                                                        </button>
+                                                                    <?php } ?>
+                                                                    <button class="btn btn-default btn-xs printInv"
+                                                                        data-fee_master_id="<?php echo $fee_value->id ?>"
+                                                                        data-fee_session_group_id="<?php echo $fee_value->fee_session_group_id ?>"
+                                                                        data-fee_groups_feetype_id="<?php echo $fee_value->fee_groups_feetype_id ?>"
+
+                                                                        data-fee-category="hostel"
+                                                                        data-main_invoice="<?php echo $hostel_fee_value->student_fees_deposite_id ?>"
+                                                                        data-sub_invoice="<?php echo $fee_deposits_value->inv_no ?>"
+                                                                        title="<?php echo $this->lang->line('print'); ?>"><i
+                                                                            class="fa fa-print"></i> </button>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    <?php
+                                                }
+                                            }
+
                                             ?>
 
                                             <?php
@@ -1354,10 +1640,10 @@ $language_name = $language["short_code"];
                                                 </td>
                                                 <td class="text text-right">
                                                     <?php
-                                                    $display_none = "ss-none";
+                                                    // Separate display logic for payment collection buttons vs other buttons
+                                                    $payment_buttons_display = "ss-none"; // Hide payment buttons for fully paid fees
                                                     if ($feetype_balance > 0) {
-                                                        $display_none = "";
-
+                                                        $payment_buttons_display = "";
                                                         echo amountFormat($feetype_balance);
                                                     }
                                                     ?>
@@ -1373,11 +1659,26 @@ $language_name = $language["short_code"];
                                                                     data-fee_groups_feetype_id="<?php echo $fee_value->fee_groups_feetype_id; ?>"
                                                                     data-group="<?php echo ($fee_value->is_system) ? $this->lang->line($fee_value->name) . " (" . $this->lang->line($fee_value->type) . ")" : $fee_value->name . " (" . $fee_value->type . ")"; ?>"
                                                                     data-type="<?php echo ($fee_value->is_system) ? $this->lang->line($fee_value->type) : $fee_value->code; ?>"
-                                                                    class="btn btn-xs btn-default myCollectFeeBtn <?php echo $display_none; ?>"
+                                                                    class="btn btn-xs btn-default myCollectFeeBtn <?php echo $payment_buttons_display; ?>"
                                                                     title="<?php echo $this->lang->line('add_fees'); ?>"
                                                                     data-toggle="modal" data-target="#myAdditionalFeesModal"
                                                                     data-fee-category="fees" data-trans_fee_id="0"><i
                                                                         class="fa fa-plus"></i></button>
+                                                            <?php } ?>
+
+                                                            <?php
+                                                            // Add View History button for additional fees that have payment history
+                                                            if (!empty($fee_value->amount_detail)) { ?>
+                                                                <button type="button" class="btn btn-xs btn-info viewAdditionalFeeHistory"
+                                                                    data-student_session_id="<?php echo $fee->student_session_id; ?>"
+                                                                    data-student_fees_master_id="<?php echo $fee->id; ?>"
+                                                                    data-fee_groups_feetype_id="<?php echo $fee_value->fee_groups_feetype_id; ?>"
+                                                                    data-fee_session_group_id="<?php echo $fee_value->fee_session_group_id; ?>"
+                                                                    data-group="<?php echo ($fee_value->is_system) ? $this->lang->line($fee_value->name) . " (" . $this->lang->line($fee_value->type) . ")" : $fee_value->name . " (" . $fee_value->type . ")"; ?>"
+                                                                    title="<?php echo $this->lang->line('view_history'); ?>"
+                                                                    data-toggle="modal" data-target="#additionalFeeHistoryModal">
+                                                                    <i class="fa fa-history"></i>
+                                                                </button>
                                                             <?php } ?>
 
                                                             <button class="btn btn-xs btn-default adding_printInv"
@@ -1616,6 +1917,8 @@ $language_name = $language["short_code"];
                             readonly="readonly" />
                         <input type="hidden" class="form-control" id="transport_fees_id" value="0"
                             readonly="readonly" />
+                        <input type="hidden" class="form-control" id="hostel_fees_id" value="0"
+                            readonly="readonly" />
                         <input type="hidden" class="form-control" id="fee_category" value="" readonly="readonly" />
                         <div class="form-group">
                             <label for="inputEmail3" class="col-sm-3 control-label">
@@ -1808,6 +2111,8 @@ $language_name = $language["short_code"];
                             readonly="readonly" />
                         <input type="hidden" class="form-control" id="transport_fees_id" value="0"
                             readonly="readonly" />
+                        <input type="hidden" class="form-control" id="hostel_fees_id" value="0"
+                            readonly="readonly" />
                         <input type="hidden" class="form-control" id="fee_category" value="" readonly="readonly" />
                         <div class="form-group">
                             <label for="inputEmail3" class="col-sm-3 control-label">
@@ -1816,8 +2121,7 @@ $language_name = $language["short_code"];
                             <div class="col-sm-9">
                                 <input id="date" name="admission_date" placeholder="" type="text"
                                     class="form-control date_fee"
-                                    value="<?php echo date($this->customlib->getSchoolDateFormat()); ?>"
-                                    readonly="readonly" />
+                                    value="<?php echo date($this->customlib->getSchoolDateFormat()); ?>" />
                                 <span class="text-danger" id="date_error"></span>
                             </div>
                         </div>
@@ -2389,26 +2693,24 @@ $language_name = $language["short_code"];
         $this.button('loading');
         var form = $(this).attr('frm');
         var feetype = $('#feetype_').val();
-        var date = $('#datee').val();
-        // var accountname = $('#accountname').val();
+        var date = $('#date').val();
+        var accountname = $('#accountname').val();
         var student_session_id = $('#std_id').val();
-        var amount = $('#amounttt').val();
-        // var amount_discount = $('#amount_discount').val();
-        // var amount_fine = $('#amount_fine').val();
-        var description = $('#description').val();
-        var parent_app_key = $('#parent_app_key').val();
-        var guardian_phone = $('#guardian_phone').val();
-        var guardian_email = $('#guardian_email').val();
+        var amount = $('#amount').val();
+        var amount_discount = $('#amount_discount').val();
+        var amount_fine = $('#amount_fine').val();
+        var description = $('#description1').val();
+        var payment_mode = $('input[name=payment_mode_fee]:checked').val();
         var student_fees_master_id = $('#student_fees_master_id').val();
         var fee_groups_feetype_id = $('#fee_groups_feetype_id').val();
         var transport_fees_id = $('#transport_fees_id').val();
+        var hostel_fees_id = $('#hostel_fees_id').val();
         var fee_category = $('#fee_category').val();
-        // var payment_mode = $('input[name="payment_mode_fee"]:checked').val();
         var student_fees_discount_id = $('#discount_group').val();
         $.ajax({
             url: '<?php echo site_url("studentfee/adddiscountstudentfee") ?>',
             type: 'post',
-            data: { action: action,student_session_id: student_session_id, date: date, type: feetype, amount: amount,description: description, student_fees_master_id: student_fees_master_id, fee_groups_feetype_id: fee_groups_feetype_id, fee_category: fee_category, transport_fees_id: transport_fees_id},
+            data: { action: action,student_session_id: student_session_id, date: date, type: feetype, amount: amount,description: description, student_fees_master_id: student_fees_master_id, fee_groups_feetype_id: fee_groups_feetype_id, fee_category: fee_category, transport_fees_id: transport_fees_id, hostel_fees_id: hostel_fees_id, student_fees_discount_id: student_fees_discount_id, amount_discount: amount_discount, amount_fine: amount_fine, payment_mode: payment_mode, accountname: accountname},
             dataType: 'json',
             success: function (response) {
                 $this.button('reset');
@@ -2454,6 +2756,7 @@ $language_name = $language["short_code"];
         $('#fee_groups_feetype_id').val(fee_groups_feetype_id);
         $('#student_fees_master_id').val(student_fees_master_id);
         $('#transport_fees_id').val(trans_fee_id);
+        $('#hostel_fees_id').val(hostel_fee_id); // Fixed: Use hostel_fee_id for hostel fees
         $('#fee_category').val(fee_category);
 
         $.ajax({
@@ -2627,13 +2930,14 @@ $language_name = $language["short_code"];
         var student_fees_master_id = $('#student_fees_master_id').val();
         var fee_groups_feetype_id = $('#fee_groups_feetype_id').val();
         var transport_fees_id = $('#transport_fees_id').val();
+        var hostel_fees_id = $('#hostel_fees_id').val();
         var fee_category = $('#fee_category').val();
         var payment_mode = $('input[name="payment_mode_fee"]:checked').val();
         var student_fees_discount_id = $('#discount_group').val();
         $.ajax({
             url: '<?php echo site_url("studentfee/addstudentfee") ?>',
             type: 'post',
-            data: { action: action, accountname: accountname,student_session_id: student_session_id, date: date, type: feetype, amount: amount, amount_discount: amount_discount, amount_fine: amount_fine, description: description, student_fees_master_id: student_fees_master_id, fee_groups_feetype_id: fee_groups_feetype_id, fee_category: fee_category, transport_fees_id: transport_fees_id, payment_mode: payment_mode, guardian_phone: guardian_phone, guardian_email: guardian_email, student_fees_discount_id: student_fees_discount_id, parent_app_key: parent_app_key },
+            data: { action: action, accountname: accountname,student_session_id: student_session_id, date: date, type: feetype, amount: amount, amount_discount: amount_discount, amount_fine: amount_fine, description: description, student_fees_master_id: student_fees_master_id, fee_groups_feetype_id: fee_groups_feetype_id, fee_category: fee_category, transport_fees_id: transport_fees_id, hostel_fees_id: hostel_fees_id, payment_mode: payment_mode, guardian_phone: guardian_phone, guardian_email: guardian_email, student_fees_discount_id: student_fees_discount_id, parent_app_key: parent_app_key },
             dataType: 'json',
             success: function (response) {
                 $this.button('reset');
@@ -3960,6 +4264,94 @@ $language_name = $language["short_code"];
     </div>
 </div>
 
+<!-- Fee History Modal -->
+<div class="modal fade" id="feeHistoryModal" tabindex="-1" role="dialog" aria-labelledby="feeHistoryModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title" id="feeHistoryModalLabel">
+                    <i class="fa fa-history"></i> <?php echo $this->lang->line('payment_history'); ?>
+                </h4>
+            </div>
+            <div class="modal-body" id="feeHistoryContent">
+                <!-- Content will be loaded via AJAX -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo $this->lang->line('close'); ?></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Transport Fee History Modal -->
+<div class="modal fade" id="transportFeeHistoryModal" tabindex="-1" role="dialog" aria-labelledby="transportFeeHistoryModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title" id="transportFeeHistoryModalLabel">
+                    <i class="fa fa-history"></i> <?php echo $this->lang->line('transport_fee_payment_history'); ?>
+                </h4>
+            </div>
+            <div class="modal-body" id="transportFeeHistoryContent">
+                <!-- Content will be loaded via AJAX -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo $this->lang->line('close'); ?></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hostel Fee History Modal -->
+<div class="modal fade" id="hostelFeeHistoryModal" tabindex="-1" role="dialog" aria-labelledby="hostelFeeHistoryModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title" id="hostelFeeHistoryModalLabel">
+                    <i class="fa fa-history"></i> <?php echo $this->lang->line('hostel_fee_payment_history'); ?>
+                </h4>
+            </div>
+            <div class="modal-body" id="hostelFeeHistoryContent">
+                <!-- Content will be loaded via AJAX -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo $this->lang->line('close'); ?></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Additional Fee History Modal -->
+<div class="modal fade" id="additionalFeeHistoryModal" tabindex="-1" role="dialog" aria-labelledby="additionalFeeHistoryModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title" id="additionalFeeHistoryModalLabel">
+                    <i class="fa fa-history"></i> <?php echo $this->lang->line('additional_fee_payment_history'); ?>
+                </h4>
+            </div>
+            <div class="modal-body" id="additionalFeeHistoryContent">
+                <!-- Content will be loaded via AJAX -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo $this->lang->line('close'); ?></button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 // Advance Payment Management Functions
 function openAdvancePaymentModal(studentSessionId, studentName, admissionNo, classSection, fatherName) {
@@ -4413,4 +4805,269 @@ function showErrorMessage(message) {
         alert(message);
     }
 }
+
+// Fee History Functions
+$(document).on('click', '.viewFeeHistory', function() {
+    var studentSessionId = $(this).data('student_session_id');
+    var studentFeesMasterId = $(this).data('student_fees_master_id');
+    var feeGroupsFeetypeId = $(this).data('fee_groups_feetype_id');
+    var feeSessionGroupId = $(this).data('fee_session_group_id');
+    var group = $(this).data('group');
+
+    $('#feeHistoryModalLabel').html('<i class="fa fa-history"></i> Payment History - ' + group);
+    $('#feeHistoryContent').html('<div class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading...</div>');
+    $('#feeHistoryModal').modal('show');
+
+    $.ajax({
+        url: '<?php echo site_url("studentfee/getFeeHistory"); ?>',
+        type: 'POST',
+        data: {
+            student_session_id: studentSessionId,
+            student_fees_master_id: studentFeesMasterId,
+            fee_groups_feetype_id: feeGroupsFeetypeId,
+            fee_session_group_id: feeSessionGroupId,
+            '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
+        },
+        success: function(response) {
+            $('#feeHistoryContent').html(response);
+        },
+        error: function() {
+            $('#feeHistoryContent').html('<div class="alert alert-danger">Error loading payment history</div>');
+        }
+    });
+});
+
+$(document).on('click', '.viewTransportFeeHistory', function() {
+    var studentSessionId = $(this).data('student_session_id');
+    var transFeeId = $(this).data('trans_fee_id');
+    var group = $(this).data('group');
+    var type = $(this).data('type');
+
+    $('#transportFeeHistoryModalLabel').html('<i class="fa fa-history"></i> Payment History - ' + group + ' (' + type + ')');
+    $('#transportFeeHistoryContent').html('<div class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading...</div>');
+    $('#transportFeeHistoryModal').modal('show');
+
+    $.ajax({
+        url: '<?php echo site_url("studentfee/getTransportFeeHistory"); ?>',
+        type: 'POST',
+        data: {
+            student_session_id: studentSessionId,
+            trans_fee_id: transFeeId,
+            '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
+        },
+        success: function(response) {
+            $('#transportFeeHistoryContent').html(response);
+        },
+        error: function() {
+            $('#transportFeeHistoryContent').html('<div class="alert alert-danger">Error loading transport fee payment history</div>');
+        }
+    });
+});
+
+$(document).on('click', '.viewHostelFeeHistory', function() {
+    var studentSessionId = $(this).data('student_session_id');
+    var transFeeId = $(this).data('trans_fee_id');
+    var group = $(this).data('group');
+    var type = $(this).data('type');
+
+    $('#hostelFeeHistoryModalLabel').html('<i class="fa fa-history"></i> Payment History - ' + group + ' (' + type + ')');
+    $('#hostelFeeHistoryContent').html('<div class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading...</div>');
+    $('#hostelFeeHistoryModal').modal('show');
+
+    $.ajax({
+        url: '<?php echo site_url("studentfee/getHostelFeeHistory"); ?>',
+        type: 'POST',
+        data: {
+            student_session_id: studentSessionId,
+            trans_fee_id: transFeeId,
+            '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
+        },
+        success: function(response) {
+            $('#hostelFeeHistoryContent').html(response);
+        },
+        error: function() {
+            $('#hostelFeeHistoryContent').html('<div class="alert alert-danger">Error loading hostel fee payment history</div>');
+        }
+    });
+});
+
+$(document).on('click', '.viewAdditionalFeeHistory', function() {
+    var studentSessionId = $(this).data('student_session_id');
+    var studentFeesMasterId = $(this).data('student_fees_master_id');
+    var feeGroupsFeetypeId = $(this).data('fee_groups_feetype_id');
+    var feeSessionGroupId = $(this).data('fee_session_group_id');
+    var group = $(this).data('group');
+
+    $('#additionalFeeHistoryModalLabel').html('<i class="fa fa-history"></i> Payment History - ' + group);
+    $('#additionalFeeHistoryContent').html('<div class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading...</div>');
+    $('#additionalFeeHistoryModal').modal('show');
+
+    $.ajax({
+        url: '<?php echo site_url("studentfee/getAdditionalFeeHistory"); ?>',
+        type: 'POST',
+        data: {
+            student_session_id: studentSessionId,
+            student_fees_master_id: studentFeesMasterId,
+            fee_groups_feetype_id: feeGroupsFeetypeId,
+            fee_session_group_id: feeSessionGroupId,
+            '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
+        },
+        success: function(response) {
+            $('#additionalFeeHistoryContent').html(response);
+        },
+        error: function() {
+            $('#additionalFeeHistoryContent').html('<div class="alert alert-danger">Error loading additional fee payment history</div>');
+        }
+    });
+});
+
+// Fix for hostel fee collection
+$(document).on('click', '.myCollectFeeBtn[data-fee-category="hostel"]', function(e) {
+    var studentSessionId = $(this).data('student_session_id');
+    var hostelFeeId = $(this).data('hostel_fee_id');
+    var group = $(this).data('group');
+    var type = $(this).data('type');
+    
+    console.log('Hostel fee button clicked:', {
+        studentSessionId: studentSessionId,
+        hostelFeeId: hostelFeeId,
+        group: group,
+        type: type
+    });
+    
+    // Clear previous data and errors
+    $('#myFeesModal').find('input[type="text"], input[type="number"], select, textarea').val('');
+    $('#myFeesModal').find('.text-danger').text('');
+    $("span[id$='_error']").html("");
+    
+    // Set current date
+    $('#date').val('<?php echo date($this->customlib->getSchoolDateFormat()); ?>');
+    
+    // Set default payment mode to Cash and trigger change
+    $('input[name="payment_mode_fee"][value="Cash"]').prop('checked', true).trigger('change');
+    
+    // Set modal data for hostel fees
+    $('#myFeesModal').find('#std_id').val(studentSessionId);
+    $('#myFeesModal').find('#fee_category').val('hostel');
+    $('#myFeesModal').find('#hostel_fees_id').val(hostelFeeId);
+    $('#myFeesModal').find('#transport_fees_id').val(0);
+    $('#myFeesModal').find('#student_fees_master_id').val(0);
+    $('#myFeesModal').find('#fee_groups_feetype_id').val(0);
+    
+    // Update modal title
+    $('.fees_title').html("<b>" + group + ":</b> " + type);
+    
+    // Load hostel fee balance
+    $.ajax({
+        type: "post",
+        url: '<?php echo site_url("studentfee/geBalanceFee") ?>',
+        dataType: 'JSON',
+        data: {
+            
+            'student_session_id': studentSessionId,
+            'fee_category': 'hostel',
+            'student_hostel_fee_id': hostelFeeId
+        },
+        beforeSend: function () {
+            $('#discount_group').html('<option value=""><?php echo $this->lang->line('select'); ?></option>');
+            $('#amount').val("");
+            $('#amount_discount').val("0");
+            $('#amount_fine').val("0");
+        },
+        success: function(data) {
+            console.log('Hostel fee balance loaded:', data);
+            $('#amount').val(data.balance);
+            $('#amount_fine').val(data.remain_amount_fine || 0);
+            $('#amount_discount').val(data.amount_discount || 0);
+            
+            // Load account names for hostel fees
+            loadAccountNames();
+            
+            // Auto-select Cash account if Cash payment mode is selected
+            setTimeout(function() {
+                if ($('input[name="payment_mode_fee"]:checked').val() === 'Cash') {
+                    $('#accountname option').each(function() {
+                        if ($(this).text().toLowerCase().includes('cash')) {
+                            $(this).prop('selected', true);
+                            return false;
+                        }
+                    });
+                }
+            }, 500);
+        },
+        error: function (xhr) {
+            console.error('AJAX error loading hostel fee balance:', xhr);
+            alert("<?php echo $this->lang->line('error_occurred_please_try_again'); ?>");
+        },
+        complete: function () {
+            // Show the modal after data is loaded
+            $('#myFeesModal').modal('show');
+        }
+    });
+});
+
+// Add payment mode change handler for auto-selecting account
+$(document).on('change', 'input[name="payment_mode_fee"]', function() {
+    var selectedMode = $(this).val();
+    console.log('Payment mode changed to:', selectedMode);
+    
+    // Clear payment mode error
+    $('#payment_mode_error').text('');
+    
+    // Auto-select corresponding account
+    setTimeout(function() {
+        $('#accountname option').each(function() {
+            var optionText = $(this).text().toLowerCase();
+            if ((selectedMode === 'Cash' && optionText.includes('cash')) ||
+                (selectedMode === 'Cheque' && optionText.includes('bank')) ||
+                (selectedMode === 'DD' && optionText.includes('bank')) ||
+                (selectedMode === 'bank_transfer' && optionText.includes('bank')) ||
+                (selectedMode === 'upi' && optionText.includes('bank')) ||
+                (selectedMode === 'card' && optionText.includes('bank'))) {
+                $(this).prop('selected', true);
+                $('#accountname_error').text(''); // Clear account error
+                return false;
+            }
+        });
+    }, 100);
+});
+
+// Fix form validation to not show payment mode error when mode is selected
+$(document).on('click', '.save_button', function(e) {
+    // Clear previous errors
+    $("span[id$='_error']").html("");
+    
+    // Check if payment mode is selected
+    var paymentMode = $('input[name="payment_mode_fee"]:checked').val();
+    if (!paymentMode) {
+        $('#payment_mode_error').text('Payment mode is required');
+        e.preventDefault();
+        return false;
+    }
+    
+    // Check if account is selected
+    var accountName = $('#accountname').val();
+    if (!accountName) {
+        $('#accountname_error').text('Account name is required');
+        e.preventDefault();
+        return false;
+    }
+    
+    // Check if date is filled
+    var date = $('#date').val();
+    if (!date) {
+        $('#date_error').text('Date is required');
+        e.preventDefault();
+        return false;
+    }
+    
+    // Check if amount is filled and valid
+    var amount = $('#amount').val();
+    if (!amount || parseFloat(amount) <= 0) {
+        $('#amount_error').text('Valid amount is required');
+        e.preventDefault();
+        return false;
+    }
+});
+
 </script>

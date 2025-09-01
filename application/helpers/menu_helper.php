@@ -253,11 +253,11 @@ if (!function_exists('main_menu_array')) {
                 'vehroute'    => array('index','edit'),        
             ), 
             
-            'hostel' => array(               
-                'hostelroom'  => array('index','edit'),      
-                'roomtype'    => array('index','edit'),      
-                'hostel'      => array('index','edit'),      
-            ), 
+            'hostel' => array(
+                'hostelroom'  => array('index','edit'),
+                'roomtype'    => array('index','edit'),
+                'hostel'      => array('index','edit','feemaster','assignhostelfee','assignhostelfeestudent','assignhostelfeepost'),
+            ),
             
             'certificate' => array(               
                 'certificate'           => array('index','edit'),      

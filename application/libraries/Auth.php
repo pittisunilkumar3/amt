@@ -43,6 +43,15 @@ class Auth
     {
         if ($this->CI->session->has_userdata('student')) {
             $user = $this->CI->session->userdata('student');
+
+            // Validate user data structure
+            if (!is_array($user) || !isset($user['role'])) {
+                // Invalid session data, clear it and redirect to login
+                $this->CI->session->unset_userdata('student');
+                redirect('site/userlogin');
+                return;
+            }
+
             $role = $user['role'];
             if ($role == "student") {
                 redirect('user/user/dashboard');
@@ -55,6 +64,8 @@ class Auth
             } else if ($role == "librarian") {
                 redirect('librarian/librarian/dashboard');
             } else {
+                // Unknown role, clear session and redirect to login
+                $this->CI->session->unset_userdata('student');
                 redirect('site/userlogin');
             }
         } else {
@@ -98,27 +109,38 @@ class Auth
 
         if ($this->CI->session->has_userdata('student')) {
 
-
             $user = $this->CI->session->userdata('student');
 
-            if($user['role'] == "guest"){
+            // Validate user data structure
+            if (!is_array($user) || !isset($user['role'])) {
+                // Invalid session data, clear it and redirect to login
+                $this->CI->session->unset_userdata('student');
+                $_SESSION['redirect_to_user'] = current_url();
+                redirect('site/userlogin');
+                return false;
+            }
 
+            if($user['role'] == "guest"){
                 return true;
             }
 
             if (!$this->CI->session->has_userdata('current_class')) {
                 if ($this->CI->router->fetch_method() != "choose") {
-                 
                     redirect('user/user/choose');
                 }
-
+                // If we're on the choose method, allow it to proceed
+                return true;
             }
 
-            if (!$role) {
+            // Fix: Only redirect if role is required but user doesn't have the required role
+            if ($role && $user['role'] != $role) {
                 redirect('site/userlogin');
             }
 
+            return true; // User is logged in and has proper role/access
+
         } else {
+            // No student session data, redirect to login
             $_SESSION['redirect_to_user'] = current_url();
             redirect('site/userlogin');
         }

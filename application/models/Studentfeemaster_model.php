@@ -522,6 +522,13 @@ $result_value->fees     = (object)$this->getDueFeeByFeeSessionGroup($fee_session
         return $query->row();
     }
 
+    public function getHostelFeeByID($hostel_fee_id)
+    {
+        $sql = "SELECT student_hostel_fees.*,hostel_rooms.cost_per_bed as fees,hostel_feemaster.month,hostel_feemaster.due_date,hostel_feemaster.fine_amount, hostel_feemaster.fine_type,hostel_feemaster.fine_percentage,students.id as student_id,students.firstname,students.middlename,students.admission_no,students.lastname,student_session.class_id,classes.class,sections.section,students.guardian_name,students.guardian_phone,students.father_name,student_session.section_id,student_session.student_id, IFNULL(student_fees_deposite.id,0) as `student_fees_deposite_id`, IFNULL(student_fees_deposite.amount_detail,0) as `amount_detail` FROM `student_hostel_fees` INNER JOIN hostel_feemaster on hostel_feemaster.id =student_hostel_fees.hostel_feemaster_id LEFT JOIN student_fees_deposite on student_fees_deposite.student_hostel_fee_id=student_hostel_fees.id INNER JOIN student_session on student_session.id= student_hostel_fees.student_session_id INNER JOIN classes on classes.id= student_session.class_id INNER JOIN sections on sections.id= student_session.section_id INNER JOIN students on students.id=student_session.student_id INNER JOIN hostel_rooms on hostel_rooms.id = student_hostel_fees.hostel_room_id WHERE student_hostel_fees.id=" . $hostel_fee_id;
+        $query = $this->db->query($sql);
+        return $query->row();
+    }
+
     public function fee_deposit_bulk($bulk_data, $student_fees_discount_id = null)
     {
         $this->db->trans_start();
@@ -531,6 +538,7 @@ $result_value->fees     = (object)$this->getDueFeeByFeeSessionGroup($fee_session
             if ($fee_data['fee_category'] == "fees") {
 
                 $fee_data['student_transport_fee_id']=NULL;
+                $fee_data['student_hostel_fee_id']=NULL;
                 $this->db->where('student_fees_master_id', $fee_data['student_fees_master_id']);
                 $this->db->where('fee_groups_feetype_id', $fee_data['fee_groups_feetype_id']);
 
@@ -538,7 +546,15 @@ $result_value->fees     = (object)$this->getDueFeeByFeeSessionGroup($fee_session
 
                 $fee_data['student_fees_master_id'] =NULL;
                 $fee_data['fee_groups_feetype_id'] =NULL;
+                $fee_data['student_hostel_fee_id']=NULL;
                 $this->db->where('student_transport_fee_id', $fee_data['student_transport_fee_id']);
+
+            }elseif($fee_data['student_hostel_fee_id'] > 0 && $fee_data['fee_category'] == "hostel"){
+
+                $fee_data['student_fees_master_id'] =NULL;
+                $fee_data['fee_groups_feetype_id'] =NULL;
+                $fee_data['student_transport_fee_id']=NULL;
+                $this->db->where('student_hostel_fee_id', $fee_data['student_hostel_fee_id']);
 
             }
 
@@ -562,6 +578,7 @@ $result_value->fees     = (object)$this->getDueFeeByFeeSessionGroup($fee_session
                                     'sub_invoice_id' => $inv_no,
                                     'fee_groups_feetype_id'=>$fee_data['fee_groups_feetype_id'],
                                     'student_transport_fee_id'=>$fee_data['student_transport_fee_id'],
+                                    'student_hostel_fee_id'=>$fee_data['student_hostel_fee_id'],
                                     'fee_category'=>$fee_category
                                 );
 
@@ -579,6 +596,7 @@ $result_value->fees     = (object)$this->getDueFeeByFeeSessionGroup($fee_session
                                         'sub_invoice_id' => 1,
                                         'fee_groups_feetype_id'=>$fee_data['fee_groups_feetype_id'],
                                         'student_transport_fee_id'=>$fee_data['student_transport_fee_id'],
+                                        'student_hostel_fee_id'=>$fee_data['student_hostel_fee_id'],
                                         'fee_category'=>$fee_category
                                     );
             }
@@ -603,6 +621,8 @@ $result_value->fees     = (object)$this->getDueFeeByFeeSessionGroup($fee_session
             $this->db->where('fee_groups_feetype_id', $data['fee_groups_feetype_id']);
         }elseif($data['student_transport_fee_id'] > 0 && $data['fee_category'] == "transport"){
             $this->db->where('student_transport_fee_id', $data['student_transport_fee_id']);
+        }elseif($data['student_hostel_fee_id'] > 0 && $data['fee_category'] == "hostel"){
+            $this->db->where('student_hostel_fee_id', $data['student_hostel_fee_id']);
         }
 
         unset($data['fee_category']);
@@ -1259,6 +1279,27 @@ $module=$this->module_model->getPermissionByModulename('transport');
         return false;
     }
 
+    public function getStudentHostelFees($student_session_id, $hostel_room_id)
+    {
+        if($student_session_id != NULL && $hostel_room_id != NULL){
+
+            $sql = "SELECT student_hostel_fees.*,hostel_feemaster.month,hostel_feemaster.due_date,hostel_rooms.cost_per_bed as fees,hostel_feemaster.fine_amount, hostel_feemaster.fine_type,hostel_feemaster.fine_percentage,IFNULL(student_fees_deposite.id,0) as student_fees_deposite_id, IFNULL(student_fees_deposite.amount_detail,0) as amount_detail FROM student_hostel_fees INNER JOIN hostel_feemaster on hostel_feemaster.id = student_hostel_fees.hostel_feemaster_id LEFT JOIN student_fees_deposite on student_fees_deposite.student_hostel_fee_id = student_hostel_fees.id INNER JOIN hostel_rooms on hostel_rooms.id = student_hostel_fees.hostel_room_id WHERE student_hostel_fees.student_session_id = ".$student_session_id." AND student_hostel_fees.hostel_room_id = ".$hostel_room_id." ORDER BY student_hostel_fees.id ASC";
+            $query = $this->db->query($sql);
+            return $query->result();
+
+        }
+        return false;
+    }
+
+    public function studentHostelDeposit($student_hostel_fee_id)
+    {
+        $sql = "SELECT student_hostel_fees.*,hostel_feemaster.month,hostel_feemaster.due_date,hostel_rooms.cost_per_bed as fees,hostel_feemaster.fine_amount, hostel_feemaster.fine_type,hostel_feemaster.fine_percentage,IFNULL(student_fees_deposite.id,0) as `student_fees_deposite_id`, IFNULL(student_fees_deposite.amount_detail,0) as `amount_detail` FROM `student_hostel_fees` INNER JOIN hostel_feemaster on hostel_feemaster.id =student_hostel_fees.hostel_feemaster_id LEFT JOIN student_fees_deposite on student_fees_deposite.student_hostel_fee_id=student_hostel_fees.id INNER JOIN hostel_rooms on hostel_rooms.id = student_hostel_fees.hostel_room_id where student_hostel_fees.id=".$this->db->escape($student_hostel_fee_id);
+        $query = $this->db->query($sql);
+        return $query->row();
+    }
+
+
+
     public function getPreviousStudentFees($student_session_id)
     {
         $sql    = "SELECT `student_fees_master`.*,fee_groups.name FROM `student_fees_master` INNER JOIN fee_session_groups on student_fees_master.fee_session_group_id=fee_session_groups.id INNER JOIN fee_groups on fee_groups.id=fee_session_groups.fee_groups_id  WHERE `student_session_id` = " . $student_session_id . " ORDER BY `student_fees_master`.`id`";
@@ -1291,10 +1332,19 @@ $module=$this->module_model->getPermissionByModulename('transport');
                     $this->db->where('student_transport_fee_id', $data[$d_key]['student_transport_fee_id']);
                     $data[$d_key]['student_fees_master_id']= NULL;
                     $data[$d_key]['fee_groups_feetype_id']= NULL;
+                    $data[$d_key]['student_hostel_fee_id']= NULL;
+
+                }elseif($d_value['fee_category'] == "hostel"){
+
+                    $this->db->where('student_hostel_fee_id', $data[$d_key]['student_hostel_fee_id']);
+                    $data[$d_key]['student_fees_master_id']= NULL;
+                    $data[$d_key]['fee_groups_feetype_id']= NULL;
+                    $data[$d_key]['student_transport_fee_id']= NULL;
 
                 }elseif ($d_value['fee_category'] == "fees") {
 
                     $data[$d_key]['student_transport_fee_id']=NULL;
+                    $data[$d_key]['student_hostel_fee_id']=NULL;
                     $this->db->where('student_fees_master_id', $data[$d_key]['student_fees_master_id']);
                     $this->db->where('fee_groups_feetype_id', $data[$d_key]['fee_groups_feetype_id']);
 
@@ -1319,6 +1369,7 @@ $module=$this->module_model->getPermissionByModulename('transport');
                                     'sub_invoice_id' => $inv_no,
                                     'fee_groups_feetype_id'=>$data[$d_key]['fee_groups_feetype_id'],
                                     'student_transport_fee_id'=>$data[$d_key]['student_transport_fee_id'],
+                                    'student_hostel_fee_id'=>$data[$d_key]['student_hostel_fee_id'],
                                     'fee_category'=>$d_value['fee_category']
                     );
 
@@ -1334,6 +1385,7 @@ $module=$this->module_model->getPermissionByModulename('transport');
                                         'sub_invoice_id' => 1,
                                         'fee_groups_feetype_id'=>$data[$d_key]['fee_groups_feetype_id'],
                                         'student_transport_fee_id'=>$data[$d_key]['student_transport_fee_id'],
+                                        'student_hostel_fee_id'=>$data[$d_key]['student_hostel_fee_id'],
                                         'fee_category'=>$d_value['fee_category']
                                     );
 
@@ -2450,5 +2502,93 @@ $module=$this->module_model->getPermissionByModulename('transport');
         }
     }
 
+    /**
+     * Get fee payment history for a specific fee item
+     * @param int $student_fees_master_id
+     * @param int $fee_groups_feetype_id
+     * @return array
+     */
+    public function getFeePaymentHistory($student_fees_master_id, $fee_groups_feetype_id)
+    {
+        $sql = "SELECT sfd.id as student_fees_deposite_id, sfd.amount_detail, sfd.date, sfd.payment_mode, sfd.description,
+                       sfd.created_at, sfd.received_by, staff.name as received_by_name, staff.surname as received_by_surname
+                FROM student_fees_deposite sfd
+                LEFT JOIN staff ON staff.id = sfd.received_by
+                WHERE sfd.student_fees_master_id = ? AND sfd.fee_groups_feetype_id = ?
+                ORDER BY sfd.date DESC, sfd.id DESC";
+
+        $query = $this->db->query($sql, array($student_fees_master_id, $fee_groups_feetype_id));
+        $results = $query->result();
+
+        $payment_history = array();
+        if (!empty($results)) {
+            foreach ($results as $result) {
+                $amount_detail = json_decode($result->amount_detail, true);
+                if (!empty($amount_detail)) {
+                    foreach ($amount_detail as $inv_no => $detail) {
+                        $payment_history[] = (object) array(
+                            'student_fees_deposite_id' => $result->student_fees_deposite_id,
+                            'inv_no' => $inv_no,
+                            'date' => $result->date,
+                            'payment_mode' => $result->payment_mode,
+                            'description' => isset($detail['description']) ? $detail['description'] : $result->description,
+                            'amount' => isset($detail['amount']) ? $detail['amount'] : 0,
+                            'amount_discount' => isset($detail['amount_discount']) ? $detail['amount_discount'] : 0,
+                            'amount_fine' => isset($detail['amount_fine']) ? $detail['amount_fine'] : 0,
+                            'received_by_name' => $result->received_by_name,
+                            'received_by_surname' => $result->received_by_surname,
+                            'created_at' => $result->created_at
+                        );
+                    }
+                }
+            }
+        }
+
+        return $payment_history;
+    }
+
+    /**
+     * Get transport fee payment history for a specific transport fee
+     * @param int $trans_fee_id
+     * @return array
+     */
+    public function getTransportFeePaymentHistory($trans_fee_id)
+    {
+        $sql = "SELECT sfd.id as student_fees_deposite_id, sfd.amount_detail, sfd.date, sfd.payment_mode, sfd.description,
+                       sfd.created_at, sfd.received_by, staff.name as received_by_name, staff.surname as received_by_surname
+                FROM student_fees_deposite sfd
+                LEFT JOIN staff ON staff.id = sfd.received_by
+                WHERE sfd.student_transport_fee_id = ?
+                ORDER BY sfd.date DESC, sfd.id DESC";
+
+        $query = $this->db->query($sql, array($trans_fee_id));
+        $results = $query->result();
+
+        $payment_history = array();
+        if (!empty($results)) {
+            foreach ($results as $result) {
+                $amount_detail = json_decode($result->amount_detail, true);
+                if (!empty($amount_detail)) {
+                    foreach ($amount_detail as $inv_no => $detail) {
+                        $payment_history[] = (object) array(
+                            'student_fees_deposite_id' => $result->student_fees_deposite_id,
+                            'inv_no' => $inv_no,
+                            'date' => $result->date,
+                            'payment_mode' => $result->payment_mode,
+                            'description' => isset($detail['description']) ? $detail['description'] : $result->description,
+                            'amount' => isset($detail['amount']) ? $detail['amount'] : 0,
+                            'amount_discount' => isset($detail['amount_discount']) ? $detail['amount_discount'] : 0,
+                            'amount_fine' => isset($detail['amount_fine']) ? $detail['amount_fine'] : 0,
+                            'received_by_name' => $result->received_by_name,
+                            'received_by_surname' => $result->received_by_surname,
+                            'created_at' => $result->created_at
+                        );
+                    }
+                }
+            }
+        }
+
+        return $payment_history;
+    }
 
 }

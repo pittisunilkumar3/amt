@@ -1486,6 +1486,51 @@ class Studentfeemasteradding_model extends MY_Model
         }
     }
 
+    /**
+     * Get additional fee payment history for a specific additional fee item
+     * @param int $student_fees_master_id
+     * @param int $fee_groups_feetype_id
+     * @return array
+     */
+    public function getAdditionalFeePaymentHistory($student_fees_master_id, $fee_groups_feetype_id)
+    {
+        $sql = "SELECT sfd.id as student_fees_deposite_id, sfd.amount_detail, sfd.date, sfd.payment_mode, sfd.description,
+                       sfd.created_at, sfd.received_by, staff.name as received_by_name, staff.surname as received_by_surname
+                FROM student_fees_depositeadding sfd
+                LEFT JOIN staff ON staff.id = sfd.received_by
+                WHERE sfd.student_fees_master_id = ? AND sfd.fee_groups_feetype_id = ?
+                ORDER BY sfd.date DESC, sfd.id DESC";
+
+        $query = $this->db->query($sql, array($student_fees_master_id, $fee_groups_feetype_id));
+        $results = $query->result();
+
+        $payment_history = array();
+        if (!empty($results)) {
+            foreach ($results as $result) {
+                $amount_detail = json_decode($result->amount_detail, true);
+                if (!empty($amount_detail)) {
+                    foreach ($amount_detail as $inv_no => $detail) {
+                        $payment_history[] = (object) array(
+                            'student_fees_deposite_id' => $result->student_fees_deposite_id,
+                            'inv_no' => $inv_no,
+                            'date' => $result->date,
+                            'payment_mode' => $result->payment_mode,
+                            'description' => isset($detail['description']) ? $detail['description'] : $result->description,
+                            'amount' => isset($detail['amount']) ? $detail['amount'] : 0,
+                            'amount_discount' => isset($detail['amount_discount']) ? $detail['amount_discount'] : 0,
+                            'amount_fine' => isset($detail['amount_fine']) ? $detail['amount_fine'] : 0,
+                            'received_by_name' => $result->received_by_name,
+                            'received_by_surname' => $result->received_by_surname,
+                            'created_at' => $result->created_at
+                        );
+                    }
+                }
+            }
+        }
+
+        return $payment_history;
+    }
+
 }
 
 

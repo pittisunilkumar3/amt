@@ -318,6 +318,75 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
 
                         <?php
                     }
+                } elseif ($fee_value->fee_category == "hostel") {
+
+                    $amount_to_be_pay = $fee_value->fees;
+
+                    if (is_string(($fee_value->amount_detail)) && is_array(json_decode(($fee_value->amount_detail), true))) {
+
+                        $amount_data = json_decode($fee_value->amount_detail);
+
+                        foreach ($amount_data as $amount_data_key => $amount_data_value) {
+                            $fine_amount_paid += $amount_data_value->amount_fine;
+                            $amount_prev_paid = $amount_prev_paid + ($amount_data_value->amount + $amount_data_value->amount_discount);
+                        }
+
+                        $amount_to_be_pay = $fee_value->fees - $amount_prev_paid;
+
+                    }
+
+                    if (($fee_value->due_date != "0000-00-00" && $fee_value->due_date != NULL) && (strtotime($fee_value->due_date) < strtotime(date('Y-m-d'))) && $amount_to_be_pay > 0) {
+
+                        $hostel_fine_amount = is_null($fee_value->fine_percentage) ? $fee_value->fine_amount : percentageAmount($fee_value->fees, $fee_value->fine_percentage);
+                        $fees_fine_amount = $hostel_fine_amount - $fine_amount_paid;
+                        $total_amount = $total_amount + $fees_fine_amount;
+                        $fine_amount_status = true;
+                    }
+
+                    $total_amount = $total_amount + $amount_to_be_pay;
+                    if ($amount_to_be_pay > 0) {
+                        ?>
+
+                        <li class="item">
+                            <input name="row_counter[]" type="hidden" value="<?php echo $row_counter; ?>">
+                            <input name="student_fees_master_id_<?php echo $row_counter; ?>" type="hidden" value="0">
+                            <input name="fee_groups_feetype_id_<?php echo $row_counter; ?>" type="hidden" value="0">
+                            <input name="fee_groups_feetype_fine_amount_<?php echo $row_counter; ?>" type="hidden"
+                                value="<?php echo $fees_fine_amount; ?>">
+                            <input name="fee_amount_<?php echo $row_counter; ?>" type="hidden"
+                                value="<?php echo $amount_to_be_pay; ?>">
+                            <div class="product-info">
+                                <input name="fee_category_<?php echo $row_counter; ?>" type="hidden"
+                                    value="<?php echo $fee_value->fee_category; ?>">
+                                <input name="trans_fee_id_<?php echo $row_counter; ?>" type="hidden"
+                                    value="<?php echo $fee_value->id; ?>">
+
+                                <a href="#" onclick="return false;" class="product-title">
+                                    <?php echo $this->lang->line("hostel_fees") ?>
+                                    <span class="pull-right">
+                                        <?php echo $currency_symbol . amountFormat((float) $amount_to_be_pay, 2, '.', ''); ?>
+                                    </span>
+                                </a>
+                                <span class="product-description">
+                                    <?php echo $fee_value->month; ?>
+                                </span>
+                                <?php
+                                if ($fine_amount_status) {
+                                    ?>
+                                    <a href="#" onclick="return false;" class="product-title text text-danger">
+                                        <?php echo $this->lang->line('fine'); ?>
+                                        <span class="pull-right">
+                                            <?php echo $currency_symbol . amountFormat((float) $fees_fine_amount, 2, '.', ''); ?>
+                                        </span>
+                                    </a>
+                                    <?php
+                                }
+                                ?>
+                            </div>
+                        </li>
+
+                        <?php
+                    }
                 }
 
                 $row_counter++;

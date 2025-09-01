@@ -227,4 +227,49 @@ class Hostelroom extends Admin_Controller
 
     }
 
+    public function getHostelRooms()
+    {
+        if (!$this->rbac->hasPrivilege('hostel_rooms', 'can_view')) {
+            echo json_encode(array('error' => 'No permission'));
+            return;
+        }
+
+        try {
+            $hostel_rooms = $this->hostelroom_model->getHostelRoomsWithDetails();
+            echo json_encode($hostel_rooms);
+        } catch (Exception $e) {
+            echo json_encode(array('error' => $e->getMessage()));
+        }
+    }
+
+    public function getRoomCost()
+    {
+        $hostel_room_id = $this->input->post('hostel_room_id');
+
+        if ($hostel_room_id) {
+            $room_details = $this->hostelroom_model->getWithDetails($hostel_room_id);
+
+            if ($room_details) {
+                $response = array(
+                    'status' => 'success',
+                    'cost_per_bed' => $room_details->cost_per_bed,
+                    'room_no' => $room_details->room_no,
+                    'hostel_name' => $room_details->hostel_name
+                );
+            } else {
+                $response = array(
+                    'status' => 'error',
+                    'message' => 'Room not found'
+                );
+            }
+        } else {
+            $response = array(
+                'status' => 'error',
+                'message' => 'Room ID required'
+            );
+        }
+
+        echo json_encode($response);
+    }
+
 }

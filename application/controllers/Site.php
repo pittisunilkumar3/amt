@@ -436,7 +436,14 @@ class Site extends Public_Controller
         }
 
         if ($this->auth->user_logged_in()) {
-            $this->auth->user_redirect();
+            // Add safety check to prevent redirect loops
+            $user = $this->session->userdata('student');
+            if (is_array($user) && isset($user['role'])) {
+                $this->auth->user_redirect();
+            } else {
+                // Clear invalid session data
+                $this->session->unset_userdata('student');
+            }
         }
         
         if ($this->module_lib->hasModule('google_authenticator') 

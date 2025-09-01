@@ -173,4 +173,48 @@ class Hostelroom_model extends MY_Model
         return $this->datatables->generate('json');
     }
 
+    /**
+     * Get hostel rooms with details for dropdown/selection
+     * @return array
+     */
+    public function getHostelRoomsWithDetails()
+    {
+        $this->db->select('hostel_rooms.id, hostel_rooms.room_no, hostel_rooms.cost_per_bed,
+                          hostel.hostel_name, room_types.room_type')
+                 ->from('hostel_rooms')
+                 ->join('hostel', 'hostel.id = hostel_rooms.hostel_id', 'left')
+                 ->join('room_types', 'room_types.id = hostel_rooms.room_type_id', 'left')
+                 ->order_by('hostel.hostel_name, hostel_rooms.room_no');
+
+        $query = $this->db->get();
+        return $query->result_array();
+    }
+
+    /**
+     * Get hostel room details with hostel information
+     * @param int $id
+     * @return object
+     */
+    public function getWithDetails($id = null)
+    {
+        if ($id != null) {
+            $this->db->select('hostel_rooms.*, hostel.hostel_name, room_types.room_type')
+                     ->from('hostel_rooms')
+                     ->join('hostel', 'hostel.id = hostel_rooms.hostel_id', 'left')
+                     ->join('room_types', 'room_types.id = hostel_rooms.room_type_id', 'left')
+                     ->where('hostel_rooms.id', $id);
+
+            $query = $this->db->get();
+            return $query->row();
+        } else {
+            $this->db->select('hostel_rooms.*, hostel.hostel_name, room_types.room_type')
+                     ->from('hostel_rooms')
+                     ->join('hostel', 'hostel.id = hostel_rooms.hostel_id', 'left')
+                     ->join('room_types', 'room_types.id = hostel_rooms.room_type_id', 'left')
+                     ->order_by('hostel_rooms.id');
+            $query = $this->db->get();
+            return $query->result_array();
+        }
+    }
+
 }

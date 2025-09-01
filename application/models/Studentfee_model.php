@@ -146,7 +146,7 @@ class Studentfee_model extends MY_Model {
         }
     }
 
-    public function getMultipleDueFees($feegroups = array(), $fee_groups_feetypes = array(),$transport_groups_feetype_array=array(), $class_id = NULL, $section_id = NULL) {
+    public function getMultipleDueFees($feegroups = array(), $fee_groups_feetypes = array(),$transport_groups_feetype_array=array(), $hostel_groups_feetype_array=array(), $class_id = NULL, $section_id = NULL) {
         
          $module=$this->module_model->getPermissionByModulename('transport');
         if($module['is_active']){
@@ -185,7 +185,43 @@ class Studentfee_model extends MY_Model {
 }else{
     $result_value1 = array();
 }
-       
+
+        // Hostel Fee Integration
+        $result_value_hostel = array();
+        $module_hostel = $this->module_model->getPermissionByModulename('hostel');
+        if($module_hostel['is_active']){
+            if (!empty($hostel_groups_feetype_array)) {
+                $this->db->select('`student_fees_deposite`.*,IFNULL(student_fees_deposite.amount_detail, 0) as amount_detail,0 as previous_balance_amount,hostel_rooms.cost_per_bed as amount,students.firstname,students.middlename,students.lastname,student_session.class_id,classes.class,sections.section,student_session.section_id,student_session.student_id,"" as fee_group,"Hostel Fees" as name, "Hostel Fees" as `fee_type`, hostel_feemaster.month as `fee_code`,0 as is_system,student_hostel_fees.student_session_id,students.admission_no, `student_session`.`id` as `student_session_id`,0 as is_system,`students`.`id`, `classes`.`class`, `sections`.`id` AS `section_id`, `sections`.`section`, `students`.`id`, `students`.`admission_no`, `students`.`roll_no`, `students`.`admission_date`, `students`.`firstname`,`students`.`middlename`, `students`.`lastname`, `students`.`image`, `students`.`mobileno`, `students`.`email`, `students`.`state`, `students`.`city`, `students`.`pincode`, `students`.`religion`, `students`.`dob`, `students`.`current_address`, `students`.`permanent_address`, IFNULL(students.category_id, 0) as `category_id`, IFNULL(categories.category, "") as `category`, `students`.`adhar_no`, `students`.`samagra_id`, `students`.`bank_account_no`, `students`.`bank_name`, `students`.`ifsc_code`, `students`.`guardian_name`, `students`.`guardian_relation`, `students`.`guardian_phone`, `students`.`guardian_address`, `students`.`is_active`, `students`.`created_at`, `students`.`updated_at`, `students`.`father_name`, `students`.`rte`, `students`.`gender`')->from('student_hostel_fees');
+
+                $this->db->join('student_fees_deposite', 'student_hostel_fees.id = `student_fees_deposite`.`student_hostel_fee_id`','left');
+                $this->db->join('hostel_feemaster', '`student_hostel_fees`.`hostel_feemaster_id` = `hostel_feemaster`.`id`','left');
+                $this->db->join('student_session', 'student_session.id= `student_hostel_fees`.`student_session_id`', 'INNER');
+                $this->db->join('hostel_rooms', 'hostel_rooms.id = student_hostel_fees.hostel_room_id');
+                $this->db->join('classes', 'classes.id= student_session.class_id');
+                $this->db->join('sections', 'sections.id= student_session.section_id');
+                $this->db->join('students', 'students.id=student_session.student_id');
+                $this->db->join('categories', '`students`.`category_id` = `categories`.`id`','left');
+                $this->db->where('student_session.session_id',$this->current_session);
+                $this->db->where_in('hostel_feemaster.id',$hostel_groups_feetype_array);
+                $this->db->order_by('student_fees_deposite.id','desc');
+
+                if($class_id!=null){
+                    $this->db->where('student_session.class_id',$class_id);
+                }
+
+                if($section_id!=null){
+                    $this->db->where('student_session.section_id',$section_id);
+                }
+
+                $query_hostel = $this->db->get();
+                $result_value_hostel = $query_hostel->result_array();
+            } else {
+                $result_value_hostel = array();
+            }
+        } else {
+            $result_value_hostel = array();
+        }
+
         $where_condition=array();
         if ($class_id !=NULL){
            $where_condition[]= " AND student_session.class_id=".$class_id;
@@ -206,15 +242,22 @@ class Studentfee_model extends MY_Model {
            $result_value=array(); 
          }
        
-        if(empty($result_value)){
-            $result_value2=$result_value1;
-        }elseif(empty($result_value1)){
-            $result_value2=$result_value;
-        }else{
-            $result_value2=array_merge($result_value,$result_value1);
+        // Merge all fee types (regular, transport, hostel)
+        $all_results = array();
+
+        if (!empty($result_value)) {
+            $all_results = array_merge($all_results, $result_value);
         }
-         
-       return $result_value2;
+
+        if (!empty($result_value1)) {
+            $all_results = array_merge($all_results, $result_value1);
+        }
+
+        if (!empty($result_value_hostel)) {
+            $all_results = array_merge($all_results, $result_value_hostel);
+        }
+
+       return $all_results;
     }
 
  public function getDueStudentFeesByDateClassSection( $class_id = NULL, $section_id = NULL , $date=NULL) {
