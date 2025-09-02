@@ -1258,11 +1258,14 @@ $language_name = $language["short_code"];
                                                     ?>
                                                     <tr class="dark-gray">
                                                         <td align="left"></td>
-                                                        <td align="left" class="text-rtl-right">
-                                                            <img
-                                                                src="<?php echo base_url(); ?>backend/images/table-arrow.png" alt="" />
-                                                        </td>
-                                                        <td class="text text-left">
+                                                        <td align="left"></td>
+                                                        <td align="left"></td>
+                                                        <td align="left"></td>
+                                                        <td align="left"></td>
+                                                        <td class="text-right"><img
+                                                                src="<?php echo $this->media_storage->getImageURL('backend/images/table-arrow.png'); ?>"
+                                                                alt="" /></td>
+                                                        <td class="text text-right">
 
                                                             <a href="#" data-toggle="popover" class="detail_popover">
                                                                 <?php echo $hostel_fee_value->student_fees_deposite_id . "/" . $fee_deposits_value->inv_no; ?>
@@ -1279,15 +1282,11 @@ $language_name = $language["short_code"];
                                                                     <?php
                                                                 }
                                                                 ?>
-                                                                <p class="text text-info"><?php echo $this->lang->line('payment_mode') . ": " . $this->lang->line(strtolower($fee_deposits_value->payment_mode)); ?></p>
-                                                                <p class="text text-danger"><?php echo $this->lang->line('fine') . " : " . amountFormat($fee_deposits_value->amount_fine); ?></p>
-                                                                <p class="text text-warning"><?php echo $this->lang->line('discount') . " : " . amountFormat($fee_deposits_value->amount_discount); ?></p>
-                                                                <p class="text text-info"><?php echo $this->lang->line('date') . " : " . $this->customlib->dateformat($fee_deposits_value->date); ?></p>
                                                             </div>
 
                                                         </td>
+                                                        <td class="text text-left"><?php echo $this->lang->line(strtolower($fee_deposits_value->payment_mode)); ?></td>
                                                         <td class="text text-left"><?php echo $this->customlib->dateformat($fee_deposits_value->date); ?></td>
-                                                        <td class="text text-left"></td>
                                                         <td class="text text-right"><?php echo amountFormat($fee_deposits_value->amount_discount); ?></td>
                                                         <td class="text text-right"><?php echo amountFormat($fee_deposits_value->amount_fine); ?></td>
                                                         <td class="text text-right"><?php echo amountFormat($fee_deposits_value->amount); ?></td>
@@ -1800,25 +1799,6 @@ $language_name = $language["short_code"];
                                     }
                                     ?>
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                                     <tr class="box box-solid total-bg">
                                         <td align="left"></td>
                                         <td align="left"></td>
@@ -2224,8 +2204,6 @@ $language_name = $language["short_code"];
                             </div>
                         </div>
 
-
-
                         <div class="form-group">
                             <label for="inputPassword3" class="col-sm-3 control-label">
                                 <?php echo $this->lang->line('note'); ?>
@@ -2234,8 +2212,6 @@ $language_name = $language["short_code"];
                                 <textarea class="form-control" rows="3" id="description1" placeholder=""></textarea>
                             </div>
                         </div>
-
-
 
                     </div>
                 </div>
@@ -2934,10 +2910,39 @@ $language_name = $language["short_code"];
         var fee_category = $('#fee_category').val();
         var payment_mode = $('input[name="payment_mode_fee"]:checked').val();
         var student_fees_discount_id = $('#discount_group').val();
+        
+        // Debug logging for hostel fees
+        if (fee_category === 'hostel') {
+            console.log('HOSTEL FEE DEBUG - Save button clicked:');
+            console.log('hostel_fees_id:', hostel_fees_id);
+            console.log('student_session_id:', student_session_id);
+            console.log('fee_category:', fee_category);
+            console.log('amount:', amount);
+        }
         $.ajax({
             url: '<?php echo site_url("studentfee/addstudentfee") ?>',
             type: 'post',
-            data: { action: action, accountname: accountname,student_session_id: student_session_id, date: date, type: feetype, amount: amount, amount_discount: amount_discount, amount_fine: amount_fine, description: description, student_fees_master_id: student_fees_master_id, fee_groups_feetype_id: fee_groups_feetype_id, fee_category: fee_category, transport_fees_id: transport_fees_id, hostel_fees_id: hostel_fees_id, payment_mode: payment_mode, guardian_phone: guardian_phone, guardian_email: guardian_email, student_fees_discount_id: student_fees_discount_id, parent_app_key: parent_app_key },
+            data: { 
+                action: action, 
+                accountname: accountname,
+                student_session_id: student_session_id, 
+                date: date, 
+                type: feetype, 
+                amount: amount, 
+                amount_discount: amount_discount, 
+                amount_fine: amount_fine, 
+                description: description, 
+                student_fees_master_id: student_fees_master_id, 
+                fee_groups_feetype_id: fee_groups_feetype_id, 
+                fee_category: fee_category, 
+                transport_fees_id: transport_fees_id, 
+                hostel_fees_id: hostel_fees_id, 
+                payment_mode: payment_mode, 
+                guardian_phone: guardian_phone, 
+                guardian_email: guardian_email, 
+                student_fees_discount_id: student_fees_discount_id, 
+                parent_app_key: parent_app_key 
+            },
             dataType: 'json',
             success: function (response) {
                 $this.button('reset');
@@ -3112,12 +3117,14 @@ $language_name = $language["short_code"];
         var student_session_id = data.student_session_id;
         var fee_category = data.feeCategory;
         var trans_fee_id = data.trans_fee_id;
+        var hostel_fee_id = data.hostel_fee_id;
 
         $('.fees_title').html("");
         $('.fees_title').html("<b>" + group + ":</b> " + type);
         $('#fee_groups_feetype_id').val(fee_groups_feetype_id);
         $('#student_fees_master_id').val(student_fees_master_id);
         $('#transport_fees_id').val(trans_fee_id);
+        $('#hostel_fees_id').val(hostel_fee_id);
         $('#fee_category').val(fee_category);
 
         $.ajax({
@@ -4924,7 +4931,7 @@ $(document).on('click', '.viewAdditionalFeeHistory', function() {
 // Fix for hostel fee collection
 $(document).on('click', '.myCollectFeeBtn[data-fee-category="hostel"]', function(e) {
     var studentSessionId = $(this).data('student_session_id');
-    var hostelFeeId = $(this).data('hostel_fee_id');
+    var hostelFeeId = $(this).data('hostel-fee-id'); // Fixed: Use hyphenated version for data attributes
     var group = $(this).data('group');
     var type = $(this).data('type');
     
@@ -4963,10 +4970,11 @@ $(document).on('click', '.myCollectFeeBtn[data-fee-category="hostel"]', function
         url: '<?php echo site_url("studentfee/geBalanceFee") ?>',
         dataType: 'JSON',
         data: {
-            
+            'fee_groups_feetype_id': 0,
+            'student_fees_master_id': 0,
             'student_session_id': studentSessionId,
             'fee_category': 'hostel',
-            'student_hostel_fee_id': hostelFeeId
+            'hostel_fees_id': hostelFeeId
         },
         beforeSend: function () {
             $('#discount_group').html('<option value=""><?php echo $this->lang->line('select'); ?></option>');

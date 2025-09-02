@@ -615,6 +615,12 @@ $result_value->fees     = (object)$this->getDueFeeByFeeSessionGroup($fee_session
 
     public function fee_deposit($data, $send_to, $student_fees_discount_id = null)
     {
+        // Debug logging for hostel fees
+        if (isset($data['fee_category']) && $data['fee_category'] == "hostel") {
+            error_log("HOSTEL FEE DEBUG - Model fee_deposit input:");
+            error_log(print_r($data, true));
+        }
+        
         if ($data['fee_category'] == "fees") {
             # code...
             $this->db->where('student_fees_master_id', $data['student_fees_master_id']);
@@ -623,9 +629,16 @@ $result_value->fees     = (object)$this->getDueFeeByFeeSessionGroup($fee_session
             $this->db->where('student_transport_fee_id', $data['student_transport_fee_id']);
         }elseif($data['student_hostel_fee_id'] > 0 && $data['fee_category'] == "hostel"){
             $this->db->where('student_hostel_fee_id', $data['student_hostel_fee_id']);
+            error_log("HOSTEL FEE DEBUG - Model WHERE clause set for student_hostel_fee_id: " . $data['student_hostel_fee_id']);
         }
 
         unset($data['fee_category']);
+        
+        // Debug logging after unsetting fee_category
+        if (isset($data['student_hostel_fee_id'])) {
+            error_log("HOSTEL FEE DEBUG - Data after unsetting fee_category:");
+            error_log(print_r($data, true));
+        }
         $q = $this->db->get('student_fees_deposite');
         if ($q->num_rows() > 0) {
             $desc = $data['amount_detail']['description'];
@@ -665,8 +678,21 @@ $result_value->fees     = (object)$this->getDueFeeByFeeSessionGroup($fee_session
             $data['amount_detail']['inv_no'] = 1;
             $desc                            = $data['amount_detail']['description'];
             $data['amount_detail']           = json_encode(array('1' => $data['amount_detail']));
+            // Debug logging before insert for hostel fees
+            if (isset($data['student_hostel_fee_id'])) {
+                error_log("HOSTEL FEE DEBUG - About to insert data:");
+                error_log(print_r($data, true));
+                error_log("HOSTEL FEE DEBUG - SQL Query: " . $this->db->get_compiled_insert('student_fees_deposite', $data));
+            }
+            
             $this->db->insert('student_fees_deposite', $data);
             $inserted_id = $this->db->insert_id();
+            
+            // Debug logging after insert for hostel fees
+            if (isset($data['student_hostel_fee_id'])) {
+                error_log("HOSTEL FEE DEBUG - Insert completed. Inserted ID: " . $inserted_id);
+                error_log("HOSTEL FEE DEBUG - Last query: " . $this->db->last_query());
+            }
             if ($student_fees_discount_id != null) {
                 $this->db->where('id', $student_fees_discount_id);
                 $this->db->update('student_fees_discounts', array('status' => 'applied', 'description' => $desc, 'payment_id' => $inserted_id . "//" . "1"));
