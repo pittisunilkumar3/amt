@@ -1207,7 +1207,34 @@ $result_value->fees     = (object)$this->getDueFeeByFeeSessionGroup($fee_session
         return false;
     }
 
+    public function getHostelFeeByInvoice($invoice_id, $sub_invoice_id)
+    {
+        $this->db->select('`student_fees_deposite`.*,students.id as std_id,students.firstname,students.middlename,students.lastname,students.admission_no,student_session.class_id,classes.class,sections.section,student_session.section_id,student_session.student_id,hostel_rooms.room_no,hostel_rooms.cost_per_bed,hostel.hostel_name,hostel_feemaster.month')->from('student_fees_deposite');
+        $this->db->join('student_hostel_fees', 'student_hostel_fees.id = student_fees_deposite.student_hostel_fee_id');
+        $this->db->join('hostel_feemaster', 'hostel_feemaster.id = student_hostel_fees.hostel_feemaster_id');
+        $this->db->join('hostel_rooms', 'hostel_rooms.id = student_hostel_fees.hostel_room_id');
+        $this->db->join('hostel', 'hostel.id = hostel_rooms.hostel_id');
+        $this->db->join('student_session', 'student_session.id= student_hostel_fees.student_session_id');
+        $this->db->join('classes', 'classes.id= student_session.class_id');
+        $this->db->join('sections', 'sections.id= student_session.section_id');
+        $this->db->join('students', 'students.id=student_session.student_id');
+        $this->db->where('student_fees_deposite.id', $invoice_id);
+        $q = $this->db->get();
 
+        if ($q->num_rows() > 0) {
+            $result = $q->row();
+            $res    = json_decode($result->amount_detail);
+            $a      = (array) $res;
+
+            foreach ($a as $key => $value) {
+                if ($key == $sub_invoice_id) {
+                    return $result;
+                }
+            }
+        }
+
+        return false;
+    }
 
     public function getFeeByInvoice($invoice_id, $sub_invoice_id)
     {

@@ -1304,7 +1304,8 @@ $language_name = $language["short_code"];
                                                                             <i class="fa fa-undo"> </i>
                                                                         </button>
                                                                     <?php } ?>
-                                                                    <button class="btn btn-default btn-xs printInv"
+                                                                    <button class="btn btn-default btn-xs printDoc"
+                                                                        data-student_session_id="<?php echo $fee->student_session_id; ?>"
                                                                         data-fee_master_id="<?php echo $fee_value->id ?>"
                                                                         data-fee_session_group_id="<?php echo $fee_value->fee_session_group_id ?>"
                                                                         data-fee_groups_feetype_id="<?php echo $fee_value->fee_groups_feetype_id ?>"
@@ -2831,7 +2832,7 @@ $language_name = $language["short_code"];
             var fee_session_group_id = $(this).data('fee_session_group_id');
             var fee_groups_feetype_id = $(this).data('fee_groups_feetype_id');
             var trans_fee_id = $(this).data('trans_fee_id');
-            var fee_category = $(this).data('feeCategory');
+            var fee_category = $(this).data('fee-category');
             $.ajax({
                 url: '<?php echo site_url("studentfee/printFeesByGroup") ?>',
                 type: 'post',

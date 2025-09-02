@@ -733,7 +733,7 @@ class Studentfee extends Admin_Controller
     {
         $fee_category = $this->input->post('fee_category');
         $transport_fees_id = $this->input->post('transport_fees_id');
-        $hostel_fees_id = $this->input->post('hostel_fee_id');
+        $hostel_fees_id = $this->input->post('hostel_fees_id');
         
         // Set validation rules based on fee category
         if ($fee_category == 'transport' && $transport_fees_id > 0) {
@@ -762,7 +762,7 @@ class Studentfee extends Admin_Controller
                 'student_fees_master_id' => form_error('student_fees_master_id'),
                 'fee_groups_feetype_id'  => form_error('fee_groups_feetype_id'),
                 'transport_fees_id'      => form_error('transport_fees_id'),
-                'hostel_fees_id'         => form_error('hostel_fee_id'),
+                'hostel_fees_id'         => form_error('hostel_fees_id'),
                 'amount_discount'        => form_error('amount_discount'),
                 'amount_fine'            => form_error('amount_fine'),
                 'payment_mode'           => form_error('payment_mode'),
@@ -791,7 +791,7 @@ class Studentfee extends Admin_Controller
             $student_fees_master_id = $this->input->post('student_fees_master_id');
             $fee_groups_feetype_id  = $this->input->post('fee_groups_feetype_id');
             $transport_fees_id      = $this->input->post('transport_fees_id');
-            $hostel_fees_id         = $this->input->post('hostel_fee_id');
+            $hostel_fees_id         = $this->input->post('hostel_fees_id');
             $fee_category           = $this->input->post('fee_category');
             
             // Debug logging for hostel fees
@@ -933,6 +933,12 @@ class Studentfee extends Admin_Controller
                     $data['feeList']        = $fee_record;
                         $print_record = $this->load->view('print/printTransportFeesByName', $data, true);
 
+                } elseif ($hostel_fees_id != 0 && $fee_category == "hostel") {
+
+                    $fee_record = $this->studentfeemaster_model->getHostelFeeByInvoice($receipt_data->invoice_id, $receipt_data->sub_invoice_id);
+                    $data['feeList']        = $fee_record;
+                        $print_record = $this->load->view('print/printHostelFeesByName', $data, true);
+
                 } else {
 
                     $fee_record             = $this->studentfeemaster_model->getFeeByInvoice($receipt_data->invoice_id, $receipt_data->sub_invoice_id);
@@ -1013,6 +1019,10 @@ class Studentfee extends Admin_Controller
             $fee_record      = $this->studentfeemaster_model->getTransportFeeByInvoice($invoice_id, $sub_invoice_id);
             $data['feeList'] = $fee_record;
             $page            = $this->load->view('print/printTransportFeesByName', $data, true);
+        } elseif ($fee_category == "hostel") {
+            $fee_record      = $this->studentfeemaster_model->getHostelFeeByInvoice($invoice_id, $sub_invoice_id);
+            $data['feeList'] = $fee_record;
+            $page            = $this->load->view('print/printHostelFeesByName', $data, true);
         } else {
             $data['totalfeeList']       = $this->studentfeemaster_model->getDueFeeByFeeSessionGroupFeetype($fee_session_group_id, $fee_master_id, $fee_groups_feetype_id);
 
@@ -1039,6 +1049,15 @@ class Studentfee extends Admin_Controller
         if ($fee_category == "transport") {
             $data['feeList'] = $this->studentfeemaster_model->getTransportFeeByID($trans_fee_id);
             $page = $this->load->view('print/printTransportFeesByGroup', $data, true);
+
+        } elseif ($fee_category == "hostel") {
+            $data['feeList'] = $this->studentfeemaster_model->getHostelFeeByID($trans_fee_id);
+            
+            // Debug: Log the hostel fee data
+            error_log("HOSTEL FEE PRINT DEBUG - trans_fee_id: " . $trans_fee_id);
+            error_log("HOSTEL FEE PRINT DEBUG - feeList data: " . print_r($data['feeList'], true));
+            
+            $page = $this->load->view('print/printHostelFeesByGroup', $data, true);
 
         } else {
 
