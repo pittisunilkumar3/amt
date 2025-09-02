@@ -762,7 +762,7 @@ class Studentfee extends Admin_Controller
                 'student_fees_master_id' => form_error('student_fees_master_id'),
                 'fee_groups_feetype_id'  => form_error('fee_groups_feetype_id'),
                 'transport_fees_id'      => form_error('transport_fees_id'),
-                'hostel_fees_id'         => form_error('hostel_fees_id'),
+                'hostel_fees_id'         => form_error('hostel_fee_id'),
                 'amount_discount'        => form_error('amount_discount'),
                 'amount_fine'            => form_error('amount_fine'),
                 'payment_mode'           => form_error('payment_mode'),
@@ -791,7 +791,7 @@ class Studentfee extends Admin_Controller
             $student_fees_master_id = $this->input->post('student_fees_master_id');
             $fee_groups_feetype_id  = $this->input->post('fee_groups_feetype_id');
             $transport_fees_id      = $this->input->post('transport_fees_id');
-            $hostel_fees_id         = $this->input->post('hostel_fees_id');
+            $hostel_fees_id         = $this->input->post('hostel_fee_id');
             $fee_category           = $this->input->post('fee_category');
             
             // Debug logging for hostel fees
