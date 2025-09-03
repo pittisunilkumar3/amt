@@ -223,42 +223,61 @@
                 $fee_discount = 0;
                 $fee_paid = 0;
                 $fee_fine = 0;
-                if (!empty($feeList->amount_detail)) {
-                    $fee_deposits = json_decode(($feeList->amount_detail));
-                    foreach ($fee_deposits as $fee_deposits_key => $fee_deposits_value) {
-                        $fee_paid = $fee_paid + $fee_deposits_value->amount;
-                        $fee_discount = $fee_discount + $fee_deposits_value->amount_discount;
-                        $fee_fine = $fee_fine + $fee_deposits_value->amount_fine;
+                $fee_name = '';
+                $fee_amount = 0;
+                
+                // Handle transport fees differently
+                if (isset($feeList->fee_category) && $feeList->fee_category == 'transport') {
+                    $fee_name = 'Transport Fee';
+                    $fee_amount = $feeList->fees; // Transport fees use 'fees' instead of 'amount'
+                    
+                    // Get payment history for transport fee
+                    if (!empty($feeList->payment_history)) {
+                        foreach ($feeList->payment_history as $payment) {
+                            $fee_paid += $payment->amount;
+                            $fee_discount += $payment->amount_discount;
+                            $fee_fine += $payment->amount_fine;
+                        }
+                    }
+                } else {
+                    // Handle regular fees
+                    $fee_name = $feeList->is_system ? 
+                        $this->lang->line($feeList->name) . " (" . $this->lang->line($feeList->type) . ")" :
+                        $feeList->name . " (" . $feeList->type . ")";
+                    $fee_amount = $feeList->amount;
+                    
+                    if (!empty($feeList->amount_detail)) {
+                        $fee_deposits = json_decode(($feeList->amount_detail));
+                        if (is_array($fee_deposits) || is_object($fee_deposits)) {
+                            foreach ($fee_deposits as $fee_deposits_key => $fee_deposits_value) {
+                                $fee_paid += isset($fee_deposits_value->amount) ? $fee_deposits_value->amount : 0;
+                                $fee_discount += isset($fee_deposits_value->amount_discount) ? $fee_deposits_value->amount_discount : 0;
+                                $fee_fine += isset($fee_deposits_value->amount_fine) ? $fee_deposits_value->amount_fine : 0;
+                            }
+                        }
                     }
                 }
-                $feetype_balance = $feeList->amount - ($fee_paid + $fee_discount);
-                $total_amount = $total_amount + $feeList->amount;
+                
+                $feetype_balance = $fee_amount - ($fee_paid + $fee_discount);
+                $total_amount = $total_amount + $fee_amount;
                 $total_discount_amount = $total_discount_amount + $fee_discount;
                 $total_fine_amount = $total_fine_amount + $fee_fine;
                 $total_deposite_amount = $total_deposite_amount + $fee_paid;
                 $total_balance_amount = $total_balance_amount + $feetype_balance;
             ?>
             <tr>
-                <td>
-                    <?php
-                        if ($feeList->is_system) {
-                            echo $this->lang->line($feeList->name) . " (" . $this->lang->line($feeList->type) . ")";
-                        } else {
-                            echo $feeList->name . " (" . $feeList->type . ")";
-                        }
-                    ?>
-                </td>
-                <td><?php echo $feeList->amount; ?></td>
-                <td><?php echo $fee_paid; ?></td>
-                <td><?php echo $feetype_balance; ?></td>
+                <td><?php echo $fee_name; ?></td>
+                <td><?php echo number_format($fee_amount, 2, '.', ''); ?></td>
+                <td><?php echo number_format($fee_paid, 2, '.', ''); ?></td>
+                <td><?php echo number_format($feetype_balance, 2, '.', ''); ?></td>
             </tr>
             <?php } ?>
             
             <tr style="font-weight: bold;">
-                <td></td>
-                <td><?php echo $total_amount; ?></td>
-                <td><?php echo $total_deposite_amount; ?></td>
-                <td><?php echo $total_balance_amount; ?></td>
+                <td>Total</td>
+                <td><?php echo number_format($total_amount, 2, '.', ''); ?></td>
+                <td><?php echo number_format($total_deposite_amount, 2, '.', ''); ?></td>
+                <td><?php echo number_format($total_balance_amount, 2, '.', ''); ?></td>
             </tr>
         </table>
 

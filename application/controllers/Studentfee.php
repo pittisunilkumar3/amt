@@ -2593,6 +2593,7 @@ class Studentfee extends Admin_Controller
         $record              = $this->input->post('data');
         $record_array        = json_decode($record);
         $fees_array          = array();
+        
         foreach ($record_array as $key => $value) {
             $fee_groups_feetype_id = $value->fee_groups_feetype_id;
             $fee_master_id         = $value->fee_master_id;
@@ -2600,24 +2601,47 @@ class Studentfee extends Admin_Controller
             $fee_category          = $value->fee_category;
             $trans_fee_id          = $value->trans_fee_id;
             $otherfeecat           = $value->otherfeecat;
+            $student_session_id    = $value->student_session_id;
 
             if ($fee_category == "transport") {
-                $feeList               = $this->studentfeemaster_model->getTransportFeeByID($trans_fee_id);
-                $feeList->fee_category = $fee_category;
-            } else if($otherfeecat == "otherfee"){
-
-                $feeList               = $this->studentfeemasteradding_model->getDueFeeByFeeSessionGroupFeetype($fee_session_group_id, $fee_master_id, $fee_groups_feetype_id,$value->student_session_id);
-                $feeList->fee_category = $fee_category;
-            }else{
-                $feeList               = $this->studentfeemaster_model->getDueFeeByFeeSessionGroupFeetype($fee_session_group_id, $fee_master_id, $fee_groups_feetype_id);
-                $feeList->fee_category = $fee_category;
-
-
+                // Get transport fee details
+                if (!empty($trans_fee_id)) {
+                    $feeList = $this->studentfeemaster_model->getTransportFeeByID($trans_fee_id);
+                    if ($feeList) {
+                        $feeList->fee_category = $fee_category;
+                        $feeList->trans_fee_id = $trans_fee_id;
+                        $feeList->student_session_id = $student_session_id;
+                        
+                        // Get payment history for transport fee
+                        try {
+                            $payment_history = $this->studentfeemaster_model->getTransportFeePaymentHistory($trans_fee_id);
+                            if (!empty($payment_history)) {
+                                $feeList->payment_history = $payment_history;
+                            } else {
+                                $feeList->payment_history = array(); // Initialize empty array if no payment history
+                            }
+                        } catch (Exception $e) {
+                            // Log error and continue with empty payment history
+                            error_log('Error getting transport fee payment history: ' . $e->getMessage());
+                            $feeList->payment_history = array();
+                        }
+                        
+                        $fees_array[] = $feeList;
+                    }
+                }
+            } else if ($otherfeecat == "otherfee") {
+                $feeList = $this->studentfeemasteradding_model->getDueFeeByFeeSessionGroupFeetype($fee_session_group_id, $fee_master_id, $fee_groups_feetype_id, $student_session_id);
+                if ($feeList) {
+                    $feeList->fee_category = $fee_category;
+                    $fees_array[] = $feeList;
+                }
+            } else {
+                $feeList = $this->studentfeemaster_model->getDueFeeByFeeSessionGroupFeetype($fee_session_group_id, $fee_master_id, $fee_groups_feetype_id);
+                if ($feeList) {
+                    $feeList->fee_category = $fee_category;
+                    $fees_array[] = $feeList;
+                }
             }
-
-            $fees_array[] = $feeList;
-
-
         }
 
         $data['feearray'] = $fees_array;
