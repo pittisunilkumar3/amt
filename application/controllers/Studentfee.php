@@ -2629,6 +2629,33 @@ class Studentfee extends Admin_Controller
                         $fees_array[] = $feeList;
                     }
                 }
+            } elseif ($fee_category == "hostel") {
+                // Get hostel fee details
+                $hostel_fee_id = !empty($value->hostel_fee_id) ? $value->hostel_fee_id : null;
+                if (!empty($hostel_fee_id)) {
+                    $feeList = $this->studenthostelfee_model->getHostelFeeByID($hostel_fee_id);
+                    if ($feeList) {
+                        $feeList->fee_category = $fee_category;
+                        $feeList->hostel_fee_id = $hostel_fee_id;
+                        $feeList->student_session_id = $student_session_id;
+                        
+                        // Get payment history for hostel fee
+                        try {
+                            $payment_history = $this->studenthostelfee_model->getHostelFeePaymentHistory($hostel_fee_id);
+                            if (!empty($payment_history)) {
+                                $feeList->payment_history = $payment_history;
+                            } else {
+                                $feeList->payment_history = array(); // Initialize empty array if no payment history
+                            }
+                        } catch (Exception $e) {
+                            // Log error and continue with empty payment history
+                            error_log('Error getting hostel fee payment history: ' . $e->getMessage());
+                            $feeList->payment_history = array();
+                        }
+                        
+                        $fees_array[] = $feeList;
+                    }
+                }
             } else if ($otherfeecat == "otherfee") {
                 $feeList = $this->studentfeemasteradding_model->getDueFeeByFeeSessionGroupFeetype($fee_session_group_id, $fee_master_id, $fee_groups_feetype_id, $student_session_id);
                 if ($feeList) {

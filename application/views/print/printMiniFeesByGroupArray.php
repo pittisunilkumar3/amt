@@ -203,6 +203,16 @@
             <span><b>Class: </b><?php echo $feearray[0]->class; ?></span>
         </div>
 
+        <!-- Display Hostel Information for Hostel Fees -->
+        <?php if (isset($feearray[0]->fee_category) && $feearray[0]->fee_category == 'hostel' && !empty($feearray[0]->hostel_name)): ?>
+        <div class="info-row">
+            <span><b>Hostel:</b> <?php echo $feearray[0]->hostel_name; ?></span>
+            <?php if (!empty($feearray[0]->room_no)): ?>
+            <span><b>Room No:</b> <?php echo $feearray[0]->room_no; ?></span>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
+        
         <table class="fee-table">
             <?php
             $total_amount = 0;
@@ -232,6 +242,23 @@
                     $fee_amount = $feeList->fees; // Transport fees use 'fees' instead of 'amount'
                     
                     // Get payment history for transport fee
+                    if (!empty($feeList->payment_history)) {
+                        foreach ($feeList->payment_history as $payment) {
+                            $fee_paid += $payment->amount;
+                            $fee_discount += $payment->amount_discount;
+                            $fee_fine += $payment->amount_fine;
+                        }
+                    }
+                } 
+                // Handle hostel fees
+                elseif (isset($feeList->fee_category) && $feeList->fee_category == 'hostel') {
+                    $fee_name = 'Hostel Fee';
+                    if (isset($feeList->month)) {
+                        $fee_name .= ' - ' . date('F Y', strtotime('01-' . $feeList->month));
+                    }
+                    $fee_amount = $feeList->amount; // Hostel fee amount
+                    
+                    // Get payment history for hostel fee
                     if (!empty($feeList->payment_history)) {
                         foreach ($feeList->payment_history as $payment) {
                             $fee_paid += $payment->amount;

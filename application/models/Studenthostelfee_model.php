@@ -209,6 +209,21 @@ class Studenthostelfee_model extends MY_Model
      * @param int $hostel_fee_id
      * @return array
      */
+    /**
+     * Get hostel fee by ID (alias for get() method)
+     * @param int $id The hostel fee ID
+     * @return object|null
+     */
+    public function getHostelFeeByID($id)
+    {
+        return $this->get($id);
+    }
+
+    /**
+     * Get hostel fee payment history
+     * @param int $hostel_fee_id
+     * @return array
+     */
     public function getHostelFeePaymentHistory($hostel_fee_id)
     {
         $sql = "SELECT sfd.id as student_fees_deposite_id, sfd.amount_detail, sfd.date, sfd.payment_mode, sfd.description,

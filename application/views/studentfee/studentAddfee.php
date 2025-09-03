@@ -3405,20 +3405,22 @@ $language_name = $language["short_code"];
             var $this = $(this);
             $.each($("input[name='fee_checkbox']:checked"), function () {
                 var trans_fee_id = $(this).data('trans_fee_id');
-                var fee_category = $(this).data('fee_category');
-                var fee_session_group_id = $(this).data('fee_session_group_id');
                 var fee_master_id = $(this).data('fee_master_id');
+                var fee_session_group_id = $(this).data('fee_session_group_id');
                 var fee_groups_feetype_id = $(this).data('fee_groups_feetype_id');
+                var fee_category = $(this).data('fee_category');
                 var otherfeecat = $(this).data('otherfeecat');
                 var student_session_id = $(this).data('student_session_id');
-                item = {};
-                item["fee_category"] = fee_category;
+                var hostel_fee_id = $(this).data('hostel_fee_id');
+                var item = {};
                 item["trans_fee_id"] = trans_fee_id;
-                item["fee_session_group_id"] = fee_session_group_id;
                 item["fee_master_id"] = fee_master_id;
+                item["fee_session_group_id"] = fee_session_group_id;
                 item["fee_groups_feetype_id"] = fee_groups_feetype_id;
+                item["fee_category"] = fee_category;
                 item["otherfeecat"] = otherfeecat;
                 item["student_session_id"] = student_session_id;
+                item["hostel_fee_id"] = hostel_fee_id;
 
                 array_to_print.push(item);
             });
