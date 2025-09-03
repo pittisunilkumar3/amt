@@ -1106,31 +1106,64 @@ class Studentfee extends Admin_Controller
         $record              = $this->input->post('data');
         $record_array        = json_decode($record);
         $fees_array          = array();
+        
         foreach ($record_array as $key => $value) {
             $fee_groups_feetype_id = $value->fee_groups_feetype_id;
             $fee_master_id         = $value->fee_master_id;
             $fee_session_group_id  = $value->fee_session_group_id;
             $fee_category          = $value->fee_category;
             $trans_fee_id          = $value->trans_fee_id;
-            $otherfeecat           = $value->otherfeecat;
+            $otherfeecat           = isset($value->otherfeecat) ? $value->otherfeecat : '';
+            $student_session_id    = $value->student_session_id;
+            $hostel_fee_id         = isset($value->hostel_fee_id) ? $value->hostel_fee_id : null;
 
             if ($fee_category == "transport") {
-                $feeList               = $this->studentfeemaster_model->getTransportFeeByID($trans_fee_id);
-                $feeList->fee_category = $fee_category;
-            } else if($otherfeecat == "otherfee"){
-
-                $feeList               = $this->studentfeemasteradding_model->getDueFeeByFeeSessionGroupFeetype($fee_session_group_id, $fee_master_id, $fee_groups_feetype_id,$value->student_session_id);
-                $feeList->fee_category = $fee_category;
-            }else{
-                $feeList               = $this->studentfeemaster_model->getDueFeeByFeeSessionGroupFeetype($fee_session_group_id, $fee_master_id, $fee_groups_feetype_id);
-                $feeList->fee_category = $fee_category;
-
-
+                $feeList = $this->studentfeemaster_model->getTransportFeeByID($trans_fee_id);
+                if ($feeList) {
+                    $feeList->fee_category = $fee_category;
+                    $fees_array[] = $feeList;
+                }
+            } else if ($fee_category == "hostel") {
+                // For hostel fees - use the proper hostel_fee_id from the JSON data
+                if (!empty($hostel_fee_id)) {
+                    $feeList = $this->studentfeemaster_model->getHostelFeeByID($hostel_fee_id);
+                    if ($feeList) {
+                        $feeList->fee_category = $fee_category;
+                        $feeList->hostel_fee_id = $hostel_fee_id;
+                        $fees_array[] = $feeList;
+                    }
+                } else {
+                    // Fallback: If hostel_fee_id is not available, try using trans_fee_id
+                    error_log("DEBUG: No hostel_fee_id found, trying trans_fee_id: " . $trans_fee_id);
+                    $feeList = $this->studentfeemaster_model->getHostelFeeByID($trans_fee_id);
+                    if ($feeList) {
+                        $feeList->fee_category = $fee_category;
+                        $feeList->hostel_fee_id = $trans_fee_id;
+                        $fees_array[] = $feeList;
+                    }
+                }
+            } else if ($otherfeecat == "otherfee") {
+                $feeList = $this->studentfeemasteradding_model->getDueFeeByFeeSessionGroupFeetype(
+                    $fee_session_group_id, 
+                    $fee_master_id, 
+                    $fee_groups_feetype_id,
+                    $student_session_id
+                );
+                if ($feeList) {
+                    $feeList->fee_category = $fee_category;
+                    $fees_array[] = $feeList;
+                }
+            } else {
+                $feeList = $this->studentfeemaster_model->getDueFeeByFeeSessionGroupFeetype(
+                    $fee_session_group_id, 
+                    $fee_master_id, 
+                    $fee_groups_feetype_id
+                );
+                if ($feeList) {
+                    $feeList->fee_category = $fee_category;
+                    $fees_array[] = $feeList;
+                }
             }
-
-            $fees_array[] = $feeList;
-
-
         }
 
         $data['feearray'] = $fees_array;

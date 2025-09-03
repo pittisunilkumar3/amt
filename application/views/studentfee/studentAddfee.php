@@ -3316,6 +3316,8 @@ $language_name = $language["short_code"];
                 var fee_groups_feetype_id = $(this).data('fee_groups_feetype_id');
                 var otherfeecat = $(this).data('otherfeecat');
                 var student_session_id = $(this).data('student_session_id');
+                var hostel_fee_id = $(this).data('hostel_fee_id');
+                
                 item = {};
                 item["fee_category"] = fee_category;
                 item["trans_fee_id"] = trans_fee_id;
@@ -3324,6 +3326,7 @@ $language_name = $language["short_code"];
                 item["fee_groups_feetype_id"] = fee_groups_feetype_id;
                 item["otherfeecat"] = otherfeecat;
                 item["student_session_id"] = student_session_id;
+                item["hostel_fee_id"] = hostel_fee_id;
 
                 array_to_print.push(item);
             });

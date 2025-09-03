@@ -826,8 +826,108 @@ if ($feeList->fine_amount != "") {
                                                             <?php
                                                         }
                                                     }
-                                                }elseif($feeList->fee_category == "transport"){
-                                                
+                                                } elseif ($feeList->fee_category == "hostel") {
+                                                    // Hostel fee specific logic
+                                                    $fee_discount = 0;
+                                                    $fee_paid = 0;
+                                                    $fee_fine = 0;
+                                                    if (!empty($feeList->amount_detail)) {
+                                                        $fee_deposits = json_decode(($feeList->amount_detail));
+
+                                                        foreach ($fee_deposits as $fee_deposits_key => $fee_deposits_value) {
+                                                            $fee_paid = $fee_paid + $fee_deposits_value->amount;
+                                                            $fee_discount = $fee_discount + $fee_deposits_value->amount_discount;
+                                                            $fee_fine = $fee_fine + $fee_deposits_value->amount_fine;
+                                                        }
+                                                    }
+                                                    $feetype_balance = $feeList->fees - ($fee_paid + $fee_discount);
+                                                    $total_amount = $total_amount + $feeList->fees;
+                                                    $total_discount_amount = $total_discount_amount + $fee_discount;
+                                                    $total_fine_amount = $total_fine_amount + $fee_fine;
+                                                    $total_deposite_amount = $total_deposite_amount + $fee_paid;
+                                                    $total_balance_amount = $total_balance_amount + $feetype_balance;
+                                                    ?>
+                                                    <tr  class="dark-gray">
+
+                                                        <td><?php echo $this->lang->line("hostel_fees"); ?></td>
+                                                        <td><?php echo isset($feeList->month) ? $this->lang->line(strtolower($feeList->month)) : ''; ?></td>
+                                                        <td class="">
+                                                            <?php
+                                                            if (isset($feeList->due_date) && $feeList->due_date != "0000-00-00") {
+                                                                echo date($this->customlib->getSchoolDateFormat(), $this->customlib->dateyyyymmddTodateformat($feeList->due_date));
+                                                            }
+                                                            ?>
+                                                        </td>
+                                                        <td class="">
+                                                            <?php
+                                                            if ($feetype_balance == 0) {
+                                                                echo $this->lang->line('paid');
+                                                            } else if (!empty($feeList->amount_detail)) {
+                                                                echo $this->lang->line('partial');
+                                                            } else {
+                                                                echo $this->lang->line('unpaid');
+                                                            }
+                                                            ?>
+                                                        </td>
+                                                        <td class="text text-right"><?php 
+                                                        echo $currency_symbol . $feeList->fees; 
+
+                                                        if (isset($feeList->due_date) && ($feeList->due_date != "0000-00-00" && $feeList->due_date != null) && (strtotime($feeList->due_date) < strtotime(date('Y-m-d')))) {
+                                                            $hr_fine_amount = isset($feeList->fine_amount) ? $feeList->fine_amount : 0;
+                                                            if (isset($feeList->fine_type) && $feeList->fine_type != "" && $feeList->fine_type == "percentage") {
+                                                                $hr_fine_amount = percentageAmount($feeList->fees, $feeList->fine_percentage);
+                                                            }
+                                                            if ($hr_fine_amount > 0) {
+                                                                ?>
+                                                                <span  class="text text-danger"><?php echo " + " . $currency_symbol.amountFormat($hr_fine_amount); ?></span>
+                                                                <?php
+                                                            }
+                                                        }
+                                                        ?></td>
+
+                                                        <td colspan="3"></td>
+                                                        <td class="text text-right"><?php
+                                                            echo $currency_symbol . amountFormat($fee_paid);
+                                                            ?></td>
+                                                        <td class="text text-right"><?php
+                                                            echo $currency_symbol . amountFormat($fee_fine);
+                                                            ?></td>
+                                                        <td class="text text-right"><?php
+                                                            echo $currency_symbol . amountFormat($fee_discount);
+                                                            ?></td>
+                                                        <td class="text text-right"><?php
+                                                            $display_none = "ss-none";
+                                                            if ($feetype_balance > 0) {
+                                                                $display_none = "";
+                                                                echo $currency_symbol . amountFormat($feetype_balance);
+                                                            }
+                                                            ?>
+                                                        </td>
+                                                    </tr>
+
+                                                    <?php
+                                                    $fee_deposits = json_decode(($feeList->amount_detail));
+                                                    if (is_object($fee_deposits)) {
+                                                        foreach ($fee_deposits as $fee_deposits_key => $fee_deposits_value) {
+                                                            ?>
+                                                            <tr class="white-td">
+                                                                <td colspan="5" class="text-right"><img src="<?php echo $this->media_storage->getImageURL('backend/images/table-arrow.png');?>" alt="" /></td>
+                                                                <td class="text text-center">
+                                                                    <?php echo (isset($feeList->student_fees_deposite_id) ? $feeList->student_fees_deposite_id : '0') . "/" . (isset($fee_deposits_value->inv_no) ? $fee_deposits_value->inv_no : ''); ?>
+                                                                </td>
+                                                                <td class="text text-center"><?php echo isset($fee_deposits_value->payment_mode) ? $this->lang->line(strtolower($fee_deposits_value->payment_mode)) : ''; ?></td>
+                                                                <td class="text text-center">
+                                                                    <?php echo isset($fee_deposits_value->date) ? date($this->customlib->getSchoolDateFormat(), $this->customlib->dateyyyymmddTodateformat($fee_deposits_value->date)) : ''; ?>
+                                                                </td>
+                                                                <td class="text text-right"><?php echo $currency_symbol . amountFormat((isset($fee_deposits_value->amount) ? $fee_deposits_value->amount : 0)); ?></td>
+                                                                <td class="text text-right"><?php echo $currency_symbol . amountFormat((isset($fee_deposits_value->amount_fine) ? $fee_deposits_value->amount_fine : 0)); ?></td>
+                                                                <td class="text text-right"><?php echo $currency_symbol . amountFormat((isset($fee_deposits_value->amount_discount) ? $fee_deposits_value->amount_discount : 0)); ?></td>
+                                                                <td></td>
+                                                            </tr>
+                                                            <?php
+                                                        }
+                                                    }
+                                                } elseif ($feeList->fee_category == "transport") {
                                                     $fee_discount = 0;
                                                     $fee_paid = 0;
                                                     $fee_fine = 0;
@@ -1287,6 +1387,117 @@ if ($feeList->fine_amount != "") {
                                                 ?>
                                             </td>
 
+                                                        <td colspan="3"></td>
+                                                        <td class="text text-right"><?php
+                                                            echo $currency_symbol . amountFormat($fee_paid);
+                                                            ?></td>
+                                                        <td class="text text-right"><?php
+                                                            echo $currency_symbol . amountFormat($fee_fine);
+                                                            ?></td>
+                                                        <td class="text text-right"><?php
+                                                            echo $currency_symbol . amountFormat($fee_discount);
+                                                            ?></td>
+                                                        <td class="text text-right"><?php
+                                                            $display_none = "ss-none";
+                                                            if ($feetype_balance > 0) {
+                                                                $display_none = "";
+
+                                                                echo $currency_symbol . amountFormat($feetype_balance);
+                                                            }
+                                                            ?>
+
+                                                        </td>
+
+
+
+                                                    </tr>
+
+                                                    <?php
+                                                    $fee_deposits = json_decode(($feeList->amount_detail));
+                                                    if (is_object($fee_deposits)) {
+                                                        foreach ($fee_deposits as $fee_deposits_key => $fee_deposits_value) {
+                                                            ?>
+                                                            <tr class="white-td">
+                                                                <td colspan="5" class="text-right"><img src="<?php echo $this->media_storage->getImageURL('backend/images/table-arrow.png');?>" alt="" /></td>
+                                                                <td class="text text-center">
+                                                                    <?php echo $feeList->student_fees_deposite_id . "/" . $fee_deposits_value->inv_no; ?>
+                                                                </td>
+                                                                <td class="text text-center"><?php echo $this->lang->line(strtolower($fee_deposits_value->payment_mode)); ?></td>
+                                                                <td class="text text-center">
+                                                                    <?php echo date($this->customlib->getSchoolDateFormat(), $this->customlib->dateyyyymmddTodateformat($fee_deposits_value->date)); ?>
+                                                                </td>
+                                                                <td class="text text-right"><?php echo $currency_symbol . amountFormat($fee_deposits_value->amount); ?></td>
+                                                                <td class="text text-right"><?php echo $currency_symbol . amountFormat($fee_deposits_value->amount_fine); ?></td>
+                                                                <td class="text text-right"><?php echo $currency_symbol . amountFormat($fee_deposits_value->amount_discount); ?></td>
+                                                                <td></td>
+
+                                                            </tr>
+                                                            <?php
+                                                        }
+                                                    }
+                                                } elseif ($feeList->fee_category == "hostel") {
+                                                    // Hostel fee specific logic for bank copy
+                                                    $fee_discount = 0;
+                                                    $fee_paid = 0;
+                                                    $fee_fine = 0;
+                                                    if (!empty($feeList->amount_detail)) {
+                                                        $fee_deposits = json_decode(($feeList->amount_detail));
+
+                                                        foreach ($fee_deposits as $fee_deposits_key => $fee_deposits_value) {
+                                                            $fee_paid = $fee_paid + $fee_deposits_value->amount;
+                                                            $fee_discount = $fee_discount + $fee_deposits_value->amount_discount;
+                                                            $fee_fine = $fee_fine + $fee_deposits_value->amount_fine;
+                                                        }
+                                                    }
+                                                    $feetype_balance = $feeList->fees - ($fee_paid + $fee_discount);
+                                                    $total_amount = $total_amount + $feeList->fees;
+                                                    $total_discount_amount = $total_discount_amount + $fee_discount;
+                                                    $total_fine_amount = $total_fine_amount + $fee_fine;
+                                                    $total_deposite_amount = $total_deposite_amount + $fee_paid;
+                                                    $total_balance_amount = $total_balance_amount + $feetype_balance;
+                                                    ?>
+                                                    <tr  class="dark-gray">
+
+                                                        <td><?php echo $this->lang->line("hostel_fees"); ?></td>
+                                                        <td><?php echo isset($feeList->month) ? $this->lang->line(strtolower($feeList->month)) : ''; ?></td>
+                                                        <td class="">
+                                                            <?php
+                                                            if (isset($feeList->due_date) && $feeList->due_date != "0000-00-00") {
+                                                                echo date($this->customlib->getSchoolDateFormat(), $this->customlib->dateyyyymmddTodateformat($feeList->due_date));
+                                                            }
+                                                            ?>
+                                                        </td>
+                                                        <td class="">
+                                                            <?php
+                                                            if ($feetype_balance == 0) {
+                                                                echo $this->lang->line('paid');
+                                                            } else if (!empty($feeList->amount_detail)) {
+                                                                echo $this->lang->line('partial');
+                                                            } else {
+                                                                echo $this->lang->line('unpaid');
+                                                            }
+                                                            ?>
+                                                        </td>
+                                                        <td class="text text-right"><?php
+
+                                                echo $currency_symbol . $feeList->fees; 
+
+
+    if (($feeList->due_date != "0000-00-00" && $feeList->due_date != null) && (strtotime($feeList->due_date) < strtotime(date('Y-m-d')))) {
+            $tr_fine_amount = $feeList->fine_amount;
+            if ($feeList->fine_type != "" && $feeList->fine_type == "percentage") {
+
+                $tr_fine_amount = percentageAmount($feeList->fees, $feeList->fine_percentage);
+            }
+            ?>
+
+<span  class="text text-danger"><?php echo " + " . $currency_symbol.amountFormat($tr_fine_amount); ?></span>
+
+    <?php
+}
+
+                                                ?>
+                                            </td>
                                                         <td colspan="3"></td>
                                                         <td class="text text-right"><?php
                                                             echo $currency_symbol . amountFormat($fee_paid);
