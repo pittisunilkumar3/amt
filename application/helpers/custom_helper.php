@@ -448,8 +448,31 @@ function convertCurrencyFormatToBaseAmount($amount)
 {
     $CI              = &get_instance();
     $currency_price  = $CI->customlib->getSchoolCurrencyPrice();
-    $amount=floatval($amount/$currency_price);
-    return $amount;
+    
+    // Enhanced debugging for currency conversion
+    error_log("=== CURRENCY CONVERSION DEBUG ===");
+    error_log("Input amount: " . $amount);
+    error_log("Currency price from getSchoolCurrencyPrice(): " . print_r($currency_price, true));
+    error_log("Currency price type: " . gettype($currency_price));
+    
+    // Fix for zero amount issue - prevent division by zero or null
+    if (empty($currency_price) || $currency_price <= 0) {
+        // Log the issue for debugging
+        error_log("❌ WARNING: convertCurrencyFormatToBaseAmount received invalid currency_price: " . print_r($currency_price, true) . ", returning original amount: " . $amount);
+        return floatval($amount);
+    }
+    
+    // Since your system uses base_price = 1 (no conversion needed), just return the amount
+    if ($currency_price == 1) {
+        error_log("✅ CURRENCY DEBUG: Base price is 1, no conversion needed. Amount: " . $amount . " -> " . floatval($amount));
+        return floatval($amount);
+    }
+    
+    $converted_amount = floatval($amount / $currency_price);
+    error_log("Conversion calculation: " . $amount . " / " . $currency_price . " = " . $converted_amount);
+    error_log("=== CURRENCY CONVERSION END ===");
+    
+    return $converted_amount;
 }
 
 

@@ -275,9 +275,6 @@ $language_name = $language["short_code"];
                                                 <button type="button" class="btn btn-info btn-sm" onclick="viewAdvanceHistory('<?php echo $student_session_id; ?>')">
                                                     <i class="fa fa-history"></i> <?php echo $this->lang->line('view_history'); ?>
                                                 </button>
-                                                <button type="button" class="btn btn-warning btn-sm" onclick="openAdvanceManagementModal('<?php echo $student_session_id; ?>')">
-                                                    <i class="fa fa-cogs"></i> <?php echo $this->lang->line('manage_advance'); ?>
-                                                </button>
                                             <?php } ?>
                                         </div>
                                     </div>
@@ -355,6 +352,13 @@ $language_name = $language["short_code"];
                                             data-loading-text="<i class='fa fa-spinner fa-spin '></i> <?php echo $this->lang->line('please_wait') ?>"><i
                                                 class="fa fa-money"></i>
                                             <?php echo $this->lang->line('collect_selected'); ?>
+                                        </button>
+                                        
+                                        <button type="button" class="btn btn-sm btn-success viewAdvanceTransfers" 
+                                            data-student-session-id="<?php echo $student_session_id; ?>"
+                                            title="View Advance Payment Transfers">
+                                            <i class="fa fa-exchange"></i>
+                                            Advance Transfers
                                         </button>
                                     <?php } ?>
 
@@ -2116,6 +2120,29 @@ $language_name = $language["short_code"];
                                 <span class="text-danger" id="amount_error"></span>
                             </div>
                         </div>
+                        
+                        <!-- Advance Payment Collection Option -->
+                        <div class="form-group" id="advance_payment_option" style="display: none;">
+                            <label for="inputPassword3" class="col-sm-3 control-label">
+                                <?php echo $this->lang->line('payment_source'); ?>
+                            </label>
+                            <div class="col-sm-9">
+                                <div class="checkbox">
+                                    <label>
+                                        <input type="checkbox" id="collect_from_advance" name="collect_from_advance" value="1">
+                                        <strong><?php echo $this->lang->line('collect_from_advance_payment'); ?></strong>
+                                    </label>
+                                </div>
+                                <div id="advance_payment_info" style="display: none; margin-top: 10px;">
+                                    <div class="alert alert-info">
+                                        <i class="fa fa-info-circle"></i>
+                                        <strong><?php echo $this->lang->line('available_advance_balance'); ?>:</strong>
+                                        <span id="modal_advance_balance"><?php echo $currency_symbol; ?>0.00</span>
+                                    </div>
+                                </div>
+                                <span class="text-danger" id="advance_payment_error"></span>
+                            </div>
+                        </div>
                         <div class="form-group">
                             <label for="inputPassword3" class="col-sm-3 control-label">
                                 <?php echo $this->lang->line('discount_group'); ?>
@@ -2889,8 +2916,12 @@ $language_name = $language["short_code"];
 
 <script type="text/javascript">
     $(document).on('click', '.save_button', function (e) {
+        console.log('🔴 MAIN SAVE HANDLER - Starting fee collection process...');
+        
         var $this = $(this);
         var action = $this.data('action');
+        console.log('🔴 Action:', action);
+        
         $this.button('loading');
         var form = $(this).attr('frm');
         var feetype = $('#feetype_').val();
@@ -2911,6 +2942,40 @@ $language_name = $language["short_code"];
         var fee_category = $('#fee_category').val();
         var payment_mode = $('input[name="payment_mode_fee"]:checked').val();
         var student_fees_discount_id = $('#discount_group').val();
+        var collect_from_advance = $('#collect_from_advance').is(':checked') ? 1 : 0;
+        
+        // CRITICAL DEBUG: Log all form values before submission
+        console.log('🔴 Form data collected:', {
+            action: action,
+            student_session_id: student_session_id,
+            date: date,
+            amount: amount,
+            amount_discount: amount_discount,
+            amount_fine: amount_fine,
+            fee_category: fee_category,
+            payment_mode: payment_mode,
+            accountname: accountname,
+            collect_from_advance: collect_from_advance
+        });
+        
+        // CRITICAL: Check if amount is being modified by advance payment logic
+        console.log('🔴 AMOUNT DEBUG:');
+        console.log('Amount field value:', $('#amount').val());
+        console.log('Amount variable:', amount);
+        console.log('Amount type:', typeof amount);
+        console.log('Amount parsed as float:', parseFloat(amount));
+        console.log('Collect from advance:', collect_from_advance);
+        
+        // Check if amount is zero or empty
+        if (!amount || amount === '0' || amount === 0) {
+            console.log('❌ WARNING: Amount is zero or empty!');
+            console.log('Amount field element:', $('#amount')[0]);
+            console.log('Amount field properties:', {
+                value: $('#amount')[0].value,
+                innerHTML: $('#amount')[0].innerHTML,
+                type: $('#amount')[0].type
+            });
+        }
         
         // Debug logging for hostel fees
         if (fee_category === 'hostel') {
@@ -2920,6 +2985,22 @@ $language_name = $language["short_code"];
             console.log('fee_category:', fee_category);
             console.log('amount:', amount);
         }
+        
+        // Additional validation for advance payment
+        if (collect_from_advance === 1) {
+            var advanceBalanceText = $('#modal_advance_balance').text();
+            var advanceBalance = parseFloat(advanceBalanceText.replace(/[^0-9.]/g, ''));
+            var currentAmount = parseFloat(amount) || 0;
+            
+            if (currentAmount > advanceBalance) {
+                alert('Amount cannot exceed available advance balance of ' + advanceBalanceText);
+                $this.button('reset');
+                return false;
+            }
+        }
+        
+        console.log('🔴 Making AJAX request to:', '<?php echo site_url("studentfee/addstudentfee") ?>');
+        
         $.ajax({
             url: '<?php echo site_url("studentfee/addstudentfee") ?>',
             type: 'post',
@@ -2942,23 +3023,38 @@ $language_name = $language["short_code"];
                 guardian_phone: guardian_phone, 
                 guardian_email: guardian_email, 
                 student_fees_discount_id: student_fees_discount_id, 
-                parent_app_key: parent_app_key 
+                parent_app_key: parent_app_key,
+                collect_from_advance: collect_from_advance
             },
             dataType: 'json',
+            beforeSend: function() {
+                console.log('🔴 AJAX beforeSend triggered');
+            },
             success: function (response) {
+                console.log('🔴 AJAX Success:', response);
                 $this.button('reset');
                 if (response.status == "success") {
                     if (action == "collect") {
+                        console.log('🔴 Reloading page after successful collection');
                         location.reload(true);
                     } else if (action === "print") {
+                        console.log('🔴 Opening print popup');
                         Popup(response.print, true);
                     }
                 } else if (response.status === "fail") {
+                    console.log('🔴 AJAX returned failure:', response.error);
                     $.each(response.error, function (index, value) {
                         var errorDiv = '#' + index + '_error';
                         $(errorDiv).empty().append(value);
                     });
                 }
+            },
+            error: function(xhr, status, error) {
+                console.log('🔴 AJAX Error:', error);
+                console.log('🔴 XHR:', xhr);
+                console.log('🔴 Status:', status);
+                $this.button('reset');
+                alert('Error occurred: ' + error);
             }
         });
     });
@@ -3137,7 +3233,8 @@ $language_name = $language["short_code"];
                 'student_fees_master_id': student_fees_master_id,
                 'student_session_id': student_session_id,
                 'fee_category': fee_category,
-                'trans_fee_id': trans_fee_id
+                'trans_fee_id': fee_category === 'hostel' ? hostel_fee_id : trans_fee_id,
+                'hostel_fee_id': hostel_fee_id
             },
             beforeSend: function () {
                 $('#discount_group').html("");
@@ -3153,11 +3250,26 @@ $language_name = $language["short_code"];
                     fee_type_amount = data.student_fees;
                     $('#amount').val(data.balance);
                     $('#amount_fine').val(data.remain_amount_fine);
+                    
+                    // CRITICAL DEBUG: Log when amount field is set
+                    console.log('🔴 AMOUNT FIELD SET BY AJAX:');
+                    console.log('Setting amount field to:', data.balance);
+                    console.log('data.balance type:', typeof data.balance);
+                    console.log('Amount field value after setting:', $('#amount').val());
+                    
+                    // Set up a watcher to detect any changes to the amount field
+                    $('#amount').off('input.debug').on('input.debug', function() {
+                        console.log('🔴 AMOUNT FIELD CHANGED!');
+                        console.log('New value:', $(this).val());
+                        console.log('Stack trace:', new Error().stack);
+                    });
                     $.each(data.discount_not_applied, function (i, obj) {
                         discount_group_dropdown += "<option value=" + obj.student_fees_discount_id + " data-disamount=" + obj.amount + " data-type=" + obj.type + " data-percentage=" + obj.percentage + ">" + obj.code + "</option>";
                     });
                     $('#discount_group').append(discount_group_dropdown);
 
+                    // Load advance payment balance for the student
+                    loadAdvanceBalanceForModal(student_session_id);
                 }
             },
             error: function (xhr) { // if error occured
@@ -4163,6 +4275,8 @@ $language_name = $language["short_code"];
                                     <option value="cheque"><?php echo $this->lang->line('cheque'); ?></option>
                                     <option value="dd"><?php echo $this->lang->line('dd'); ?></option>
                                     <option value="bank_transfer"><?php echo $this->lang->line('bank_transfer'); ?></option>
+                                    <option value="upi"><?php echo $this->lang->line('upi'); ?></option>
+                                    <option value="card"><?php echo $this->lang->line('card'); ?></option>
                                 </select>
                                 <span class="text-danger" id="error_payment_mode"></span>
                             </div>
@@ -4179,6 +4293,19 @@ $language_name = $language["short_code"];
                     <div class="row">
                         <div class="col-md-12">
                             <div class="form-group">
+                                <label><?php echo $this->lang->line('accountname'); ?></label>
+                                <select name="accountname" id="advance_accountname" class="form-control">
+                                    <option value=""><?php echo $this->lang->line('select'); ?></option>
+                                </select>
+                                <span class="text-danger" id="error_accountname"></span>
+                                <small class="text-muted"><?php echo $this->lang->line('optional'); ?> - Account transactions will be handled when advance is used</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group">
                                 <label><?php echo $this->lang->line('description'); ?></label>
                                 <textarea name="description" id="advance_description" class="form-control" rows="3" placeholder="<?php echo $this->lang->line('description'); ?>"></textarea>
                             </div>
@@ -4187,8 +4314,11 @@ $language_name = $language["short_code"];
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo $this->lang->line('cancel'); ?></button>
-                    <button type="submit" class="btn btn-primary" id="advancePaymentSubmitBtn">
+                    <button type="submit" class="btn btn-primary" id="advancePaymentSubmitBtn" data-action="collect">
                         <i class="fa fa-save"></i> <?php echo $this->lang->line('save'); ?>
+                    </button>
+                    <button type="button" class="btn btn-success" id="advancePaymentPrintBtn" data-action="print">
+                        <i class="fa fa-print"></i> <?php echo $this->lang->line('save_print'); ?>
                     </button>
                 </div>
             </form>
@@ -4209,28 +4339,6 @@ $language_name = $language["short_code"];
                 </h4>
             </div>
             <div class="modal-body" id="advanceHistoryContent">
-                <!-- Content will be loaded via AJAX -->
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo $this->lang->line('close'); ?></button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Advance Management Modal -->
-<div class="modal fade" id="advanceManagementModal" tabindex="-1" role="dialog" aria-labelledby="advanceManagementModalLabel">
-    <div class="modal-dialog modal-xl" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-                <h4 class="modal-title" id="advanceManagementModalLabel">
-                    <i class="fa fa-cogs"></i> <?php echo $this->lang->line('manage_advance_payments'); ?>
-                </h4>
-            </div>
-            <div class="modal-body" id="advanceManagementContent">
                 <!-- Content will be loaded via AJAX -->
             </div>
             <div class="modal-footer">
@@ -4365,6 +4473,34 @@ $language_name = $language["short_code"];
     </div>
 </div>
 
+<!-- Advance Payment Transfers Modal -->
+<div class="modal fade" id="advanceTransfersModal" tabindex="-1" role="dialog" aria-labelledby="advanceTransfersModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title" id="advanceTransfersModalLabel">
+                    <i class="fa fa-exchange"></i> Advance Payment Transfers History
+                </h4>
+            </div>
+            <div class="modal-body" id="advanceTransfersContent">
+                <div class="text-center">
+                    <i class="fa fa-spinner fa-spin fa-2x"></i>
+                    <p>Loading advance payment transfers...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo $this->lang->line('close'); ?></button>
+                <button type="button" class="btn btn-primary" onclick="refreshAdvanceTransfers()">
+                    <i class="fa fa-refresh"></i> Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 // Advance Payment Management Functions
 function openAdvancePaymentModal(studentSessionId, studentName, admissionNo, classSection, fatherName) {
@@ -4384,8 +4520,101 @@ function openAdvancePaymentModal(studentSessionId, studentName, admissionNo, cla
     // Set default date
     $('#advance_date').val('<?php echo date($this->customlib->getSchoolDateFormat()); ?>');
 
+    // Load account names for advance payment
+    loadAdvanceAccountNames();
+
     // Show modal
     $('#advancePaymentModal').modal('show');
+}
+
+// Function to load account names for advance payment
+function loadAdvanceAccountNames() {
+    $.ajax({
+        url: '<?php echo site_url("studentfee/getAccounts") ?>',
+        type: 'POST',
+        dataType: 'json',
+        success: function(data) {
+            var advance_account_dropdown = '<option value=""><?php echo $this->lang->line("select"); ?></option>';
+            $.each(data, function(i, obj) {
+                advance_account_dropdown += "<option value=" + obj.id + ">" + obj.account_name + "</option>";
+            });
+            $('#advance_accountname').html(advance_account_dropdown);
+        },
+        error: function() {
+            console.log('Failed to load account names for advance payment');
+        }
+    });
+}
+
+// Function to load account names for regular fees
+function loadAccountNames() {
+    $.ajax({
+        url: '<?php echo site_url("studentfee/getAccounts") ?>',
+        type: 'POST',
+        dataType: 'json',
+        success: function(data) {
+            var account_dropdown = '<option value=""><?php echo $this->lang->line("select"); ?></option>';
+            $.each(data, function(i, obj) {
+                account_dropdown += "<option value=" + obj.id + ">" + obj.account_name + "</option>";
+            });
+            $('#accountname').html(account_dropdown);
+        },
+        error: function() {
+            console.log('Failed to load account names');
+        }
+    });
+}
+
+// Handle advance payment mode change for auto-account selection
+$(document).on('change', '#advance_payment_mode', function() {
+    var selectedMode = $(this).val();
+    console.log('Advance payment mode changed to:', selectedMode);
+    
+    // Clear payment mode error
+    $('#error_payment_mode').text('');
+    
+    // Auto-select corresponding account
+    setTimeout(function() {
+        $('#advance_accountname option').each(function() {
+            var optionText = $(this).text().toLowerCase();
+            if ((selectedMode === 'cash' && optionText.includes('cash')) ||
+                (selectedMode === 'cheque' && optionText.includes('bank')) ||
+                (selectedMode === 'dd' && optionText.includes('bank')) ||
+                (selectedMode === 'bank_transfer' && optionText.includes('bank')) ||
+                (selectedMode === 'upi' && optionText.includes('bank')) ||
+                (selectedMode === 'card' && optionText.includes('bank'))) {
+                $(this).prop('selected', true);
+                $('#error_accountname').text(''); // Clear account error
+                return false;
+            }
+        });
+    }, 100);
+});
+
+// Print advance payment receipt function
+function printAdvanceReceipt(advancePaymentId) {
+    console.log('Printing advance receipt for ID:', advancePaymentId);
+
+    $.ajax({
+        url: '<?php echo site_url("studentfee/printAdvancePaymentMiniReceipt"); ?>',
+        type: 'POST',
+        data: {
+            advance_id: advancePaymentId,
+            '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
+        },
+        dataType: 'json',
+        success: function(response) {
+            if (response.status === 'success') {
+                Popup(response.page, true);
+            } else {
+                showErrorMessage(response.error || 'Failed to generate receipt');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error printing advance receipt:', error);
+            showErrorMessage('Network error occurred while generating receipt');
+        }
+    });
 }
 
 function viewAdvanceHistory(studentSessionId) {
@@ -4424,6 +4653,9 @@ function viewAdvanceHistory(studentSessionId) {
                         content += '<td>' + payment.payment_mode + '</td>';
                         content += '<td>' + (payment.description || '') + '</td>';
                         content += '<td class="text-center">';
+                        content += '<button type="button" class="btn btn-info btn-xs" onclick="printAdvanceReceipt(' + payment.id + ')" title="<?php echo $this->lang->line("print_receipt"); ?>">';
+                        content += '<i class="fa fa-print"></i> <?php echo $this->lang->line("print"); ?>';
+                        content += '</button> ';
                         content += '<button type="button" class="btn btn-danger btn-xs" onclick="confirmRevertAdvancePayment(' + payment.id + ', \'' + payment.payment_date + '\', ' + parseFloat(payment.amount).toFixed(2) + ')" title="<?php echo $this->lang->line("revert"); ?>">';
                         content += '<i class="fa fa-undo"></i> <?php echo $this->lang->line("revert"); ?>';
                         content += '</button>';
@@ -4483,14 +4715,8 @@ function revertAdvancePayment(advancePaymentId) {
                 // Show success message
                 showSuccessMessage(response.message || 'Advance payment reverted successfully');
 
-                // Refresh the advance history modal
-                var currentStudentSessionId = $('#advanceHistoryModal').data('student-session-id');
-                if (currentStudentSessionId) {
-                    viewAdvanceHistory(currentStudentSessionId);
-                }
-
-                // Refresh the advance balance display
-                refreshAdvanceBalance();
+                // Refresh all advance payment information
+                refreshAllAdvancePaymentData();
 
             } else {
                 // Show error message
@@ -4540,87 +4766,6 @@ function refreshAdvanceBalance() {
     }
 }
 
-function openAdvanceManagementModal(studentSessionId) {
-    console.log('Opening advance management modal for student session:', studentSessionId);
-
-    $('#advanceManagementContent').html('<div class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading...</div>');
-    $('#advanceManagementModal').modal('show');
-
-    $.ajax({
-        url: '<?php echo site_url("studentfee/getAdvancePaymentDetails"); ?>',
-        type: 'POST',
-        data: {
-            student_session_id: studentSessionId,
-            '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
-        },
-        dataType: 'json',
-        success: function(response) {
-            if (response.status === 'success') {
-                let content = '<div class="row">';
-
-                // Balance Summary
-                content += '<div class="col-md-12">';
-                content += '<div class="alert alert-info">';
-                content += '<h4><i class="fa fa-info-circle"></i> Current Balance: <?php echo $currency_symbol; ?>' + response.formatted_balance + '</h4>';
-                content += '</div>';
-                content += '</div>';
-
-                // Usage History with Revert Options
-                content += '<div class="col-md-12">';
-                content += '<h4><i class="fa fa-exchange"></i> Usage History</h4>';
-                content += '<div class="table-responsive">';
-                content += '<table class="table table-striped table-bordered">';
-                content += '<thead><tr>';
-                content += '<th><?php echo $this->lang->line("date"); ?></th>';
-                content += '<th><?php echo $this->lang->line("amount_used"); ?></th>';
-                content += '<th><?php echo $this->lang->line("description"); ?></th>';
-                content += '<th><?php echo $this->lang->line("status"); ?></th>';
-                content += '<th><?php echo $this->lang->line("action"); ?></th>';
-                content += '</tr></thead><tbody>';
-
-                if (response.usage_history && response.usage_history.length > 0) {
-                    $.each(response.usage_history, function(index, usage) {
-                        content += '<tr>';
-                        content += '<td>' + usage.usage_date + '</td>';
-                        content += '<td><?php echo $currency_symbol; ?>' + parseFloat(usage.amount_used).toFixed(2) + '</td>';
-                        content += '<td>' + (usage.description || '') + '</td>';
-                        content += '<td>';
-                        if (usage.is_reverted === 'yes') {
-                            content += '<span class="label label-warning">Reverted</span>';
-                        } else {
-                            content += '<span class="label label-success">Applied</span>';
-                        }
-                        content += '</td>';
-                        content += '<td>';
-                        if (usage.is_reverted === 'no') {
-                            content += '<button type="button" class="btn btn-xs btn-danger" onclick="confirmRevertAdvance(' + usage.id + ', ' + usage.amount_used + ', \'' + usage.usage_date + '\')">';
-                            content += '<i class="fa fa-undo"></i> Revert';
-                            content += '</button>';
-                        } else {
-                            content += '<small class="text-muted">Reverted on ' + usage.reverted_at + '</small>';
-                        }
-                        content += '</td>';
-                        content += '</tr>';
-                    });
-                } else {
-                    content += '<tr><td colspan="5" class="text-center"><?php echo $this->lang->line("no_record_found"); ?></td></tr>';
-                }
-
-                content += '</tbody></table></div>';
-                content += '</div>';
-                content += '</div>';
-
-                $('#advanceManagementContent').html(content);
-            } else {
-                $('#advanceManagementContent').html('<div class="alert alert-danger">' + (response.error || 'Error loading advance payment details') + '</div>');
-            }
-        },
-        error: function() {
-            $('#advanceManagementContent').html('<div class="alert alert-danger">Error loading advance payment details</div>');
-        }
-    });
-}
-
 function confirmRevertAdvance(usageId, amount, date) {
     $('#revert_usage_id').val(usageId);
     $('#revert_reason').val('');
@@ -4642,13 +4787,25 @@ $(document).ready(function() {
 
         var form = $(this);
         var submitBtn = $('#advancePaymentSubmitBtn');
+        var printBtn = $('#advancePaymentPrintBtn');
         var formData = form.serialize();
+
+        // Determine which button was clicked
+        var action = form.find('input[name="action"]').val() || 'collect';
 
         // Clear previous errors
         $('[id^=error_]').html('');
 
-        // Show loading state
-        submitBtn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> <?php echo $this->lang->line("processing"); ?>');
+        // Prevent double submission by disabling both buttons
+        submitBtn.prop('disabled', true);
+        printBtn.prop('disabled', true);
+
+        // Show loading state on the appropriate button
+        if (action === 'print') {
+            printBtn.html('<i class="fa fa-spinner fa-spin"></i> <?php echo $this->lang->line("processing"); ?>');
+        } else {
+            submitBtn.html('<i class="fa fa-spinner fa-spin"></i> <?php echo $this->lang->line("processing"); ?>');
+        }
 
         $.ajax({
             url: form.attr('action'),
@@ -4660,11 +4817,16 @@ $(document).ready(function() {
                     // Show success message
                     showSuccessMessage(response.message || '<?php echo $this->lang->line("advance_payment_added_successfully"); ?>');
 
+                    // Handle print action
+                    if (action === 'print' && response.print) {
+                        Popup(response.print, true);
+                    }
+
                     // Close modal
                     $('#advancePaymentModal').modal('hide');
 
-                    // Refresh advance payment information
-                    refreshAdvancePaymentInfo();
+                    // Refresh all advance payment information
+                    refreshAllAdvancePaymentData();
 
                     // Reset form
                     form[0].reset();
@@ -4685,10 +4847,40 @@ $(document).ready(function() {
                 showErrorMessage('<?php echo $this->lang->line("network_error"); ?>');
             },
             complete: function() {
-                // Reset button state
+                // Reset button states
                 submitBtn.prop('disabled', false).html('<i class="fa fa-save"></i> <?php echo $this->lang->line("save"); ?>');
+                printBtn.prop('disabled', false).html('<i class="fa fa-print"></i> <?php echo $this->lang->line("save_print"); ?>');
+                
+                // Remove action input
+                form.find('input[name="action"]').remove();
             }
         });
+    });
+
+    // Handle print button click
+    $(document).on('click', '#advancePaymentPrintBtn', function(e) {
+        e.preventDefault();
+        
+        // Add action input for print
+        var form = $('#advancePaymentForm');
+        form.find('input[name="action"]').remove();
+        form.append('<input type="hidden" name="action" value="print">');
+        
+        // Submit form
+        form.trigger('submit');
+    });
+
+    // Handle save button click  
+    $(document).on('click', '#advancePaymentSubmitBtn', function(e) {
+        e.preventDefault();
+        
+        // Add action input for collect
+        var form = $('#advancePaymentForm');
+        form.find('input[name="action"]').remove();
+        form.append('<input type="hidden" name="action" value="collect">');
+        
+        // Submit form
+        form.trigger('submit');
     });
 
     // Handle revert form submission
@@ -4739,13 +4931,8 @@ $(document).ready(function() {
                     // Close modal
                     $('#revertConfirmationModal').modal('hide');
 
-                    // Refresh advance payment information
-                    refreshAdvancePaymentInfo();
-
-                    // Refresh management modal if open
-                    if ($('#advanceManagementModal').hasClass('in')) {
-                        openAdvanceManagementModal('<?php echo isset($student_session_id) ? $student_session_id : ""; ?>');
-                    }
+                    // Refresh all advance payment information
+                    refreshAllAdvancePaymentData();
 
                     // Reset form
                     form[0].reset();
@@ -4792,6 +4979,14 @@ function refreshAdvancePaymentInfo() {
                 // Update balance display
                 $('#advance-balance-display').html('<?php echo $currency_symbol; ?>' + response.formatted_balance);
 
+                // Refresh advance history modal if it's open
+                if ($('#advanceHistoryModal').hasClass('in') || $('#advanceHistoryModal').is(':visible')) {
+                    var currentStudentSessionId = $('#advanceHistoryModal').data('student-session-id');
+                    if (currentStudentSessionId && currentStudentSessionId === studentSessionId) {
+                        viewAdvanceHistory(currentStudentSessionId);
+                    }
+                }
+
                 // Optionally reload the page to refresh all fee information
                 // location.reload();
             }
@@ -4800,6 +4995,29 @@ function refreshAdvancePaymentInfo() {
             console.error('Failed to refresh advance payment information');
         }
     });
+}
+
+// Comprehensive function to refresh all advance payment related data
+function refreshAllAdvancePaymentData(studentSessionId) {
+    if (!studentSessionId) {
+        studentSessionId = '<?php echo isset($student_session_id) ? $student_session_id : ""; ?>';
+    }
+
+    if (!studentSessionId) return;
+
+    // Refresh the main advance payment info
+    refreshAdvancePaymentInfo();
+
+    // If advance history modal is open, refresh it
+    if ($('#advanceHistoryModal').hasClass('in') || $('#advanceHistoryModal').is(':visible')) {
+        var modalStudentSessionId = $('#advanceHistoryModal').data('student-session-id');
+        if (modalStudentSessionId && modalStudentSessionId === studentSessionId) {
+            console.log('Refreshing advance history modal for student session:', modalStudentSessionId);
+            viewAdvanceHistory(modalStudentSessionId);
+        }
+    }
+
+    console.log('All advance payment data refreshed for student session:', studentSessionId);
 }
 
 // Helper functions for showing messages
@@ -4980,7 +5198,8 @@ $(document).on('click', '.myCollectFeeBtn[data-fee-category="hostel"]', function
             'student_fees_master_id': 0,
             'student_session_id': studentSessionId,
             'fee_category': 'hostel',
-            'hostel_fees_id': hostelFeeId
+            'trans_fee_id': hostelFeeId,
+            'hostel_fee_id': hostelFeeId
         },
         beforeSend: function () {
             $('#discount_group').html('<option value=""><?php echo $this->lang->line('select'); ?></option>');
@@ -4994,8 +5213,12 @@ $(document).on('click', '.myCollectFeeBtn[data-fee-category="hostel"]', function
             $('#amount_fine').val(data.remain_amount_fine || 0);
             $('#amount_discount').val(data.amount_discount || 0);
             
-            // Load account names for hostel fees
-            loadAccountNames();
+            // Load account names based on payment mode
+            var selectedPaymentMode = $('input[name="payment_mode_fee"]:checked').val();
+            fetchAccountTypes(selectedPaymentMode);
+            
+            // Load advance payment balance for the student
+            loadAdvanceBalanceForModal(studentSessionId);
             
             // Auto-select Cash account if Cash payment mode is selected
             setTimeout(function() {
@@ -5048,12 +5271,16 @@ $(document).on('change', 'input[name="payment_mode_fee"]', function() {
 
 // Fix form validation to not show payment mode error when mode is selected
 $(document).on('click', '.save_button', function(e) {
+    console.log('🟡 VALIDATION HANDLER - Running validation checks...');
+    
     // Clear previous errors
     $("span[id$='_error']").html("");
     
     // Check if payment mode is selected
     var paymentMode = $('input[name="payment_mode_fee"]:checked').val();
+    console.log('🟡 Payment mode:', paymentMode);
     if (!paymentMode) {
+        console.log('❌ Payment mode validation failed');
         $('#payment_mode_error').text('Payment mode is required');
         e.preventDefault();
         return false;
@@ -5061,7 +5288,9 @@ $(document).on('click', '.save_button', function(e) {
     
     // Check if account is selected
     var accountName = $('#accountname').val();
+    console.log('🟡 Account name:', accountName);
     if (!accountName) {
+        console.log('❌ Account name validation failed');
         $('#accountname_error').text('Account name is required');
         e.preventDefault();
         return false;
@@ -5069,7 +5298,9 @@ $(document).on('click', '.save_button', function(e) {
     
     // Check if date is filled
     var date = $('#date').val();
+    console.log('🟡 Date:', date);
     if (!date) {
+        console.log('❌ Date validation failed');
         $('#date_error').text('Date is required');
         e.preventDefault();
         return false;
@@ -5082,6 +5313,192 @@ $(document).on('click', '.save_button', function(e) {
         e.preventDefault();
         return false;
     }
+});
+
+// Advance Payment Fee Collection Functions
+// Function to load advance balance for the fee collection modal
+function loadAdvanceBalanceForModal(studentSessionId) {
+    console.log('Loading advance balance for modal:', studentSessionId);
+    
+    $.ajax({
+        url: '<?php echo site_url("studentfee/getAdvancePaymentDetails"); ?>',
+        type: 'POST',
+        data: {
+            student_session_id: studentSessionId,
+            '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
+        },
+        dataType: 'json',
+        success: function(response) {
+            if (response.status === 'success' && parseFloat(response.balance) > 0) {
+                // Show advance payment option if balance exists
+                $('#advance_payment_option').show();
+                $('#modal_advance_balance').text('<?php echo $currency_symbol; ?>' + response.formatted_balance);
+            } else {
+                // Hide advance payment option if no balance
+                $('#advance_payment_option').hide();
+                $('#collect_from_advance').prop('checked', false);
+                $('#advance_payment_info').hide();
+            }
+        },
+        error: function() {
+            console.log('Failed to load advance balance for modal');
+            $('#advance_payment_option').hide();
+        }
+    });
+}
+
+// Handle advance payment checkbox change
+$(document).on('change', '#collect_from_advance', function() {
+    var isChecked = $(this).is(':checked');
+    var advanceBalanceText = $('#modal_advance_balance').text();
+    var advanceBalance = parseFloat(advanceBalanceText.replace(/[^0-9.]/g, ''));
+    var currentAmount = parseFloat($('#amount').val()) || 0;
+    
+    if (isChecked) {
+        // Show advance balance info
+        $('#advance_payment_info').show();
+        
+        // Validate amount against advance balance
+        if (currentAmount > 0 && currentAmount > advanceBalance) {
+            alert('Amount cannot exceed available advance balance of ' + advanceBalanceText);
+            $(this).prop('checked', false);
+            $('#advance_payment_info').hide();
+            return;
+        }
+        
+        // Set payment mode to Cash when using advance payment
+        $('input[name="payment_mode_fee"][value="Cash"]').prop('checked', true);
+        
+        // Auto-select cash account
+        setTimeout(function() {
+            $('#accountname option').each(function() {
+                if ($(this).text().toLowerCase().includes('cash')) {
+                    $(this).prop('selected', true);
+                    return false;
+                }
+            });
+        }, 100);
+        
+    } else {
+        // Hide advance balance info
+        $('#advance_payment_info').hide();
+    }
+});
+
+// Handle amount change to validate against advance balance when checkbox is checked
+$(document).on('keyup change', '#amount', function() {
+    var isAdvanceChecked = $('#collect_from_advance').is(':checked');
+    
+    if (isAdvanceChecked) {
+        var advanceBalanceText = $('#modal_advance_balance').text();
+        var advanceBalance = parseFloat(advanceBalanceText.replace(/[^0-9.]/g, ''));
+        var currentAmount = parseFloat($(this).val()) || 0;
+        
+        // Clear previous errors
+        $('#advance_payment_error').html('');
+        
+        if (currentAmount > advanceBalance) {
+            $('#advance_payment_error').html('<div class="text-danger">Amount cannot exceed available advance balance of ' + advanceBalanceText + '</div>');
+            $(this).addClass('error');
+        } else {
+            $(this).removeClass('error');
+        }
+    }
+});
+
+// Reset advance payment fields when modal is hidden
+$('#myFeesModal').on('hidden.bs.modal', function() {
+    $('#collect_from_advance').prop('checked', false);
+    $('#advance_payment_info').hide();
+    $('#advance_payment_option').hide();
+    $('#advance_payment_error').html('');
+});
+
+// Handle Advance Transfers button click
+$(document).on('click', '.viewAdvanceTransfers', function() {
+    var studentSessionId = $(this).data('student-session-id');
+    loadAdvanceTransfersHistory(studentSessionId);
+    $('#advanceTransfersModal').modal('show');
+});
+
+// Function to load advance transfers history
+function loadAdvanceTransfersHistory(studentSessionId) {
+    $('#advanceTransfersContent').html(`
+        <div class="text-center">
+            <i class="fa fa-spinner fa-spin fa-2x"></i>
+            <p>Loading advance payment transfers...</p>
+        </div>
+    `);
+    
+    $.ajax({
+        url: '<?php echo site_url("studentfee/getAdvanceTransfersHistory"); ?>',
+        type: 'POST',
+        data: {
+            student_session_id: studentSessionId
+        },
+        dataType: 'json',
+        success: function(response) {
+            if (response.status === 'success') {
+                $('#advanceTransfersContent').html(response.html);
+            } else {
+                $('#advanceTransfersContent').html(`
+                    <div class="alert alert-warning">
+                        <i class="fa fa-exclamation-triangle"></i> ${response.message || 'No transfer records found'}
+                    </div>
+                `);
+            }
+        },
+        error: function(xhr, status, error) {
+            $('#advanceTransfersContent').html(`
+                <div class="alert alert-danger">
+                    <i class="fa fa-error"></i> Error loading transfer history: ${error}
+                </div>
+            `);
+        }
+    });
+}
+
+// Function to refresh advance transfers
+function refreshAdvanceTransfers() {
+    var studentSessionId = $('.viewAdvanceTransfers').data('student-session-id');
+    loadAdvanceTransfersHistory(studentSessionId);
+}
+
+// Debug: Test if JavaScript is working and buttons are clickable
+$(document).ready(function() {
+    console.log('Document ready - JavaScript is working');
+    console.log('Number of .myCollectFeeBtn buttons found:', $('.myCollectFeeBtn').length);
+    console.log('Number of .collectSelected buttons found:', $('.collectSelected').length);
+    console.log('Number of .printSelected buttons found:', $('.printSelected').length);
+    
+    // Check if any buttons are hidden
+    $('.myCollectFeeBtn').each(function(index) {
+        var $btn = $(this);
+        var isVisible = $btn.is(':visible');
+        var hasHiddenClass = $btn.hasClass('ss-none');
+        console.log('Button ' + index + ':', {
+            visible: isVisible,
+            hasHiddenClass: hasHiddenClass,
+            classes: $btn.attr('class'),
+            data: $btn.data()
+        });
+    });
+    
+    // Add click handler for all myCollectFeeBtn buttons
+    $(document).on('click', '.myCollectFeeBtn', function(e) {
+        console.log('myCollectFeeBtn clicked!', this);
+        console.log('Button data:', $(this).data());
+        // Don't prevent default as we want the modal to open
+    });
+    
+    // Test basic button clicks
+    $(document).on('click', '.collectSelected', function(e) {
+        console.log('collectSelected clicked!');
+    });
+    
+    $(document).on('click', '.printSelected', function(e) {
+        console.log('printSelected clicked!');
+    });
 });
 
 </script>

@@ -615,6 +615,21 @@ $result_value->fees     = (object)$this->getDueFeeByFeeSessionGroup($fee_session
 
     public function fee_deposit($data, $send_to, $student_fees_discount_id = null)
     {
+        // Enhanced debug logging for all fees
+        error_log("=== FEE DEPOSIT DEBUG START ===");
+        error_log("Input data to fee_deposit:");
+        error_log(print_r($data, true));
+        
+        if (isset($data['amount_detail'])) {
+            error_log("Amount detail structure:");
+            error_log(print_r($data['amount_detail'], true));
+            
+            if (isset($data['amount_detail']['amount'])) {
+                error_log("Amount value: " . $data['amount_detail']['amount']);
+                error_log("Amount type: " . gettype($data['amount_detail']['amount']));
+            }
+        }
+        
         // Debug logging for hostel fees
         if (isset($data['fee_category']) && $data['fee_category'] == "hostel") {
             error_log("HOSTEL FEE DEBUG - Model fee_deposit input:");
@@ -677,7 +692,18 @@ $result_value->fees     = (object)$this->getDueFeeByFeeSessionGroup($fee_session
             $this->db->trans_start(); // Query will be rolled back
             $data['amount_detail']['inv_no'] = 1;
             $desc                            = $data['amount_detail']['description'];
+            
+            // Enhanced debug logging before JSON encoding
+            error_log("=== BEFORE JSON ENCODING ===");
+            error_log("Amount detail before encoding:");
+            error_log(print_r($data['amount_detail'], true));
+            
             $data['amount_detail']           = json_encode(array('1' => $data['amount_detail']));
+            
+            // Enhanced debug logging after JSON encoding
+            error_log("=== AFTER JSON ENCODING ===");
+            error_log("Final JSON string: " . $data['amount_detail']);
+            
             // Debug logging before insert for hostel fees
             if (isset($data['student_hostel_fee_id'])) {
                 error_log("HOSTEL FEE DEBUG - About to insert data:");
@@ -687,6 +713,11 @@ $result_value->fees     = (object)$this->getDueFeeByFeeSessionGroup($fee_session
             
             $this->db->insert('student_fees_deposite', $data);
             $inserted_id = $this->db->insert_id();
+            
+            // Enhanced debug logging after insert
+            error_log("=== AFTER INSERT ===");
+            error_log("Inserted ID: " . $inserted_id);
+            error_log("Last query: " . $this->db->last_query());
             
             // Debug logging after insert for hostel fees
             if (isset($data['student_hostel_fee_id'])) {

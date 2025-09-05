@@ -731,15 +731,36 @@ class Studentfee extends Admin_Controller
 
     public function addstudentfee()
     {
-        // Force enable error logging for this function
-        ini_set('log_errors', 1);
-        ini_set('error_log', APPPATH . 'logs/fee_debug.log');
+        // Add error handling to catch fatal errors
+        error_reporting(E_ALL);
+        ini_set('display_errors', 0); // Don't display errors to browser, log them instead
+        
+        // Immediate response test - remove this after debugging
+        error_log("DEBUGGING: addstudentfee method called at " . date('Y-m-d H:i:s'));
+        
+        // Test if we can respond immediately
+        header('Content-Type: application/json');
         
         $fee_category = $this->input->post('fee_category');
         $transport_fees_id = $this->input->post('transport_fees_id');
         $hostel_fees_id = $this->input->post('hostel_fees_id');
+        $collect_from_advance = $this->input->post('collect_from_advance');
         
-        // Set validation rules based on fee category
+        // TEMPORARY DEBUG RESPONSE - Remove after testing
+        $debug_response = array(
+            'status' => 'debug_success',
+            'message' => 'Method is being called successfully',
+            'post_data' => array(
+                'fee_category' => $fee_category,
+                'transport_fees_id' => $transport_fees_id,
+                'hostel_fees_id' => $hostel_fees_id,
+                'collect_from_advance' => $collect_from_advance
+            ),
+            'timestamp' => date('Y-m-d H:i:s')
+        );
+        echo json_encode($debug_response);
+        return;
+    }
         if ($fee_category == 'transport' && $transport_fees_id > 0) {
             // For transport fees, transport_fees_id is required
             $this->form_validation->set_rules('transport_fees_id', 'Transport Fee ID', 'required|trim|xss_clean|numeric');
@@ -758,7 +779,11 @@ class Studentfee extends Admin_Controller
         $this->form_validation->set_rules('amount_discount', $this->lang->line('discount'), 'required|trim|numeric|xss_clean');
         $this->form_validation->set_rules('amount_fine', $this->lang->line('fine'), 'required|trim|numeric|xss_clean');
         $this->form_validation->set_rules('payment_mode', $this->lang->line('payment_mode'), 'required|trim|xss_clean');
-        $this->form_validation->set_rules('accountname', $this->lang->line('accountname'), 'required|trim|xss_clean');
+        
+        // Account name is only required if not collecting from advance payment
+        if ($collect_from_advance != 1) {
+            $this->form_validation->set_rules('accountname', $this->lang->line('accountname'), 'required|trim|xss_clean');
+        }
 
         if ($this->form_validation->run() == false) {
             $data = array(
@@ -776,49 +801,80 @@ class Studentfee extends Admin_Controller
             $array = array('status' => 'fail', 'error' => $data);
             echo json_encode($array);
         } else {
+            // DEBUGGING: Test if we reach here
+            error_log("DEBUGGING: Validation passed, proceeding with fee collection");
+            
+            // Temporary response to check if validation is working - REMOVE AFTER DEBUGGING
+            /*
+            $debug_array = array(
+                'status' => 'success', 
+                'message' => 'Validation passed successfully',
+                'debug' => 'Processing would start here'
+            );
+            echo json_encode($debug_array);
+            return;
+            */
 
             $staff_record = $this->staff_model->get($this->customlib->getStaffID());
 
             $collected_by             = $this->customlib->getAdminSessionUserName() . "(" . $staff_record['employee_id'] . ")";
             $student_fees_discount_id = $this->input->post('student_fees_discount_id');
+            $student_session_id       = $this->input->post('student_session_id');
+            $collect_from_advance     = $this->input->post('collect_from_advance');
             
-            // Fix for zero amount issue - use raw amounts if conversion fails
-            $raw_amount = floatval($this->input->post('amount'));
-            $raw_discount = floatval($this->input->post('amount_discount'));
-            $raw_fine = floatval($this->input->post('amount_fine'));
+            // Get the original amount first
+            $original_amount = convertCurrencyFormatToBaseAmount($this->input->post('amount'));
+            $advance_applied = 0;
             
-            $converted_amount = convertCurrencyFormatToBaseAmount($raw_amount);
-            $converted_discount = convertCurrencyFormatToBaseAmount($raw_discount);
-            $converted_fine = convertCurrencyFormatToBaseAmount($raw_fine);
+            // Handle advance payment logic BEFORE creating json_array
+            if ($collect_from_advance == 1) {
+                $advance_balance = $this->AdvancePayment_model->getAdvanceBalance($student_session_id);
+
+                if ($advance_balance > 0 && $original_amount > 0) {
+                    // Validate that the amount doesn't exceed advance balance
+                    if ($original_amount > $advance_balance) {
+                        $array = array(
+                            'status' => 'fail', 
+                            'error' => array('amount' => 'Amount cannot exceed available advance balance')
+                        );
+                        echo json_encode($array);
+                        return;
+                    }
+                    
+                    $advance_applied = $original_amount; // Use the full entered amount from advance
+                }
+            }
             
-            // Use raw amounts if conversion results in zero
-            $final_amount = ($converted_amount > 0) ? $converted_amount : $raw_amount;
-            $final_discount = ($converted_discount > 0) ? $converted_discount : $raw_discount;
-            $final_fine = ($converted_fine > 0) ? $converted_fine : $raw_fine;
-            
+            // Create json_array with the correct amount (always use original amount for display)
             $json_array = array(
-                'amount'          => $final_amount,
-                'amount_discount' => $final_discount,
-                'amount_fine'     => $final_fine,
+                'amount'          => $original_amount, // Always store the full amount
+                'amount_discount' => convertCurrencyFormatToBaseAmount($this->input->post('amount_discount')),
+                'amount_fine'     => convertCurrencyFormatToBaseAmount($this->input->post('amount_fine')),
                 'date'            => date('Y-m-d', $this->customlib->datetostrtotime($this->input->post('date'))),
                 'description'     => $this->input->post('description'),
                 'collected_by'    => $collected_by,
                 'payment_mode'    => $this->input->post('payment_mode'),
                 'received_by'     => $staff_record['id'],
             );
-
-            // Enhanced debug logging
-            error_log("=== CONTROLLER DEBUG START ===");
-            error_log("Raw input amounts:");
-            error_log("Raw amount: " . $this->input->post('amount'));
-            error_log("Raw discount: " . $this->input->post('amount_discount'));
-            error_log("Raw fine: " . $this->input->post('amount_fine'));
-            error_log("Final amounts after conversion:");
-            error_log("Final amount: " . $final_amount);
-            error_log("Final discount: " . $final_discount);
-            error_log("Final fine: " . $final_fine);
-            error_log("JSON array created:");
-            error_log(print_r($json_array, true));
+            
+            // Add advance payment tracking if applicable
+            if ($collect_from_advance == 1 && $advance_applied > 0) {
+                $json_array['advance_applied'] = $advance_applied;
+                $json_array['cash_amount'] = 0;
+                $json_array['payment_source'] = 'advance';
+                
+                // Add detailed transfer information
+                // $advance_balance_before = $this->AdvancePayment_model->getStudentAdvanceBalance($student_session_id);
+                $advance_balance_before = $this->AdvancePayment_model->getAdvanceBalance($student_session_id);
+                $json_array['advance_transfer_details'] = array(
+                    'transfer_amount' => $advance_applied,
+                    'advance_balance_before' => $advance_balance_before,
+                    'advance_balance_after' => $advance_balance_before - $advance_applied,
+                    'transfer_type' => ($advance_applied == $advance_balance_before) ? 'Complete Balance Transfer' : 'Partial Balance Transfer',
+                    'account_impact' => 'Zero Cash Entry - Direct Advance Utilization',
+                    'transfer_timestamp' => date('Y-m-d H:i:s')
+                );
+            }
 
             $student_fees_master_id = $this->input->post('student_fees_master_id');
             $fee_groups_feetype_id  = $this->input->post('fee_groups_feetype_id');
@@ -883,56 +939,6 @@ class Studentfee extends Admin_Controller
             $send_to            = $this->input->post('guardian_phone');
             $email              = $this->input->post('guardian_email');
             $parent_app_key     = $this->input->post('parent_app_key');
-            $student_session_id = $this->input->post('student_session_id');
-
-            // Apply advance payment if available
-            // CRITICAL FIX: Use currency-converted final_amount for advance calculation
-            $original_amount = $final_amount; // Use the already converted amount
-            $advance_applied = 0;
-            $advance_balance = $this->AdvancePayment_model->getAdvanceBalance($student_session_id);
-
-            // COMPREHENSIVE DEBUG LOGGING
-            error_log('=== COMPREHENSIVE ADVANCE PAYMENT DEBUG ===');
-            error_log('Raw input amount: "' . $this->input->post('amount') . '"');
-            error_log('Final amount after conversion: ' . $final_amount);
-            error_log('Original amount for advance calc: ' . $original_amount);
-            error_log('Available advance balance: ' . $advance_balance);
-            error_log('Student session ID: ' . $student_session_id);
-            
-            // Let's also log what happens in the comparison
-            $min_calculation = min($advance_balance, $original_amount);
-            error_log('min(advance_balance, original_amount) = min(' . $advance_balance . ', ' . $original_amount . ') = ' . $min_calculation);
-
-            if ($advance_balance > 0 && $original_amount > 0) {
-                $advance_to_apply = min($advance_balance, $original_amount);
-                $advance_applied = $advance_to_apply;
-                $cash_required = $original_amount - $advance_to_apply;
-
-                error_log('=== CORRECTED ADVANCE PAYMENT LOGIC ===');
-                error_log('Original fee amount: ' . $original_amount);
-                error_log('Advance balance available: ' . $advance_balance);
-                error_log('Advance to apply: ' . $advance_to_apply);
-                error_log('Cash required from user: ' . $cash_required);
-
-                // CORRECT LOGIC: amount field should show the TOTAL FEE AMOUNT, not remaining cash
-                $json_array['amount'] = $original_amount; // ✅ Always show the actual fee amount
-                $json_array['advance_applied'] = $advance_to_apply; // ✅ Track advance usage
-                $json_array['original_amount'] = $original_amount; // ✅ For reference
-                $json_array['cash_required'] = $cash_required; // ✅ For internal tracking
-
-                error_log('✅ FIXED: JSON array amount set to ORIGINAL AMOUNT: ' . $json_array['amount']);
-                error_log('✅ FIXED: Advance applied: ' . $json_array['advance_applied']);
-                error_log('✅ FIXED: Cash required: ' . $json_array['cash_required']);
-
-                // Update data array
-                $data['amount_detail'] = $json_array;
-                
-                error_log('✅ CORRECT: Fee collection shows full amount (' . $original_amount . ') with advance tracking');
-            } else {
-                error_log('❌ Advance payment NOT applied because:');
-                error_log('advance_balance > 0: ' . ($advance_balance > 0 ? 'TRUE' : 'FALSE'));
-                error_log('original_amount > 0: ' . ($original_amount > 0 ? 'TRUE' : 'FALSE'));
-            }
 
             $inserted_id        = $this->studentfeemaster_model->fee_deposit($data, $send_to, $student_fees_discount_id);
 
@@ -942,12 +948,27 @@ class Studentfee extends Admin_Controller
             if ($advance_applied > 0 && $receipt_data1) {
                 $available_advances = $this->AdvancePayment_model->getAvailableAdvancePayments($student_session_id);
                 $remaining_to_apply = $advance_applied;
+                $transfer_details = array();
 
                 foreach ($available_advances as $advance) {
                     if ($remaining_to_apply <= 0) break;
 
                     $amount_to_use = min($advance->balance, $remaining_to_apply);
                     if ($amount_to_use > 0) {
+                        // Record detailed transfer information
+                        $transfer_details[] = array(
+                            'advance_payment_id' => $advance->id,
+                            'original_advance_date' => isset($advance->payment_date) ? $advance->payment_date : date('Y-m-d'),
+                            'original_advance_amount' => $advance->amount,
+                            'balance_before_transfer' => $advance->balance,
+                            'amount_transferred' => $amount_to_use,
+                            'balance_after_transfer' => $advance->balance - $amount_to_use,
+                            'fee_invoice' => $receipt_data1->invoice_id . '/' . $receipt_data1->sub_invoice_id,
+                            'transfer_timestamp' => date('Y-m-d H:i:s'),
+                            'fee_category' => $fee_category,
+                            'student_session_id' => $student_session_id
+                        );
+                        
                         $this->AdvancePayment_model->applyAdvanceToFee(
                             $advance->id,
                             $amount_to_use,
@@ -956,23 +977,49 @@ class Studentfee extends Admin_Controller
                             $fee_category,
                             'Applied to fee payment - Invoice: ' . $receipt_data1->invoice_id . '/' . $receipt_data1->sub_invoice_id
                         );
+                        
+                        // Store detailed transfer tracking with error handling
+                        try {
+                            $this->storeAdvanceTransferDetails($transfer_details[count($transfer_details) - 1]);
+                        } catch (Exception $e) {
+                            error_log("Error storing advance transfer details: " . $e->getMessage());
+                        }
+                        
                         $remaining_to_apply -= $amount_to_use;
                     }
+                }
+                
+                // Log comprehensive transfer summary
+                if (!empty($transfer_details)) {
+                    $transfer_summary = array(
+                        'total_transferred' => $advance_applied,
+                        'transfer_count' => count($transfer_details),
+                        'transfers' => $transfer_details,
+                        'fee_receipt' => $receipt_data1->invoice_id . '/' . $receipt_data1->sub_invoice_id,
+                        'student_session_id' => $student_session_id,
+                        'processed_at' => date('Y-m-d H:i:s')
+                    );
+                    
+                    // Store transfer summary in session for display
+                    $this->session->set_userdata('last_advance_transfer', $transfer_summary);
+                    
+                    // Log for debugging
+                    error_log("ADVANCE TRANSFER SUMMARY: " . json_encode($transfer_summary));
                 }
             }
 
             $accounttranscationarray = array(
                 'receiptid'=> $receipt_data1->invoice_id . '/' . $receipt_data1->sub_invoice_id,
                 'accountid'=>$this->input->post('accountname'),
-                'amount' => $final_amount - $advance_applied,
+                'amount' => $collect_from_advance == 1 ? 0 : convertCurrencyFormatToBaseAmount($this->input->post('amount')),
                 'date' => date('Y-m-d', $this->customlib->datetostrtotime($this->input->post('date'))),
                 'type' => 'fees',
                 'description'     => $this->input->post('description') . ($advance_applied > 0 ? ' (Advance Applied: ' . amountFormat($advance_applied) . ')' : ''),
                 'status' => 'credit',
             );
 
-            // Only add account transaction if there's an actual cash payment
-            if ($final_amount - $advance_applied > 0) {
+            // Only add account transaction if there's an actual cash payment (not from advance)
+            if ($collect_from_advance != 1 && convertCurrencyFormatToBaseAmount($this->input->post('amount')) > 0) {
                 $accounttranscation = $this->addaccount_model->addingtranscation($accounttranscationarray);
             }
 
@@ -1020,6 +1067,23 @@ class Studentfee extends Admin_Controller
             // $this->mailsmsconf->mailsms('fee_submission', $mailsms_array);
 
             $array = array('status' => 'success', 'error' => '', 'print' => $print_record);
+            
+            // Add advance payment transfer information if applicable
+            if ($advance_applied > 0 && $receipt_data1) {
+                $array['advance_applied'] = $advance_applied;
+                $array['fee_receipt'] = $receipt_data1->invoice_id . '/' . $receipt_data1->sub_invoice_id;
+                $array['transfer_type'] = 'Direct advance payment utilization';
+                $array['account_impact'] = 'Zero cash entry - funds transferred from advance balance';
+                
+                // Get transfer details from session if available
+                $transfer_summary = $this->session->userdata('last_advance_transfer');
+                if ($transfer_summary) {
+                    $array['transfer_details'] = $transfer_summary;
+                    // Clear the session data
+                    $this->session->unset_userdata('last_advance_transfer');
+                }
+            }
+            
             echo json_encode($array);
         }
     }
@@ -1330,8 +1394,8 @@ class Studentfee extends Admin_Controller
                 $remain_amount        = (float) json_decode($remain_amount_object)->balance;
                 $remain_amount_fine   = json_decode($remain_amount_object)->fine_amount;
             } elseif ($fee_category == "hostel") {
-                $trans_fee_id         = $this->input->post('trans_fee_id');
-                $remain_amount_object = $this->getStudentHostelFeetypeBalance($trans_fee_id);
+                $hostel_fee_id        = $this->input->post('hostel_fee_id') ? $this->input->post('hostel_fee_id') : $this->input->post('trans_fee_id');
+                $remain_amount_object = $this->getStudentHostelFeetypeBalance($hostel_fee_id);
                 $remain_amount        = (float) json_decode($remain_amount_object)->balance;
                 $remain_amount_fine   = json_decode($remain_amount_object)->fine_amount;
             } else {
@@ -1969,6 +2033,7 @@ class Studentfee extends Admin_Controller
         $this->load->view('admin/feediscount/studentaddfeediscount', $data);
         $this->load->view('layout/footer', $data);
     }
+    }
 
 
 
@@ -2006,24 +2071,10 @@ class Studentfee extends Admin_Controller
             $studentid = $this->input->post('data');
             $certificate_id = $this->input->post('certificate_id');
 
-            // Fix for zero amount issue - use raw amounts if conversion fails
-            $raw_amount = floatval($this->input->post('amount'));
-            $raw_discount = floatval($this->input->post('amount_discount'));
-            $raw_fine = floatval($this->input->post('amount_fine'));
-            
-            $converted_amount = convertCurrencyFormatToBaseAmount($raw_amount);
-            $converted_discount = convertCurrencyFormatToBaseAmount($raw_discount);
-            $converted_fine = convertCurrencyFormatToBaseAmount($raw_fine);
-            
-            // Use raw amounts if conversion results in zero
-            $final_amount = ($converted_amount > 0) ? $converted_amount : $raw_amount;
-            $final_discount = ($converted_discount > 0) ? $converted_discount : $raw_discount;
-            $final_fine = ($converted_fine > 0) ? $converted_fine : $raw_fine;
-
             $json_array               = array(
-                'amount'          => $final_amount,
-                'amount_discount' => $final_discount,
-                'amount_fine'     => $final_fine,
+                'amount'          => convertCurrencyFormatToBaseAmount($this->input->post('amount')),
+                'amount_discount' => convertCurrencyFormatToBaseAmount($this->input->post('amount_discount')),
+                'amount_fine'     => convertCurrencyFormatToBaseAmount($this->input->post('amount_fine')),
                 'date'            => date('Y-m-d', $this->customlib->datetostrtotime($this->input->post('date'))),
                 'description'     => $this->input->post('description'),
                 'collected_by'    => $collected_by,
@@ -2366,25 +2417,10 @@ class Studentfee extends Admin_Controller
 
             $collected_by             = $this->customlib->getAdminSessionUserName() . "(" . $staff_record['employee_id'] . ")";
             $student_fees_discount_id = $this->input->post('adding_student_fees_discount_id');
-            
-            // Fix for zero amount issue - use raw amounts if conversion fails
-            $raw_amount = floatval($this->input->post('adding_amount'));
-            $raw_discount = floatval($this->input->post('adding_amount_discount'));
-            $raw_fine = floatval($this->input->post('adding_amount_fine'));
-            
-            $converted_amount = convertCurrencyFormatToBaseAmount($raw_amount);
-            $converted_discount = convertCurrencyFormatToBaseAmount($raw_discount);
-            $converted_fine = convertCurrencyFormatToBaseAmount($raw_fine);
-            
-            // Use raw amounts if conversion results in zero
-            $final_amount = ($converted_amount > 0) ? $converted_amount : $raw_amount;
-            $final_discount = ($converted_discount > 0) ? $converted_discount : $raw_discount;
-            $final_fine = ($converted_fine > 0) ? $converted_fine : $raw_fine;
-            
             $json_array               = array(
-                'amount'          => $final_amount,
-                'amount_discount' => $final_discount,
-                'amount_fine'     => $final_fine,
+                'amount'          => convertCurrencyFormatToBaseAmount($this->input->post('adding_amount')),
+                'amount_discount' => convertCurrencyFormatToBaseAmount($this->input->post('adding_amount_discount')),
+                'amount_fine'     => convertCurrencyFormatToBaseAmount($this->input->post('adding_amount_fine')),
                 'date'            => date('Y-m-d', $this->customlib->datetostrtotime($this->input->post('adding_date'))),
                 'description'     => $this->input->post('adding_description'),
                 'collected_by'    => $collected_by,
@@ -2436,7 +2472,7 @@ class Studentfee extends Admin_Controller
             $accounttranscationarray = array(
                 'receiptid'=> $receipt_data1->invoice_id . '/' . $receipt_data1->sub_invoice_id,
                 'accountid'=>$this->input->post('addingaccountname'),
-                'amount' => $final_amount,
+                'amount' => convertCurrencyFormatToBaseAmount($this->input->post('adding_amount')),
                 'date' => date('Y-m-d', $this->customlib->datetostrtotime($this->input->post('adding_date'))),
                 'type' => 'otherfees',
                 'description'     => $this->input->post('adding_description'),
@@ -2615,25 +2651,10 @@ class Studentfee extends Admin_Controller
 
             $collected_by             = $this->customlib->getAdminSessionUserName() . "(" . $staff_record['employee_id'] . ")";
             $student_fees_discount_id = $this->input->post('student_fees_discount_id');
-            
-            // Fix for zero amount issue - use raw amounts if conversion fails
-            $raw_amount = floatval($this->input->post('amount'));
-            $raw_discount = floatval($this->input->post('amount_discount'));
-            $raw_fine = floatval($this->input->post('amount_fine'));
-            
-            $converted_amount = convertCurrencyFormatToBaseAmount($raw_amount);
-            $converted_discount = convertCurrencyFormatToBaseAmount($raw_discount);
-            $converted_fine = convertCurrencyFormatToBaseAmount($raw_fine);
-            
-            // Use raw amounts if conversion results in zero
-            $final_amount = ($converted_amount > 0) ? $converted_amount : $raw_amount;
-            $final_discount = ($converted_discount > 0) ? $converted_discount : $raw_discount;
-            $final_fine = ($converted_fine > 0) ? $converted_fine : $raw_fine;
-            
             $json_array               = array(
-                'amount'          => $final_amount,
-                'amount_discount' => $final_discount,
-                'amount_fine'     => $final_fine,
+                'amount'          => convertCurrencyFormatToBaseAmount($this->input->post('amount')),
+                'amount_discount' => convertCurrencyFormatToBaseAmount($this->input->post('amount_discount')),
+                'amount_fine'     => convertCurrencyFormatToBaseAmount($this->input->post('amount_fine')),
                 'date'            => date('Y-m-d', $this->customlib->datetostrtotime($this->input->post('date'))),
                 'description'     => $this->input->post('description'),
                 'collected_by'    => $collected_by,
@@ -2702,16 +2723,12 @@ class Studentfee extends Admin_Controller
             echo json_encode($array);
         } else {
 
-            // Fix for zero amount issue - use raw amounts if conversion fails
-            $raw_amount = floatval($this->input->post('amount'));
-            $converted_amount = convertCurrencyFormatToBaseAmount($raw_amount);
-            $final_amount = ($converted_amount > 0) ? $converted_amount : $raw_amount;
 
             $data = array(
                 'is_active'=>1,
                 'approval_status' => 0,
                 'student_session_id' =>$this->input->post('student_session_id'),
-                'amount'          => $final_amount,
+                'amount'          => convertCurrencyFormatToBaseAmount($this->input->post('amount')),
                 'date'            => date('Y-m-d', $this->customlib->datetostrtotime($this->input->post('date'))),
                 'description'     => $this->input->post('description'),
                 'student_fees_master_id' => $this->input->post('student_fees_master_id'),
@@ -2974,6 +2991,8 @@ class Studentfee extends Admin_Controller
         $this->form_validation->set_rules('payment_mode', $this->lang->line('payment_mode'), 'required|trim|xss_clean');
         $this->form_validation->set_rules('date', $this->lang->line('date'), 'required|trim|xss_clean');
 
+        $action = $this->input->post('action'); // Get action (collect or print)
+
         if ($this->form_validation->run() == false) {
             $data = array(
                 'student_session_id' => form_error('student_session_id'),
@@ -2987,15 +3006,10 @@ class Studentfee extends Admin_Controller
             $staff_record = $this->staff_model->get($this->customlib->getStaffID());
             $collected_by = $this->customlib->getAdminSessionUserName() . "(" . $staff_record['employee_id'] . ")";
 
-            // Fix for zero amount issue - use raw amounts if conversion fails
-            $raw_amount = floatval($this->input->post('amount'));
-            $converted_amount = convertCurrencyFormatToBaseAmount($raw_amount);
-            $final_amount = ($converted_amount > 0) ? $converted_amount : $raw_amount;
-
             $advance_data = array(
                 'student_session_id' => $this->input->post('student_session_id'),
-                'amount' => $final_amount,
-                'balance' => $final_amount,
+                'amount' => convertCurrencyFormatToBaseAmount($this->input->post('amount')),
+                'balance' => convertCurrencyFormatToBaseAmount($this->input->post('amount')),
                 'payment_date' => date('Y-m-d', $this->customlib->datetostrtotime($this->input->post('date'))),
                 'payment_mode' => $this->input->post('payment_mode'),
                 'description' => $this->input->post('description'),
@@ -3008,26 +3022,39 @@ class Studentfee extends Admin_Controller
             $inserted_id = $this->AdvancePayment_model->add($advance_data);
 
             if ($inserted_id) {
-                // Add to account transactions
-                $accounttranscationarray = array(
-                    'receiptid' => $advance_data['invoice_id'],
-                    'accountid' => $this->input->post('accountname'),
-                    'amount' => $final_amount,
-                    'date' => date('Y-m-d', $this->customlib->datetostrtotime($this->input->post('date'))),
-                    'type' => 'advance_fees',
-                    'description' => 'Advance Payment - ' . $this->input->post('description'),
-                    'status' => 'credit',
-                );
+                // Note: Account transactions are not added for advance payments
+                // They will be handled when the advance is actually used for fee payment
 
-                $this->addaccount_model->addingtranscation($accounttranscationarray);
+                if ($action === 'print') {
+                    // Generate receipt for printing
+                    $data['sch_setting'] = $this->sch_setting_detail;
+                    $data['settinglist'] = $this->setting_model->get();
+                    $data['advance_payment'] = $this->AdvancePayment_model->get($inserted_id);
+                    
+                    // Get student data from the advance payment record which already has joined student info
+                    $data['student_data'] = $data['advance_payment'];
 
-                $array = array('status' => 'success', 'error' => '', 'message' => 'Advance payment created successfully', 'advance_id' => $inserted_id);
+                    $page = $this->load->view('print/advancePaymentMiniReceipt', $data, true);
+                    $array = array('status' => 'success', 'error' => '', 'message' => 'Advance payment created successfully', 'advance_id' => $inserted_id, 'print' => $page);
+                } else {
+                    $array = array('status' => 'success', 'error' => '', 'message' => 'Advance payment created successfully', 'advance_id' => $inserted_id);
+                }
+                
                 echo json_encode($array);
             } else {
                 $array = array('status' => 'fail', 'error' => 'Failed to create advance payment');
                 echo json_encode($array);
             }
         }
+    }
+
+    /**
+     * Get accounts for dropdown
+     */
+    public function getAccounts()
+    {
+        $accounts = $this->addaccount_model->get();
+        echo json_encode($accounts);
     }
 
     /**
@@ -3074,8 +3101,39 @@ class Studentfee extends Admin_Controller
             return;
         }
 
-        $page = $this->load->view('print/printAdvancePaymentReceipt', $data, true);
+        // Get student data for the receipt
+        $data['student_data'] = $data['advance_payment'];
+
+        $page = $this->load->view('print/advancePaymentMiniReceipt', $data, true);
         echo json_encode(array('status' => 1, 'page' => $page));
+    }
+
+    /**
+     * Print advance payment mini receipt (similar to mini statement)
+     */
+    public function printAdvancePaymentMiniReceipt()
+    {
+        $advance_id = $this->input->post('advance_id');
+
+        if (!$advance_id) {
+            echo json_encode(array('status' => 'fail', 'error' => 'Advance payment ID required'));
+            return;
+        }
+
+        $data['sch_setting'] = $this->sch_setting_detail;
+        $data['settinglist'] = $this->setting_model->get();
+        $data['advance_payment'] = $this->AdvancePayment_model->get($advance_id);
+
+        if (!$data['advance_payment']) {
+            echo json_encode(array('status' => 'fail', 'error' => 'Advance payment not found'));
+            return;
+        }
+
+        // Get student data for the receipt
+        $data['student_data'] = $data['advance_payment'];
+
+        $page = $this->load->view('print/advancePaymentMiniReceipt', $data, true);
+        echo json_encode(array('status' => 'success', 'page' => $page));
     }
 
     /**
@@ -3584,79 +3642,167 @@ class Studentfee extends Admin_Controller
     }
 
     /**
+     * Store detailed advance payment transfer information for tracking and reporting
+     */
+    private function storeAdvanceTransferDetails($transfer_detail) {
+        try {
+            $staff_record = $this->customlib->getStaffDetails();
+            
+            $transfer_data = array(
+                'student_session_id' => $transfer_detail['student_session_id'] ?? 0,
+                'advance_payment_id' => $transfer_detail['advance_payment_id'],
+                'fee_receipt_id' => $transfer_detail['fee_invoice'],
+                'fee_category' => $transfer_detail['fee_category'],
+                'transfer_amount' => $transfer_detail['amount_transferred'],
+                'advance_balance_before' => $transfer_detail['balance_before_transfer'],
+                'advance_balance_after' => $transfer_detail['balance_after_transfer'],
+                'original_advance_amount' => $transfer_detail['original_advance_amount'],
+                'original_advance_date' => $transfer_detail['original_advance_date'],
+                'transfer_type' => ($transfer_detail['amount_transferred'] == $transfer_detail['balance_before_transfer']) ? 'Complete' : 'Partial',
+                'account_impact' => 'Zero Cash Entry - Direct Advance Utilization',
+                'transfer_description' => 'Advance payment applied to ' . $transfer_detail['fee_category'] . ' fee - Invoice: ' . $transfer_detail['fee_invoice'],
+                'created_by' => $staff_record['id'] ?? null,
+                'created_at' => $transfer_detail['transfer_timestamp']
+            );
+            
+            // Check if advance_payment_transfers table exists, create if not
+            $this->db->query("CREATE TABLE IF NOT EXISTS `advance_payment_transfers` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `student_session_id` int(11) NOT NULL,
+                `advance_payment_id` int(11) NOT NULL,
+                `fee_receipt_id` varchar(50) NOT NULL,
+                `fee_category` varchar(50) DEFAULT NULL,
+                `transfer_amount` decimal(10,2) NOT NULL,
+                `advance_balance_before` decimal(10,2) NOT NULL,
+                `advance_balance_after` decimal(10,2) NOT NULL,
+                `original_advance_amount` decimal(10,2) DEFAULT NULL,
+                `original_advance_date` date DEFAULT NULL,
+                `transfer_type` enum('Complete','Partial') DEFAULT 'Partial',
+                `account_impact` varchar(100) DEFAULT 'Zero Cash Entry - Direct Advance Utilization',
+                `transfer_description` text,
+                `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `created_by` int(11) DEFAULT NULL,
+                PRIMARY KEY (`id`),
+                KEY `idx_student_session` (`student_session_id`),
+                KEY `idx_advance_payment` (`advance_payment_id`),
+                KEY `idx_fee_receipt` (`fee_receipt_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8");
+            
+            // Insert the transfer record
+            $this->db->insert('advance_payment_transfers', $transfer_data);
+            
+            error_log("ADVANCE TRANSFER STORED: " . json_encode($transfer_data));
+            
+        } catch (Exception $e) {
+            error_log("ERROR STORING ADVANCE TRANSFER: " . $e->getMessage());
+        }
+    }
+
+    /**
      * Get advance payment transfers history for a student
      */
-    public function getAdvanceTransfersHistory()
-    {
+    public function getAdvanceTransfersHistory() {
+        if (!$this->rbac->hasPrivilege('collect_fees', 'can_view')) {
+            echo json_encode(['status' => 'error', 'message' => 'Access denied']);
+            return;
+        }
+
         $student_session_id = $this->input->post('student_session_id');
         
         if (!$student_session_id) {
-            $response = array(
-                'status' => 'error',
-                'message' => 'Student session ID is required'
-            );
-            echo json_encode($response);
+            echo json_encode(['status' => 'error', 'message' => 'Student session ID required']);
             return;
         }
 
         try {
-            // Get advance payment usage history
-            $usage_history = $this->AdvancePayment_model->getAdvanceUsageHistory(null, $student_session_id);
+            // Check if the advance_payment_transfers table exists
+            $table_exists = $this->db->table_exists('advance_payment_transfers');
             
-            if (empty($usage_history)) {
-                $response = array(
-                    'status' => 'success',
-                    'html' => '<div class="alert alert-info"><i class="fa fa-info-circle"></i> No advance payment transfers found for this student.</div>'
-                );
-                echo json_encode($response);
-                return;
+            if ($table_exists) {
+                // Get transfers from the tracking table
+                $this->db->select('apt.*, ap.amount as original_amount, ap.payment_date as original_date, ap.description as advance_description');
+                $this->db->from('advance_payment_transfers apt');
+                $this->db->join('student_advance_payments ap', 'apt.advance_payment_id = ap.id', 'left');
+                $this->db->where('apt.student_session_id', $student_session_id);
+                $this->db->order_by('apt.created_at', 'DESC');
+                $query = $this->db->get();
+                
+                $transfers = $query->result();
+            } else {
+                $transfers = array();
+            }
+            
+            if (empty($transfers)) {
+                // Fallback: Get transfers from advance payment usage table if tracking table is empty
+                $this->db->select('apu.*, ap.amount as original_amount, ap.payment_date as original_date, ap.description as advance_description, ap.student_session_id, apu.usage_date as created_at, apu.amount_used as transfer_amount, CONCAT("USAGE-", apu.id) as fee_receipt_id');
+                $this->db->from('advance_payment_usage apu');
+                $this->db->join('student_advance_payments ap', 'apu.advance_payment_id = ap.id', 'inner');
+                $this->db->where('ap.student_session_id', $student_session_id);
+                $this->db->where('apu.is_reverted', 'no');
+                $this->db->order_by('apu.created_at', 'DESC');
+                $query = $this->db->get();
+                
+                $transfers = $query->result();
             }
 
-            // Build HTML table for the history
-            $html = '<div class="table-responsive">
-                        <table class="table table-striped table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Amount Used</th>
-                                    <th>Fee Category</th>
-                                    <th>Description</th>
-                                    <th>Advance Invoice</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>';
+            // Get student information
+            $student_info = $this->studentsession_model->searchStudentsBySession($student_session_id);
             
-            foreach ($usage_history as $usage) {
-                $status_badge = $usage->is_reverted ? 
-                    '<span class="label label-warning">Reverted</span>' : 
-                    '<span class="label label-success">Applied</span>';
-                
-                $html .= '<tr>
-                            <td>' . date('d/m/Y', strtotime($usage->usage_date)) . '</td>
-                            <td>' . $this->customlib->getSchoolCurrencyFormat() . ' ' . number_format($usage->amount_used, 2) . '</td>
-                            <td>' . ucfirst($usage->fee_category) . '</td>
-                            <td>' . htmlspecialchars($usage->description) . '</td>
-                            <td>' . $usage->advance_invoice_id . '</td>
-                            <td>' . $status_badge . '</td>
-                          </tr>';
+            $data['transfers'] = $transfers;
+            $data['student_info'] = $student_info;
+            $data['currency_symbol'] = $this->customlib->getSchoolCurrencyFormat();
+            
+            $html = $this->load->view('studentfee/advance_transfers_history', $data, true);
+            
+            if (empty($transfers)) {
+                echo json_encode([
+                    'status' => 'success',
+                    'html' => $html,
+                    'count' => 0,
+                    'message' => 'No advance payment transfers found. Transfers will appear here when advance payments are used for fee collection.'
+                ]);
+            } else {
+                echo json_encode([
+                    'status' => 'success',
+                    'html' => $html,
+                    'count' => count($transfers)
+                ]);
             }
             
-            $html .= '</tbody></table></div>';
-            
-            $response = array(
-                'status' => 'success',
-                'html' => $html
-            );
-            echo json_encode($response);
-            
         } catch (Exception $e) {
-            $response = array(
+            echo json_encode([
                 'status' => 'error',
                 'message' => 'Error loading transfer history: ' . $e->getMessage()
-            );
-            echo json_encode($response);
+            ]);
         }
+    }
+
+    public function test_connection() {
+        // Simple test method to check if controller loads properly
+        $response = array(
+            'status' => 'success',
+            'message' => 'Controller loaded successfully',
+            'timestamp' => date('Y-m-d H:i:s')
+        );
+        
+        // Test if feediscount model can be loaded
+        try {
+            $this->load->model('feediscount_model');
+            $response['feediscount_model'] = 'loaded successfully';
+        } catch (Exception $e) {
+            $response['feediscount_model'] = 'error: ' . $e->getMessage();
+        }
+        
+        // Test if studentfeemaster model can be loaded
+        try {
+            $this->load->model('studentfeemaster_model');
+            $response['studentfeemaster_model'] = 'loaded successfully';
+        } catch (Exception $e) {
+            $response['studentfeemaster_model'] = 'error: ' . $e->getMessage();
+        }
+        
+        header('Content-Type: application/json');
+        echo json_encode($response);
     }
 
 }

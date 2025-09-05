@@ -317,7 +317,7 @@ class Feediscount_model extends MY_Model
  
  
  
-     public function discountlistgeting($classid,$section_id=null,$discountid,$statuss=null){
+     public function discountlistgeting($classid,$discountid,$section_id=null,$statuss=null){
  
  
          $this->db->select('classes.class,sections.section,categories.category ,students.firstname,students.lastname,students.mobileno,students.dob,students.gender,students.father_name,students.admission_no')->from('fees_discount_approval');
