@@ -2127,10 +2127,14 @@ $language_name = $language["short_code"];
                                 <?php echo $this->lang->line('payment_source'); ?>
                             </label>
                             <div class="col-sm-9">
-                                <div class="checkbox">
-                                    <label>
-                                        <input type="checkbox" id="collect_from_advance" name="collect_from_advance" value="1">
+                                <div class="checkbox" style="display: flex; align-items: center;">
+                                    <label style="margin-bottom: 0; display: flex; align-items: center;">
+                                        <input type="checkbox" id="collect_from_advance" name="collect_from_advance" value="1" style="margin-right: 6px;">
                                         <strong><?php echo $this->lang->line('collect_from_advance_payment'); ?></strong>
+                                        <span class="text-muted" style="font-style: italic; margin-left: 10px; display: flex; align-items: center;">
+                                            <i class="fa fa-info-circle" style="margin-right: 4px;"></i>
+                                            If you want to pay the amount from the advance payment balance, check this option
+                                        </span>
                                     </label>
                                 </div>
                                 <div id="advance_payment_info" style="display: none; margin-top: 10px;">
