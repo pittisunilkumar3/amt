@@ -2695,43 +2695,67 @@ $language_name = $language["short_code"];
         var $this = $(this);
         var action = $this.data('action');
         $this.button('loading');
-        var form = $(this).attr('frm');
-        var feetype = $('#feetype_').val();
-        var date = $('#date').val();
-        var accountname = $('#accountname').val();
+        
+        // Get values from the discount modal fields (using correct IDs)
+        var date = $('#datee').val(); // Discount modal uses 'datee' not 'date'
         var student_session_id = $('#std_id').val();
-        var amount = $('#amount').val();
-        var amount_discount = $('#amount_discount').val();
-        var amount_fine = $('#amount_fine').val();
-        var description = $('#description1').val();
-        var payment_mode = $('input[name=payment_mode_fee]:checked').val();
+        var amount = $('#amounttt').val(); // Discount modal uses 'amounttt' not 'amount'
+        var description = $('#description').val(); // Discount modal uses 'description' not 'description1'
         var student_fees_master_id = $('#student_fees_master_id').val();
         var fee_groups_feetype_id = $('#fee_groups_feetype_id').val();
-        var transport_fees_id = $('#transport_fees_id').val();
-        var hostel_fees_id = $('#hostel_fees_id').val();
         var fee_category = $('#fee_category').val();
-        var student_fees_discount_id = $('#discount_group').val();
+        
+        // Validate required fields
+        if (!amount || amount <= 0) {
+            alert('Please enter a valid discount amount');
+            $this.button('reset');
+            return;
+        }
+        
+        if (!student_fees_master_id || !fee_groups_feetype_id) {
+            alert('Fee information is missing. Please try again.');
+            $this.button('reset');
+            return;
+        }
+        
         $.ajax({
             url: '<?php echo site_url("studentfee/adddiscountstudentfee") ?>',
             type: 'post',
-            data: { action: action,student_session_id: student_session_id, date: date, type: feetype, amount: amount,description: description, student_fees_master_id: student_fees_master_id, fee_groups_feetype_id: fee_groups_feetype_id, fee_category: fee_category, transport_fees_id: transport_fees_id, hostel_fees_id: hostel_fees_id, student_fees_discount_id: student_fees_discount_id, amount_discount: amount_discount, amount_fine: amount_fine, payment_mode: payment_mode, accountname: accountname},
+            data: { 
+                student_session_id: student_session_id, 
+                date: date, 
+                amount: amount,
+                description: description, 
+                student_fees_master_id: student_fees_master_id, 
+                fee_groups_feetype_id: fee_groups_feetype_id
+            },
             dataType: 'json',
             success: function (response) {
                 $this.button('reset');
-                // if (response.status == "success") {
-                //     if (action == "collect") {
-                //         location.reload(true);
-                //     } else if (action === "print") {
-                //         Popup(response.print, true);
-                //     }
-                // } else if (response.status === "fail") {
-                //     $.each(response.error, function (index, value) {
-                //         var errorDiv = '#' + index + '_error';
-                //         $(errorDiv).empty().append(value);
-                //     });
-                // }
-                location.reload(true);
-                // console.log(response.data);
+                if (response.status == "success") {
+                    // Close the modal
+                    $('#myFeesdiscountModal').modal('hide');
+                    // Show success message
+                    alert('Discount request submitted successfully! It will be reviewed by the admin.');
+                    // Reload the page to show updated discount status
+                    location.reload(true);
+                } else if (response.status === "fail") {
+                    // Show validation errors
+                    var errorMessage = 'Validation errors:\n';
+                    $.each(response.error, function (index, value) {
+                        errorMessage += '- ' + value + '\n';
+                        var errorDiv = '#' + index + '_error';
+                        $(errorDiv).empty().append(value);
+                    });
+                    alert(errorMessage);
+                } else {
+                    alert('An error occurred while submitting the discount request. Please try again.');
+                }
+            },
+            error: function(xhr, status, error) {
+                $this.button('reset');
+                console.error('AJAX Error:', status, error);
+                alert('Network error occurred. Please check your connection and try again.');
             }
         });
     });

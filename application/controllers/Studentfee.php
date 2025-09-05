@@ -2702,6 +2702,27 @@ class Studentfee extends Admin_Controller
             echo json_encode($array);
         } else {
 
+            $student_session_id = $this->input->post('student_session_id');
+            $student_fees_master_id = $this->input->post('student_fees_master_id');
+            $fee_groups_feetype_id = $this->input->post('fee_groups_feetype_id');
+
+            // Check if there's already a pending discount request for this specific fee
+            $existing_request = $this->feediscount_model->checkPendingDiscountRequests(
+                $student_session_id, 
+                $fee_groups_feetype_id, 
+                $student_fees_master_id
+            );
+
+            if (!empty($existing_request)) {
+                $array = array(
+                    'status' => 'fail', 
+                    'error' => array('general' => 'A discount request for this fee is already pending approval. Please wait for the current request to be processed.'),
+                    'message' => 'Duplicate discount request not allowed'
+                );
+                echo json_encode($array);
+                return;
+            }
+
             // Fix for zero amount issue - use raw amounts if conversion fails
             $raw_amount = floatval($this->input->post('amount'));
             $converted_amount = convertCurrencyFormatToBaseAmount($raw_amount);
@@ -2710,19 +2731,18 @@ class Studentfee extends Admin_Controller
             $data = array(
                 'is_active'=>1,
                 'approval_status' => 0,
-                'student_session_id' =>$this->input->post('student_session_id'),
+                'student_session_id' => $student_session_id,
                 'amount'          => $final_amount,
                 'date'            => date('Y-m-d', $this->customlib->datetostrtotime($this->input->post('date'))),
                 'description'     => $this->input->post('description'),
-                'student_fees_master_id' => $this->input->post('student_fees_master_id'),
-                'fee_groups_feetype_id'  => $this->input->post('fee_groups_feetype_id'),
+                'student_fees_master_id' => $student_fees_master_id,
+                'fee_groups_feetype_id'  => $fee_groups_feetype_id,
                 'session_id' => $this->current_session,
             );
 
             $inserted_id        = $this->studentfeemaster_model->adddiscountstudentfee($data);
 
-
-            $array = array('status' => 'success','data'=>$data);
+            $array = array('status' => 'success','data'=>$data, 'message' => 'Discount request submitted successfully');
             echo json_encode($array);
         }
     }

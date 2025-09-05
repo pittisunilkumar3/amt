@@ -563,12 +563,12 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                         // Update the DataTable row instead of reloading
                         try {
                             updateDataTableRow(studentID, 'pending');
-                            showMessage('Discount reverted to pending status successfully!', 'success');
+                            showMessage('Discount reverted successfully! The discount has been removed from student fees and status changed to pending.', 'success');
                         } catch (error) {
                             console.error('Error updating row:', error);
                             // Fallback to table refresh
                             refreshDataTable();
-                            showMessage('Discount reverted to pending status successfully!', 'success');
+                            showMessage('Discount reverted successfully! The discount has been removed from student fees and status changed to pending.', 'success');
                         }
                     } else {
                         showMessage('Failed to revert discount: ' + (response.message || 'Unknown error'), 'error');

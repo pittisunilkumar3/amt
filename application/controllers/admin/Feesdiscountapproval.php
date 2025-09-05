@@ -15,6 +15,11 @@ class Feesdiscountapproval extends Admin_Controller
         $this->load->model('addaccount_model');
         $this->load->model('studentfee_model');
         $this->load->model('session_model');
+        $this->load->model('feediscount_model');
+        $this->load->model('student_model');
+        $this->load->model('class_model');
+        $this->load->model('section_model');
+        $this->load->model('studentfeemaster_model');
     }
 
     public function index()
@@ -318,24 +323,16 @@ class Feesdiscountapproval extends Admin_Controller
             // Log the request
             error_log("Reverting approval for student ID: " . $studentid . ", Payment ID: " . $paymentid);
 
-            // Update approval status to pending (0)
-            $update_result = $this->feediscount_model->updateapprovalstatus($studentid, 0);
-
-            if (!$update_result) {
-                error_log("Failed to update approval status for student ID: " . $studentid);
-                $response = array('status' => 'fail', 'message' => 'Failed to update approval status');
+            // Get the discount approval record before reverting
+            $discount_record = $this->feediscount_model->getapproval($studentid);
+            if (empty($discount_record)) {
+                error_log("Discount record not found for student ID: " . $studentid);
+                $response = array('status' => 'fail', 'message' => 'Discount record not found');
                 echo json_encode($response);
                 return;
             }
 
-            // Update payment ID
-            $dataa = array(
-                'id' => $studentid,
-                'payment_id' => $paymentid,
-            );
-            $update_resultt = $this->feediscount_model->updatepaymentid($dataa);
-
-            // Delete fee record if payment ID exists
+            // Delete fee record if payment ID exists (this removes the discount from student's payment history)
             if (!empty($paymentid)) {
                 $parts = explode('/', $paymentid);
                 if (count($parts) >= 2) {
@@ -346,8 +343,23 @@ class Feesdiscountapproval extends Admin_Controller
                 }
             }
 
+            // Clear payment ID (set to NULL) and update approval status to pending (0)
+            $dataa = array(
+                'id' => $studentid,
+                'payment_id' => null, // Clear the payment ID
+                'approval_status' => 0 // Set back to pending
+            );
+            $update_result = $this->feediscount_model->updatepaymentid($dataa);
+
+            if (!$update_result) {
+                error_log("Failed to update discount record for student ID: " . $studentid);
+                $response = array('status' => 'fail', 'message' => 'Failed to update discount record');
+                echo json_encode($response);
+                return;
+            }
+
             error_log("Successfully reverted approval for student ID: " . $studentid);
-            $response = array('status' => 'success', 'message' => 'Discount approval reverted successfully');
+            $response = array('status' => 'success', 'message' => 'Discount approval reverted successfully. The discount has been removed from student fees and status changed to pending.');
 
         } catch (Exception $e) {
             error_log("Error in retrive: " . $e->getMessage());

@@ -569,12 +569,16 @@ class Feediscount_model extends MY_Model
 
 
      public function updatepaymentid($data){
-
         if (isset($data['id'])) {
             $this->db->where('id', $data['id']);
-            $this->db->update('fees_discount_approval', $data);
+            
+            // Remove the id from data array to avoid trying to update it
+            $update_data = $data;
+            unset($update_data['id']);
+            
+            return $this->db->update('fees_discount_approval', $update_data);
         }
-
+        return false;
      }
 
      /**
