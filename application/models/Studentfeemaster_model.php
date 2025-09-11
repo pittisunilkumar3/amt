@@ -2174,43 +2174,40 @@ $module=$this->module_model->getPermissionByModulename('transport');
 
 
     public function gettypewisereportt($session=null, $feetype_id=null,$group_id=null,$class_id=null, $section_id=null) {
-        $this->db->distinct();
         $this->db->select('fee_groups.name as feegroupname,student_fees_master.id as stfeemasid,fee_groups_feetype.amount as total, fee_groups_feetype.id as fgtid,fee_groups_feetype.fine_amount as fine, feetype.type, sections.section, classes.class, students.admission_no,students.mobileno, students.firstname, students.middlename, students.lastname')->from('students');
         $this->db->join('student_session', 'student_session.student_id = students.id');
         $this->db->join('classes', 'classes.id = student_session.class_id');
         $this->db->join('sections', 'sections.id = student_session.section_id');
         $this->db->join('student_fees_master', 'student_fees_master.student_session_id = student_session.id');
         $this->db->join('fee_session_groups','fee_session_groups.id=student_fees_master.fee_session_group_id');
-        //  $this->db->where('fee_session_groups.session_id',$session);
-
-        // $this->db->where('fee_session_groups.fee_groups_id',$group_id);
         $this->db->join('fee_groups','fee_session_groups.fee_groups_id=fee_groups.id');
-        $this->db->join('fee_groups_feetype', 'fee_groups_feetype.fee_groups_id = fee_session_groups.fee_groups_id');
 
-        if($feetype_id != []){
-            $this->db->where_in('fee_groups_feetype.feetype_id', $feetype_id);
-        }
-
-        // if (!empty($feetype_id) && is_array($feetype_id)) {
-        //     $this->db->where_in('fee_groups_feetype.feetype_id', $feetype_id);
-        // }
-        if (!empty($feetype_id) && is_array($feetype_id)) {
-            $this->db->where_in('fee_groups_feetype.feetype_id', $feetype_id);
-        }
-
+        // Fix the problematic join - use fee_session_group_id instead of fee_groups_id to avoid duplicates
+        $this->db->join('fee_groups_feetype', 'fee_groups_feetype.fee_session_group_id = fee_session_groups.id');
         $this->db->join('feetype', 'feetype.id = fee_groups_feetype.feetype_id');
+
+        // Apply filters
         $this->db->where('student_session.session_id', $session);
-        if($group_id != []){
+
+        if($feetype_id != [] && !empty($feetype_id) && is_array($feetype_id)){
+            $this->db->where_in('fee_groups_feetype.feetype_id', $feetype_id);
+        }
+
+        if($group_id != [] && !empty($group_id) && is_array($group_id)){
             $this->db->where_in('fee_groups.id',$group_id);
         }
+
         if($class_id != null){
             $this->db->where('student_session.class_id', $class_id);
         }
+
         if($section_id != null){
             $this->db->where('student_session.section_id', $section_id);
         }
+
+        // Group by student and fee type to eliminate duplicates
+        $this->db->group_by('students.id, fee_groups_feetype.id');
         $this->db->order_by('students.id', 'desc');
-        //  ->join('student_fees_deposite','student_fees_deposite.student_fees_master_id=student_fees_master.id','left');
 
         $query = $this->db->get();
         $results = $query->result_array();
