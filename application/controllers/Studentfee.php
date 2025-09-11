@@ -85,45 +85,95 @@ class Studentfee extends Admin_Controller
 
     public function ajaxSearch()
     {
-        $class       = $this->input->post('class_id');
-        $section     = $this->input->post('section_id');
-        $search_text = $this->input->post('search_text');
-        $search_type = $this->input->post('search_type');
-        if ($search_type == "class_search") {
-            $students = $this->student_model->getDatatableByClassSection($class, $section);
-        } elseif ($search_type == "keyword_search") {
-            $students = $this->student_model->getDatatableByFullTextSearch($search_text);
-        }
-        $sch_setting = $this->sch_setting_detail;
-        $students    = json_decode($students);
-        $dt_data     = array();
-        if (!empty($students->data)) {
-            foreach ($students->data as $student_key => $student) {
-                $row         = array();
-                $row[]       = $student->class;
-                $row[]       = $student->section;
-                $row[]       = $student->admission_no;
-                $row[]       = "<a href='" . base_url() . "student/view/" . $student->id . "'>" . $this->customlib->getFullName($student->firstname, $student->middlename, $student->lastname, $sch_setting->middlename, $sch_setting->lastname) . "</a>";
-                $sch_setting = $this->sch_setting_detail;
-                if ($sch_setting->father_name) {
-                    $row[] = $student->father_name;
-                }
-                $row[] = $this->customlib->dateformat($student->dob);
-                $row[] = $student->guardian_phone;
-                $row[] = "<a href=" . site_url('studentfee/addfee/' . $student->student_session_id) . "  class='btn btn-info btn-xs'>" . $this->lang->line('collect_fees') . "</a>";
+        try {
+            $class       = $this->input->post('class_id');
+            $section     = $this->input->post('section_id');
+            $search_text = $this->input->post('search_text');
+            $search_type = $this->input->post('search_type');
 
-                $dt_data[] = $row;
+            // Enhanced error logging for debugging
+            log_message('debug', 'Student Fee Search - Search Type: ' . $search_type);
+            log_message('debug', 'Student Fee Search - Class ID: ' . print_r($class, true));
+            log_message('debug', 'Student Fee Search - Section ID: ' . print_r($section, true));
+            log_message('debug', 'Student Fee Search - Search Text: ' . $search_text);
+
+            $students = '';
+            if ($search_type == "class_search") {
+                $students = $this->student_model->getDatatableByClassSection($class, $section);
+            } elseif ($search_type == "keyword_search") {
+                $students = $this->student_model->getDatatableByFullTextSearch($search_text);
+            } else {
+                // Handle invalid search type
+                log_message('error', 'Student Fee Search - Invalid search type: ' . $search_type);
+                $json_data = array(
+                    "draw"            => 0,
+                    "recordsTotal"    => 0,
+                    "recordsFiltered" => 0,
+                    "data"            => array(),
+                    "error"           => "Invalid search type"
+                );
+                echo json_encode($json_data);
+                return;
             }
 
-        }
-        $json_data = array(
-            "draw"            => intval($students->draw),
-            "recordsTotal"    => intval($students->recordsTotal),
-            "recordsFiltered" => intval($students->recordsFiltered),
-            "data"            => $dt_data,
-        );
-        echo json_encode($json_data);
+            $sch_setting = $this->sch_setting_detail;
+            $students    = json_decode($students);
+            $dt_data     = array();
 
+            // Enhanced error checking
+            if ($students === null) {
+                log_message('error', 'Student Fee Search - Failed to decode JSON response from model');
+                $json_data = array(
+                    "draw"            => 0,
+                    "recordsTotal"    => 0,
+                    "recordsFiltered" => 0,
+                    "data"            => array(),
+                    "error"           => "Failed to process search results"
+                );
+                echo json_encode($json_data);
+                return;
+            }
+
+            if (!empty($students->data)) {
+                foreach ($students->data as $student_key => $student) {
+                    $row         = array();
+                    $row[]       = isset($student->class) ? $student->class : '';
+                    $row[]       = isset($student->section) ? $student->section : '';
+                    $row[]       = isset($student->admission_no) ? $student->admission_no : '';
+                    $row[]       = "<a href='" . base_url() . "student/view/" . $student->id . "'>" . $this->customlib->getFullName($student->firstname, $student->middlename, $student->lastname, $sch_setting->middlename, $sch_setting->lastname) . "</a>";
+
+                    if ($sch_setting->father_name) {
+                        $row[] = isset($student->father_name) ? $student->father_name : '';
+                    }
+                    $row[] = isset($student->dob) ? $this->customlib->dateformat($student->dob) : '';
+                    $row[] = isset($student->guardian_phone) ? $student->guardian_phone : '';
+                    $row[] = "<a href=" . site_url('studentfee/addfee/' . $student->student_session_id) . "  class='btn btn-info btn-xs'>" . $this->lang->line('collect_fees') . "</a>";
+
+                    $dt_data[] = $row;
+                }
+            }
+
+            $json_data = array(
+                "draw"            => isset($students->draw) ? intval($students->draw) : 0,
+                "recordsTotal"    => isset($students->recordsTotal) ? intval($students->recordsTotal) : 0,
+                "recordsFiltered" => isset($students->recordsFiltered) ? intval($students->recordsFiltered) : 0,
+                "data"            => $dt_data,
+            );
+
+            log_message('debug', 'Student Fee Search - Returning ' . count($dt_data) . ' records');
+            echo json_encode($json_data);
+
+        } catch (Exception $e) {
+            log_message('error', 'Student Fee Search - Exception: ' . $e->getMessage());
+            $json_data = array(
+                "draw"            => 0,
+                "recordsTotal"    => 0,
+                "recordsFiltered" => 0,
+                "data"            => array(),
+                "error"           => "Search failed: " . $e->getMessage()
+            );
+            echo json_encode($json_data);
+        }
     }
 
     public function feesearch()

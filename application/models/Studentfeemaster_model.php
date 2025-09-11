@@ -142,7 +142,7 @@ class Studentfeemaster_model extends MY_Model
         if (!$session_group_exists) {
             $this->db->insert('fee_groups_feetype', $to_be_insert);
         } else {
-            $this->db->where('id', $session_group_exists);
+            $this->db->where('fee_groups_feetype.id', $session_group_exists);
             $this->db->update('fee_groups_feetype', $to_be_insert);
         }
         $student_list = array();
@@ -892,7 +892,23 @@ $result_value->fees     = (object)$this->getDueFeeByFeeSessionGroup($fee_session
 
     public function getFeeCollectionReport($start_date, $end_date, $feetype_id= null,$received_by = null, $group = null, $class_id = null, $section_id = null,$session_id=null)
     {
-        $this->db->select('`student_fees_deposite`.*,students.firstname,students.middlename,students.lastname,student_session.class_id,classes.class,sections.section,student_session.section_id,student_session.student_id,`fee_groups`.`name`, `feetype`.`type`, `feetype`.`code`,feetype.is_system,student_fees_master.student_session_id,students.admission_no')->from('student_fees_deposite');
+        // Debug incoming parameters and types
+        log_message('debug', '=== MODEL: getFeeCollectionReport called ===');
+        log_message('debug', 'MODEL: Parameters received:');
+        log_message('debug', '  - start_date: ' . $start_date);
+        log_message('debug', '  - end_date: ' . $end_date);
+        log_message('debug', '  - class_id: ' . (is_array($class_id) ? json_encode($class_id) : $class_id) . ' (type: ' . gettype($class_id) . ')');
+        log_message('debug', '  - section_id: ' . (is_array($section_id) ? json_encode($section_id) : $section_id) . ' (type: ' . gettype($section_id) . ')');
+        log_message('debug', '  - session_id: ' . (is_array($session_id) ? json_encode($session_id) : $session_id) . ' (type: ' . gettype($session_id) . ')');
+        log_message('debug', '  - feetype_id: ' . (is_array($feetype_id) ? json_encode($feetype_id) : $feetype_id) . ' (type: ' . gettype($feetype_id) . ')');
+        log_message('debug', '  - received_by: ' . (is_array($received_by) ? json_encode($received_by) : $received_by) . ' (type: ' . gettype($received_by) . ')');
+        log_message('debug', '  - group: ' . $group);
+        
+        log_message('debug', 'MODEL: Building SELECT statement...');
+        
+        $this->db->select('student_fees_deposite.*,students.firstname,students.middlename,students.lastname,student_session.class_id,classes.class,sections.section,student_session.section_id,student_session.student_id,fee_groups.name, feetype.type, feetype.code,feetype.is_system,student_fees_master.student_session_id,students.admission_no')->from('student_fees_deposite');
+        
+        log_message('debug', 'MODEL: Adding JOINs...');
         $this->db->join('fee_groups_feetype', 'fee_groups_feetype.id = student_fees_deposite.fee_groups_feetype_id');
         $this->db->join('fee_groups', 'fee_groups.id = fee_groups_feetype.fee_groups_id');
         $this->db->join('feetype', 'feetype.id = fee_groups_feetype.feetype_id');
@@ -901,46 +917,137 @@ $result_value->fees     = (object)$this->getDueFeeByFeeSessionGroup($fee_session
         $this->db->join('classes', 'classes.id= student_session.class_id');
         $this->db->join('sections', 'sections.id= student_session.section_id');
         $this->db->join('students', 'students.id=student_session.student_id');
+        
+        log_message('debug', 'MODEL: Processing WHERE conditions...');
         // Handle both single values and arrays for multi-select functionality - feetype_id
+        log_message('debug', 'MODEL: Processing feetype_id filter...');
         if($feetype_id != null && !empty($feetype_id)){
             if (is_array($feetype_id) && count($feetype_id) > 0) {
-                $this->db->where_in('fee_groups_feetype.feetype_id', $feetype_id);
-            } elseif (!is_array($feetype_id)) {
+                // Ensure all values are numeric/valid
+                $valid_feetype_ids = array_filter($feetype_id, function($id) {
+                    return !empty($id) && is_numeric($id);
+                });
+                if (!empty($valid_feetype_ids)) {
+                    log_message('debug', 'MODEL: Adding feetype_id WHERE_IN condition: ' . json_encode($valid_feetype_ids));
+                    $this->db->where_in('fee_groups_feetype.feetype_id', $valid_feetype_ids);
+                }
+            } elseif (!is_array($feetype_id) && !empty($feetype_id)) {
+                log_message('debug', 'MODEL: Adding feetype_id WHERE condition: ' . $feetype_id);
                 $this->db->where('fee_groups_feetype.feetype_id', $feetype_id);
             }
+        } else {
+            log_message('debug', 'MODEL: No feetype_id filter applied');
         }
         // $this->db->where('fee_groups_feetype.session_id',$this->current_session);
 
         $this->db->order_by('student_fees_deposite.id','desc');
 
         // Handle both single values and arrays for multi-select functionality - class_id
+        log_message('debug', 'MODEL: Processing class_id filter...');
         if($class_id != null && !empty($class_id)){
             if (is_array($class_id) && count($class_id) > 0) {
-                $this->db->where_in('student_session.class_id', $class_id);
-            } elseif (!is_array($class_id)) {
+                // Ensure all values are numeric/valid
+                $valid_class_ids = array_filter($class_id, function($id) {
+                    return !empty($id) && is_numeric($id);
+                });
+                if (!empty($valid_class_ids)) {
+                    log_message('debug', 'MODEL: Adding class_id WHERE_IN condition: ' . json_encode($valid_class_ids));
+                    $this->db->where_in('student_session.class_id', $valid_class_ids);
+                } else {
+                    log_message('debug', 'MODEL: class_id array was empty after filtering');
+                }
+            } elseif (!is_array($class_id) && !empty($class_id)) {
+                log_message('debug', 'MODEL: Adding class_id WHERE condition: ' . $class_id);
                 $this->db->where('student_session.class_id', $class_id);
             }
+        } else {
+            log_message('debug', 'MODEL: No class_id filter applied (showing all classes)');
         }
 
         // Handle both single values and arrays for multi-select functionality - section_id
+        log_message('debug', 'MODEL: Processing section_id filter...');
         if($section_id != null && !empty($section_id)){
             if (is_array($section_id) && count($section_id) > 0) {
-                $this->db->where_in('student_session.section_id', $section_id);
-            } elseif (!is_array($section_id)) {
+                // Ensure all values are numeric/valid
+                $valid_section_ids = array_filter($section_id, function($id) {
+                    return !empty($id) && is_numeric($id);
+                });
+                if (!empty($valid_section_ids)) {
+                    log_message('debug', 'MODEL: Adding section_id WHERE_IN condition: ' . json_encode($valid_section_ids));
+                    $this->db->where_in('student_session.section_id', $valid_section_ids);
+                } else {
+                    log_message('debug', 'MODEL: section_id array was empty after filtering');
+                }
+            } elseif (!is_array($section_id) && !empty($section_id)) {
+                log_message('debug', 'MODEL: Adding section_id WHERE condition: ' . $section_id);
                 $this->db->where('student_session.section_id', $section_id);
             }
+        } else {
+            log_message('debug', 'MODEL: No section_id filter applied (showing all sections)');
         }
+        
         // Handle both single values and arrays for multi-select functionality - session_id
+        log_message('debug', 'MODEL: Processing session_id filter...');
         if($session_id != null && !empty($session_id)){
             if (is_array($session_id) && count($session_id) > 0) {
-                $this->db->where_in('student_session.session_id', $session_id);
-            } elseif (!is_array($session_id)) {
+                // Ensure all values are numeric/valid
+                $valid_session_ids = array_filter($session_id, function($id) {
+                    return !empty($id) && is_numeric($id);
+                });
+                if (!empty($valid_session_ids)) {
+                    log_message('debug', 'MODEL: Adding session_id WHERE_IN condition: ' . json_encode($valid_session_ids));
+                    $this->db->where_in('student_session.session_id', $valid_session_ids);
+                } else {
+                    log_message('debug', 'MODEL: session_id array was empty after filtering');
+                }
+            } elseif (!is_array($session_id) && !empty($session_id)) {
+                log_message('debug', 'MODEL: Adding session_id WHERE condition: ' . $session_id);
                 $this->db->where('student_session.session_id', $session_id);
             }
+        } else {
+            log_message('debug', 'MODEL: No session_id filter applied (using current session)');
         }
 
-        $query        = $this->db->get();
+        // CRITICAL FIX: Add date filtering that was missing (using created_at column)
+        log_message('debug', 'MODEL: Adding date filter...');
+        if (!empty($start_date) && !empty($end_date)) {
+            log_message('debug', 'MODEL: Adding date WHERE conditions: ' . $start_date . ' to ' . $end_date);
+            $this->db->where('DATE(student_fees_deposite.created_at) >=', $start_date);
+            $this->db->where('DATE(student_fees_deposite.created_at) <=', $end_date);
+        } else {
+            log_message('debug', 'MODEL: No date filter applied');
+        }
+
+        // Handle received_by filter
+        log_message('debug', 'MODEL: Processing received_by filter...');
+        if ($received_by != null && !empty($received_by)) {
+            if (is_array($received_by) && count($received_by) > 0) {
+                // Ensure all values are numeric/valid
+                $valid_received_by = array_filter($received_by, function($id) {
+                    return !empty($id) && is_numeric($id);
+                });
+                if (!empty($valid_received_by)) {
+                    log_message('debug', 'MODEL: Adding received_by WHERE_IN condition: ' . json_encode($valid_received_by));
+                    $this->db->where_in('student_fees_deposite.received_by', $valid_received_by);
+                } else {
+                    log_message('debug', 'MODEL: received_by array was empty after filtering');
+                }
+            } elseif (!is_array($received_by) && !empty($received_by)) {
+                log_message('debug', 'MODEL: Adding received_by WHERE condition: ' . $received_by);
+                $this->db->where('student_fees_deposite.received_by', $received_by);
+            }
+        } else {
+            log_message('debug', 'MODEL: No received_by filter applied');
+        }
+
+        log_message('debug', 'MODEL: Executing main query...');
+        $query = $this->db->get();
+        
+        // Log the actual SQL query for debugging
+        log_message('debug', 'MODEL: Generated SQL query: ' . $this->db->last_query());
+        
         $result_value = $query->result();
+        log_message('debug', 'MODEL: Main query returned ' . count($result_value) . ' results');
         $module=$this->module_model->getPermissionByModulename('transport');
         if($module['is_active']){
           $this->db->select('`student_fees_deposite`.*,students.firstname,students.middlename,students.lastname,student_session.class_id,classes.class,sections.section,student_session.section_id,student_session.student_id,"Transport Fees" as name, "Transport Fees" as `type`, "" as `code`,0 as is_system,student_transport_fees.student_session_id,students.admission_no')->from('student_fees_deposite');
@@ -953,14 +1060,40 @@ $result_value->fees     = (object)$this->getDueFeeByFeeSessionGroup($fee_session
         $this->db->join('students', 'students.id=student_session.student_id');
 
 
-        $this->db->where('student_session.session_id',$this->current_session);
+        // Handle session_id filter for transport fees (override current_session if session_id parameter provided)
+        if($session_id != null && !empty($session_id)){
+            if (is_array($session_id) && count($session_id) > 0) {
+                // Ensure all values are numeric/valid
+                $valid_session_ids = array_filter($session_id, function($id) {
+                    return !empty($id) && is_numeric($id);
+                });
+                if (!empty($valid_session_ids)) {
+                    $this->db->where_in('student_session.session_id', $valid_session_ids);
+                } else {
+                    $this->db->where('student_session.session_id',$this->current_session);
+                }
+            } elseif (!is_array($session_id) && !empty($session_id)) {
+                $this->db->where('student_session.session_id', $session_id);
+            } else {
+                $this->db->where('student_session.session_id',$this->current_session);
+            }
+        } else {
+            $this->db->where('student_session.session_id',$this->current_session);
+        }
+        
         $this->db->order_by('student_fees_deposite.id','desc');
 
         // Handle both single values and arrays for multi-select functionality - class_id (transport fees)
         if($class_id != null && !empty($class_id)){
             if (is_array($class_id) && count($class_id) > 0) {
-                $this->db->where_in('student_session.class_id', $class_id);
-            } elseif (!is_array($class_id)) {
+                // Ensure all values are numeric/valid
+                $valid_class_ids = array_filter($class_id, function($id) {
+                    return !empty($id) && is_numeric($id);
+                });
+                if (!empty($valid_class_ids)) {
+                    $this->db->where_in('student_session.class_id', $valid_class_ids);
+                }
+            } elseif (!is_array($class_id) && !empty($class_id)) {
                 $this->db->where('student_session.class_id', $class_id);
             }
         }
@@ -968,9 +1101,30 @@ $result_value->fees     = (object)$this->getDueFeeByFeeSessionGroup($fee_session
         // Handle both single values and arrays for multi-select functionality - section_id (transport fees)
         if($section_id != null && !empty($section_id)){
             if (is_array($section_id) && count($section_id) > 0) {
-                $this->db->where_in('student_session.section_id', $section_id);
-            } elseif (!is_array($section_id)) {
+                // Ensure all values are numeric/valid
+                $valid_section_ids = array_filter($section_id, function($id) {
+                    return !empty($id) && is_numeric($id);
+                });
+                if (!empty($valid_section_ids)) {
+                    $this->db->where_in('student_session.section_id', $valid_section_ids);
+                }
+            } elseif (!is_array($section_id) && !empty($section_id)) {
                 $this->db->where('student_session.section_id', $section_id);
+            }
+        }
+
+        // CRITICAL FIX: Add date filtering for transport fees as well (using created_at column)
+        if (!empty($start_date) && !empty($end_date)) {
+            $this->db->where('DATE(student_fees_deposite.created_at) >=', $start_date);
+            $this->db->where('DATE(student_fees_deposite.created_at) <=', $end_date);
+        }
+
+        // Handle received_by filter for transport fees
+        if ($received_by != null && !empty($received_by)) {
+            if (is_array($received_by) && count($received_by) > 0) {
+                $this->db->where_in('student_fees_deposite.received_by', $received_by);
+            } elseif (!is_array($received_by)) {
+                $this->db->where('student_fees_deposite.received_by', $received_by);
             }
         }
 
@@ -1056,6 +1210,11 @@ $result_value->fees     = (object)$this->getDueFeeByFeeSessionGroup($fee_session
             }
 
         }
+
+        log_message('debug', 'MODEL: Processing results and building return array...');
+        log_message('debug', 'MODEL: Combined result count: ' . count($result_value2));
+        log_message('debug', 'MODEL: Final return array count: ' . count($return_array));
+        log_message('debug', '=== MODEL: getFeeCollectionReport completed ===');
 
         return $return_array;
     }
@@ -1269,7 +1428,7 @@ $result_value->fees     = (object)$this->getDueFeeByFeeSessionGroup($fee_session
 
     public function getFeeByInvoice($invoice_id, $sub_invoice_id)
     {
-        $type=$this->db->select('`student_fees_deposite`.*')->from('`student_fees_deposite`')->where('id',$invoice_id)->get()->row_array();
+        $type=$this->db->select('`student_fees_deposite`.*')->from('`student_fees_deposite`')->where('student_fees_deposite.id',$invoice_id)->get()->row_array();
         if(empty($type['student_transport_fee_id'])){
              $this->db->select('`student_fees_deposite`.*,students.id as std_id,students.firstname,students.middlename,students.lastname,students.admission_no,student_session.class_id,classes.class,sections.section,student_session.section_id,student_session.student_id,`fee_groups`.`name`, `feetype`.`type`, `feetype`.`code`,feetype.is_system,student_fees_master.student_session_id')->from('student_fees_deposite');
         $this->db->join('fee_groups_feetype', 'fee_groups_feetype.id = student_fees_deposite.fee_groups_feetype_id');
@@ -2197,12 +2356,34 @@ $module=$this->module_model->getPermissionByModulename('transport');
             $this->db->where_in('fee_groups.id',$group_id);
         }
 
-        if($class_id != null){
-            $this->db->where('student_session.class_id', $class_id);
+        // Handle both single values and arrays for multi-select functionality - class_id
+        if($class_id != null && !empty($class_id)){
+            if (is_array($class_id) && count($class_id) > 0) {
+                // Ensure all values are numeric/valid
+                $valid_class_ids = array_filter($class_id, function($id) {
+                    return !empty($id) && is_numeric($id);
+                });
+                if (!empty($valid_class_ids)) {
+                    $this->db->where_in('student_session.class_id', $valid_class_ids);
+                }
+            } elseif (!is_array($class_id) && !empty($class_id)) {
+                $this->db->where('student_session.class_id', $class_id);
+            }
         }
 
-        if($section_id != null){
-            $this->db->where('student_session.section_id', $section_id);
+        // Handle both single values and arrays for multi-select functionality - section_id
+        if($section_id != null && !empty($section_id)){
+            if (is_array($section_id) && count($section_id) > 0) {
+                // Ensure all values are numeric/valid
+                $valid_section_ids = array_filter($section_id, function($id) {
+                    return !empty($id) && is_numeric($id);
+                });
+                if (!empty($valid_section_ids)) {
+                    $this->db->where_in('student_session.section_id', $valid_section_ids);
+                }
+            } elseif (!is_array($section_id) && !empty($section_id)) {
+                $this->db->where('student_session.section_id', $section_id);
+            }
         }
 
         // Group by student and fee type to eliminate duplicates
@@ -2272,12 +2453,34 @@ $module=$this->module_model->getPermissionByModulename('transport');
         }
         $this->db->order_by('student_fees_deposite.id','desc');
 
-        if($class_id!=null){
-            $this->db->where('student_session.class_id',$class_id);
+        // Handle both single values and arrays for multi-select functionality - class_id
+        if($class_id != null && !empty($class_id)){
+            if (is_array($class_id) && count($class_id) > 0) {
+                // Ensure all values are numeric/valid
+                $valid_class_ids = array_filter($class_id, function($id) {
+                    return !empty($id) && is_numeric($id);
+                });
+                if (!empty($valid_class_ids)) {
+                    $this->db->where_in('student_session.class_id', $valid_class_ids);
+                }
+            } elseif (!is_array($class_id) && !empty($class_id)) {
+                $this->db->where('student_session.class_id', $class_id);
+            }
         }
 
-        if($section_id!=null){
-            $this->db->where('student_session.section_id',$section_id);
+        // Handle both single values and arrays for multi-select functionality - section_id
+        if($section_id != null && !empty($section_id)){
+            if (is_array($section_id) && count($section_id) > 0) {
+                // Ensure all values are numeric/valid
+                $valid_section_ids = array_filter($section_id, function($id) {
+                    return !empty($id) && is_numeric($id);
+                });
+                if (!empty($valid_section_ids)) {
+                    $this->db->where_in('student_session.section_id', $valid_section_ids);
+                }
+            } elseif (!is_array($section_id) && !empty($section_id)) {
+                $this->db->where('student_session.section_id', $section_id);
+            }
         }
 
         $query        = $this->db->get();
@@ -2514,68 +2717,35 @@ $module=$this->module_model->getPermissionByModulename('transport');
     public function getFeeTypesForColumnwise($start_date, $end_date, $feetype_id = null, $class_id = null, $section_id = null, $session_id = null)
     {
         try {
-            log_message('debug', 'getFeeTypesForColumnwise called with: class_id=' . $class_id . ', section_id=' . $section_id . ', session_id=' . $session_id);
+            log_message('debug', 'getFeeTypesForColumnwise called with: start_date=' . $start_date . ', end_date=' . $end_date . ', class_id=' . (is_array($class_id) ? json_encode($class_id) : $class_id) . ', section_id=' . (is_array($section_id) ? json_encode($section_id) : $section_id) . ', session_id=' . (is_array($session_id) ? json_encode($session_id) : $session_id));
 
-            // Get ALL fee types configured for the selected class/section/session, not just ones with payments
+            // Get ONLY fee types that appear in the actual search results data
             $fee_types = array();
             $unique_types = array();
 
-            // First, get fee types from payment data (existing logic)
-            $original_data = $this->getFeeCollectionReport($start_date, $end_date, $feetype_id, null, null, $class_id, $section_id, $session_id);
+            // Get fee types from the actual search results data with all the same filters
+            $search_results = $this->getFeeCollectionReport($start_date, $end_date, $feetype_id, null, null, $class_id, $section_id, $session_id);
 
-            if (!empty($original_data)) {
-                foreach ($original_data as $record) {
+            log_message('debug', 'Search results count: ' . count($search_results));
+
+            if (!empty($search_results)) {
+                foreach ($search_results as $record) {
                     if (!in_array($record['type'], $unique_types)) {
                         $unique_types[] = $record['type'];
                         $fee_types[] = array(
                             'type' => $record['type'],
-                            'id' => isset($record['feetype_id']) ? $record['feetype_id'] : $record['type']
+                            'id' => isset($record['feetype_id']) ? $record['feetype_id'] : (isset($record['id']) ? $record['id'] : $record['type'])
                         );
                     }
                 }
             }
 
-            // Additionally, get ALL fee types configured for students in the selected class/section
-            // This ensures we show columns even for fee types with no payments
-            $this->db->distinct();
-            $this->db->select('feetype.type, feetype.id as feetype_id');
-            $this->db->from('students');
-            $this->db->join('student_session', 'student_session.student_id = students.id');
-            $this->db->join('student_fees_master', 'student_fees_master.student_session_id = student_session.id');
-            $this->db->join('fee_session_groups', 'fee_session_groups.id = student_fees_master.fee_session_group_id');
-            $this->db->join('fee_groups_feetype', 'fee_groups_feetype.fee_groups_id = fee_session_groups.fee_groups_id');
-            $this->db->join('feetype', 'feetype.id = fee_groups_feetype.feetype_id');
+            // Sort fee types alphabetically for consistent display
+            usort($fee_types, function($a, $b) {
+                return strcmp($a['type'], $b['type']);
+            });
 
-            if ($session_id) {
-                $this->db->where('student_session.session_id', $session_id);
-            }
-            if ($class_id) {
-                $this->db->where('student_session.class_id', $class_id);
-            }
-            if ($section_id) {
-                $this->db->where('student_session.section_id', $section_id);
-            }
-
-            $this->db->order_by('feetype.type');
-            $query = $this->db->get();
-            $all_fee_types = $query->result_array();
-
-            log_message('debug', 'Found ' . count($all_fee_types) . ' configured fee types');
-
-            // Merge with existing fee types, avoiding duplicates
-            if (!empty($all_fee_types)) {
-                foreach ($all_fee_types as $fee_type_record) {
-                    if (!in_array($fee_type_record['type'], $unique_types)) {
-                        $unique_types[] = $fee_type_record['type'];
-                        $fee_types[] = array(
-                            'type' => $fee_type_record['type'],
-                            'id' => $fee_type_record['feetype_id']
-                        );
-                    }
-                }
-            }
-
-            log_message('debug', 'Total unique fee types: ' . count($fee_types));
+            log_message('debug', 'Dynamic fee types found: ' . count($fee_types) . ' - ' . implode(', ', array_column($fee_types, 'type')));
             return $fee_types;
         } catch (Exception $e) {
             log_message('error', 'getFeeTypesForColumnwise Error: ' . $e->getMessage());

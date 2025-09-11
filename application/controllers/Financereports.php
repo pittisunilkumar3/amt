@@ -6,6 +6,20 @@ if (!defined('BASEPATH')) {
 
 class Financereports extends Admin_Controller
 {
+    /**
+     * Simple error logging method that doesn't depend on CodeIgniter's log_message
+     * This prevents the "Unable to load the requested class: Log" error
+     */
+    private function safe_log($level, $message)
+    {
+        // Only log errors to prevent excessive logging
+        if ($level === 'error') {
+            $log_file = APPPATH . 'logs/fee_debug.log';
+            $timestamp = date('Y-m-d H:i:s');
+            $log_entry = "[$timestamp] [$level] $message" . PHP_EOL;
+            @file_put_contents($log_file, $log_entry, FILE_APPEND | LOCK_EX);
+        }
+    }
 
     public function __construct()
     {
@@ -981,38 +995,105 @@ class Financereports extends Admin_Controller
         $this->load->view('layout/footer', $data);
     }
 
+    // Helper method to log both to server and browser console
+    private function console_log($message, $data = null) {
+        // Log to server error log
+        $this->safe_log('debug', $message . ($data ? ' - Data: ' . json_encode($data) : ''));
+        
+        // Also output to browser console via JavaScript (only if not AJAX)
+        if (!$this->input->is_ajax_request()) {
+            $js_message = addslashes($message);
+            $js_data = $data ? json_encode($data) : 'null';
+            echo "<script>console.log('CONTROLLER: {$js_message}', {$js_data});</script>";
+        }
+    }
+
     public function fee_collection_report_columnwise()
     {
+        $this->console_log('=== CONTROLLER: Method fee_collection_report_columnwise started ===');
+        
         if (!$this->rbac->hasPrivilege('collect_fees', 'can_view')) {
+            $this->console_log('CONTROLLER: Access denied - no privileges');
             access_denied();
         }
 
-        try {
-            log_message('debug', 'Fee Collection Report Columnwise - Method started');
-            // Load required models
-            $this->load->model('studentfeemaster_model');
-            $this->load->model('feetype_model');
-            $this->load->model('session_model');
+        $this->console_log('CONTROLLER: Access granted, processing request');
+        $this->console_log('CONTROLLER: HTTP Method', $_SERVER['REQUEST_METHOD']);
+        $this->console_log('CONTROLLER: Raw POST data', $_POST);
 
+        try {
+            $this->console_log('CONTROLLER: Initializing data structure');
+            // Initialize default data structure to prevent view errors
+            $data = array(
+                'results' => array(),
+                'fee_types' => array(),
+                'error_message' => null,
+                'sch_setting' => $this->sch_setting_detail
+            );
+
+            $this->console_log('CONTROLLER: Getting POST data');
+            // Get POST data with error handling
+            $class_id = $this->input->post('class_id');
+
+            $this->console_log('CONTROLLER: Raw class_id from POST', $class_id);
+
+            // Check if class_id is coming through as JSON (fallback for AJAX requests)
+            if (empty($class_id)) {
+                $this->console_log('CONTROLLER: class_id empty, checking raw input');
+                $raw_post = @file_get_contents('php://input');
+                if ($raw_post && strpos($raw_post, 'class_id') !== false) {
+                    $this->console_log('CONTROLLER: Found class_id in raw input', $raw_post);
+                    $json_data = json_decode($raw_post, true);
+                    if (json_last_error() === JSON_ERROR_NONE && isset($json_data['class_id'])) {
+                        $class_id = $json_data['class_id'];
+                        $this->console_log('CONTROLLER: Extracted class_id from JSON', $class_id);
+                    }
+                }
+            }
+
+            $this->console_log('CONTROLLER: Loading required models');
+            // Load required models with error handling
+            try {
+                $this->load->model('studentfeemaster_model');
+                $this->load->model('feetype_model');
+                $this->load->model('session_model');
+            } catch (Exception $model_error) {
+                throw new Exception('Failed to load required models: ' . $model_error->getMessage());
+            }
+
+            // Get data with error handling
             $data['collect_by']  = $this->studentfeemaster_model->get_feesreceived_by();
             $data['searchlist']  = $this->customlib->get_searchtype();
             $data['group_by']    = $this->customlib->get_groupby();
-            $session_result      = $this->session_model->get();
-            $data['sessionlist'] = $session_result;
 
-            // Get regular fee types
-            $feetype             = $this->feetype_model->get();
-            $tnumber=count($feetype);
-            $feetype[$tnumber]=array('id'=>'transport_fees','type'=>'Transport Fees');
+            // Get session data with error handling
+            $session_result = $this->session_model->get();
+            $data['sessionlist'] = is_array($session_result) ? $session_result : array();
 
-            // Get other fee types (with error handling)
+            // Get regular fee types with error handling
+            $feetype = $this->feetype_model->get();
+            if (!is_array($feetype)) {
+                $feetype = array();
+            }
+            $tnumber = count($feetype);
+            $feetype[$tnumber] = array('id'=>'transport_fees','type'=>'Transport Fees');
+
+            // Get other fee types with enhanced error handling
             $other_feetype = array();
             if (file_exists(APPPATH . 'models/Feetypeadding_model.php')) {
-                $this->load->model('feetypeadding_model');
-                $other_feetype = $this->feetypeadding_model->get();
+                try {
+                    $this->load->model('feetypeadding_model');
+                    $other_feetype = $this->feetypeadding_model->get();
+                    if (!is_array($other_feetype)) {
+                        $other_feetype = array();
+                    }
+                } catch (Exception $e) {
+                    // If other fee types can't be loaded, continue with empty array
+                    $other_feetype = array();
+                }
             }
 
-            // Combine both fee types
+            // Combine both fee types safely
             $combined_feetype = array_merge($feetype, $other_feetype);
 
             $data['feetypeList'] = $combined_feetype;
@@ -1021,65 +1102,170 @@ class Financereports extends Admin_Controller
             $this->session->set_userdata('subsub_menu', 'Reports/finance/fee_collection_report_columnwise');
             $subtotal = false;
 
-            if (isset($_POST['search_type']) && $_POST['search_type'] != '') {
-                $dates               = $this->customlib->get_betweendate($_POST['search_type']);
-                $data['search_type'] = $_POST['search_type'];
+            // Handle search_type
+            $search_type = $this->input->post('search_type');
+            if (!empty($search_type)) {
+                $dates               = $this->customlib->get_betweendate($search_type);
+                $data['search_type'] = $search_type;
             } else {
                 $dates               = $this->customlib->get_betweendate('this_year');
                 $data['search_type'] = '';
             }
 
-            if (isset($_POST['collect_by']) && $_POST['collect_by'] != '') {
-                $data['received_by'] = $received_by = $_POST['collect_by'];
+            // Handle collect_by (array input) - SIMPLIFIED
+            $collect_by_input = $this->input->post('collect_by');
+            if (!empty($collect_by_input) && is_array($collect_by_input) && count(array_filter($collect_by_input)) > 0) {
+                // Use only the first value to avoid array issues
+                $filtered = array_filter($collect_by_input);
+                $data['received_by'] = $received_by = reset($filtered); // Get first value only
             } else {
                 $data['received_by'] = $received_by = '';
             }
 
-            if (isset($_POST['feetype_id']) && $_POST['feetype_id'] != '') {
-                $feetype_id = $_POST['feetype_id'];
+            // Handle feetype_id (array input) - SIMPLIFIED
+            $feetype_input = $this->input->post('feetype_id');
+            if (!empty($feetype_input) && is_array($feetype_input) && count(array_filter($feetype_input)) > 0) {
+                // Use only the first value to avoid array issues
+                $filtered = array_filter($feetype_input);
+                $feetype_id = reset($filtered); // Get first value only
             } else {
                 $feetype_id = "";
             }
 
-            if (isset($_POST['group']) && $_POST['group'] != '') {
-                $data['group_byid'] = $group = $_POST['group'];
+            // Handle group
+            $group_input = $this->input->post('group');
+            if (!empty($group_input)) {
+                $data['group_byid'] = $group = $group_input;
                 $subtotal           = true;
             } else {
                 $data['group_byid'] = $group = '';
             }
 
+            $this->console_log('CONTROLLER: Processing date range', $dates);
             $collect_by = array();
             $collection = array();
             $start_date = date('Y-m-d', strtotime($dates['from_date']));
             $end_date   = date('Y-m-d', strtotime($dates['to_date']));
+            $this->console_log('CONTROLLER: Date range processed', array('start_date' => $start_date, 'end_date' => $end_date));
 
+            $this->console_log('CONTROLLER: Processing form arrays');
+
+            // Handle class_id array input properly
+            $class_input = $this->input->post('class_id');
+            $this->console_log('CONTROLLER: Raw class_input', array('value' => $class_input, 'type' => gettype($class_input), 'is_array' => is_array($class_input)));
+            
+            if (!empty($class_input) && is_array($class_input) && count(array_filter($class_input)) > 0) {
+                $class_id = array_filter($class_input); // Keep as array for filtering
+                $data['selected_class'] = $class_id;
+                $this->console_log('CONTROLLER: class_id processed as array', $class_id);
+            } else {
+                $class_id = null; // null means show all classes
+                $data['selected_class'] = '';
+                $this->console_log('CONTROLLER: class_id set to null (show all)');
+            }
+
+            // Handle section_id array input properly  
+            $section_input = $this->input->post('section_id');
+            $this->console_log('CONTROLLER: Raw section_input', array('value' => $section_input, 'type' => gettype($section_input), 'is_array' => is_array($section_input)));
+            
+            if (!empty($section_input) && is_array($section_input) && count(array_filter($section_input)) > 0) {
+                $section_id = array_filter($section_input); // Keep as array for filtering
+                $data['selected_section'] = $section_id;
+                $this->console_log('CONTROLLER: section_id processed as array', $section_id);
+            } else {
+                $section_id = null; // null means show all sections
+                $data['selected_section'] = '';
+                $this->console_log('CONTROLLER: section_id set to null (show all)');
+            }
+
+            $this->console_log('CONTROLLER: Setting form validation rules');
             $this->form_validation->set_rules('search_type', $this->lang->line('search_duration'), 'trim|required|xss_clean');
 
-            $data['classlist']        = $this->class_model->get();
-            $data['selected_section'] = '';
+            $data['classlist'] = $this->class_model->get();
 
-            if ($this->form_validation->run() == false) {
+            // Debug POST data
+            $this->safe_log('debug', 'POST data received: ' . print_r($_POST, true));
+            
+            // Debug converted values
+            $this->safe_log('debug', 'Converted values - class_id: ' . (is_array($class_id) ? json_encode($class_id) : ($class_id ?? 'null')) . ', section_id: ' . (is_array($section_id) ? json_encode($section_id) : ($section_id ?? 'null')));
+
+            $this->console_log('CONTROLLER: Running form validation');
+            // Enhanced form validation with error handling
+            try {
+                $form_valid = $this->form_validation->run();
+                $this->safe_log('debug', 'Form validation result: ' . ($form_valid ? 'PASSED' : 'FAILED'));
+                $this->console_log('CONTROLLER: Form validation result', $form_valid ? 'PASSED' : 'FAILED');
+            } catch (Exception $validation_error) {
+                $this->safe_log('error', 'Form validation error: ' . $validation_error->getMessage());
+                $this->console_log('CONTROLLER: Form validation error', $validation_error->getMessage());
+                $form_valid = false;
+            }
+
+            if ($form_valid == false) {
+                $this->console_log('CONTROLLER: Form validation failed, returning empty results');
                 $data['results'] = array();
                 $data['fee_types'] = array();
+                $this->safe_log('debug', 'Form validation failed: ' . validation_errors());
             } else {
+                $this->console_log('CONTROLLER: Form validation passed, processing request');
+                
+                // Handle session_id array input properly  
+                $session_input = $this->input->post('sch_session_id');
+                $this->console_log('CONTROLLER: Raw session_input', array('value' => $session_input, 'type' => gettype($session_input)));
+                
+                if (!empty($session_input) && is_array($session_input) && count(array_filter($session_input)) > 0) {
+                    $session_id = array_filter($session_input); // Keep as array for filtering
+                    $this->console_log('CONTROLLER: session_id processed as array', $session_id);
+                } else {
+                    $session_id = null; // null means show all sessions
+                    $this->console_log('CONTROLLER: session_id set to null (show all)');
+                }
 
-                $class_id   = $this->input->post('class_id');
-                $section_id = $this->input->post('section_id');
-                $session_id = $this->input->post('sch_session_id');
-
-                $data['selected_section'] = $section_id;
-
-                // Get fee collection data for column-wise display
+                $this->console_log('CONTROLLER: Preparing to call model methods');
+                // Get fee collection data for column-wise display with enhanced error handling
                 try {
-                    log_message('debug', 'Getting column-wise data with params: start_date=' . $start_date . ', end_date=' . $end_date);
-                    $data['results'] = $this->studentfeemaster_model->getFeeCollectionReportColumnwise($start_date, $end_date, $feetype_id, $received_by, $group, $class_id, $section_id, $session_id);
-                    log_message('debug', 'Results count: ' . count($data['results']));
+                    // Validate required parameters
+                    if (empty($start_date) || empty($end_date)) {
+                        throw new Exception('Invalid date range provided');
+                    }
 
+                    $this->console_log('CONTROLLER: Final parameters for model call', array(
+                        'start_date' => $start_date,
+                        'end_date' => $end_date,
+                        'feetype_id' => $feetype_id,
+                        'received_by' => $received_by,
+                        'group' => $group,
+                        'class_id' => $class_id,
+                        'section_id' => $section_id,
+                        'session_id' => $session_id
+                    ));
+
+                    // Log the parameters being passed to the model
+                    $this->safe_log('debug', 'Calling getFeeCollectionReportColumnwise with: start_date=' . $start_date . ', end_date=' . $end_date . ', class_id=' . (is_array($class_id) ? json_encode($class_id) : ($class_id ?? 'null')) . ', section_id=' . (is_array($section_id) ? json_encode($section_id) : ($section_id ?? 'null')) . ', session_id=' . (is_array($session_id) ? json_encode($session_id) : ($session_id ?? 'null')));
+
+                    $this->console_log('CONTROLLER: Calling getFeeCollectionReport (test)');
+                    // Try the main query first to isolate the error
+                    try {
+                        $this->safe_log('debug', 'Testing getFeeCollectionReport call...');
+                        $test_result = $this->studentfeemaster_model->getFeeCollectionReport($start_date, $end_date, $feetype_id, $received_by, $group, $class_id, $section_id, $session_id);
+                        $this->safe_log('debug', 'getFeeCollectionReport succeeded with ' . count($test_result) . ' results');
+                        $this->console_log('CONTROLLER: getFeeCollectionReport test successful', array('result_count' => count($test_result)));
+                    } catch (Exception $test_error) {
+                        $this->safe_log('error', 'getFeeCollectionReport failed: ' . $test_error->getMessage());
+                        $this->console_log('CONTROLLER: getFeeCollectionReport test failed', $test_error->getMessage());
+                        throw $test_error;
+                    }
+
+                    $this->console_log('CONTROLLER: Calling getFeeCollectionReportColumnwise');
+                    $data['results'] = $this->studentfeemaster_model->getFeeCollectionReportColumnwise($start_date, $end_date, $feetype_id, $received_by, $group, $class_id, $section_id, $session_id);
+                    $this->console_log('CONTROLLER: getFeeCollectionReportColumnwise completed', array('result_count' => count($data['results'])));
+
+                    $this->console_log('CONTROLLER: Calling getFeeTypesForColumnwise');
                     // Get all fee types for column headers
                     $data['fee_types'] = $this->studentfeemaster_model->getFeeTypesForColumnwise($start_date, $end_date, $feetype_id, $class_id, $section_id, $session_id);
-                    log_message('debug', 'Fee types count: ' . count($data['fee_types']));
+                    $this->console_log('CONTROLLER: getFeeTypesForColumnwise completed', array('fee_types_count' => count($data['fee_types'])));
 
-                    // Ensure we have arrays
+                    // Ensure we have valid arrays
                     if (!is_array($data['results'])) {
                         $data['results'] = array();
                     }
@@ -1087,8 +1273,16 @@ class Financereports extends Admin_Controller
                         $data['fee_types'] = array();
                     }
 
+                    // Validate data structure
+                    foreach ($data['results'] as $index => $result) {
+                        if (!is_array($result)) {
+                            unset($data['results'][$index]);
+                        }
+                    }
+                    $data['results'] = array_values($data['results']); // Re-index
+
                 } catch (Exception $e) {
-                    log_message('error', 'Column-wise report error: ' . $e->getMessage());
+                    $this->safe_log('error', 'Fee collection report error: ' . $e->getMessage());
                     $data['results'] = array();
                     $data['fee_types'] = array();
                     $data['error_message'] = 'An error occurred while generating the report. Please try again.';
@@ -1097,17 +1291,42 @@ class Financereports extends Admin_Controller
             $data['subtotal']    = $subtotal;
 
             $data['sch_setting'] = $this->sch_setting_detail;
+            
+            $this->console_log('CONTROLLER: Preparing to load views');
+            $this->console_log('CONTROLLER: Data summary', array(
+                'results_count' => count($data['results']),
+                'fee_types_count' => count($data['fee_types']),
+                'has_error' => isset($data['error_message']) ? $data['error_message'] : 'none'
+            ));
+            
             $this->load->view('layout/header', $data);
+            $this->console_log('CONTROLLER: Header view loaded');
+            
             $this->load->view('financereports/fee_collection_report_columnwise', $data);
+            $this->console_log('CONTROLLER: Main view loaded');
+            
             $this->load->view('layout/footer', $data);
+            $this->console_log('CONTROLLER: Footer view loaded');
+            $this->console_log('=== CONTROLLER: Method completed successfully ===');
         } catch (Exception $e) {
-            log_message('error', 'Fee Collection Report Columnwise Error: ' . $e->getMessage());
-            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+            // Log the error safely
+            $this->safe_log('error', 'Fee collection report main error: ' . $e->getMessage());
 
             // Set default data to prevent view errors
-            $data['results'] = array();
-            $data['fee_types'] = array();
-            $data['error_message'] = 'An error occurred while loading the report: ' . $e->getMessage();
+            $data = array(
+                'results' => array(),
+                'fee_types' => array(),
+                'error_message' => 'An error occurred while loading the report. Please try again.',
+                'sch_setting' => $this->sch_setting_detail,
+                'classlist' => array(),
+                'sessionlist' => array(),
+                'feetypeList' => array(),
+                'searchlist' => array(),
+                'group_by' => array(),
+                'collect_by' => array(),
+                'subtotal' => false,
+                'selected_section' => ''
+            );
 
             $this->load->view('layout/header', $data);
             $this->load->view('financereports/fee_collection_report_columnwise', $data);
@@ -1117,10 +1336,6 @@ class Financereports extends Admin_Controller
 
     public function export_fee_collection_columnwise()
     {
-        log_message('debug', 'Export method called - POST data: ' . print_r($_POST, true));
-
-
-
         try {
             // Get form data - same as main report method
             $search_type = $this->input->post('search_type');
@@ -1163,7 +1378,6 @@ class Financereports extends Admin_Controller
             // Handle session_id - use current session if not provided
             if (empty($session_id)) {
                 $session_id = $this->setting_model->getCurrentSession();
-                log_message('debug', 'Export: Using current session_id = ' . $session_id);
             }
 
             // Validate export format
@@ -1172,46 +1386,9 @@ class Financereports extends Admin_Controller
                 return;
             }
 
-            // Debug: Log export parameters
-            log_message('debug', 'Export Parameters: start_date=' . $start_date . ', end_date=' . $end_date . ', format=' . $export_format);
-
             // Get the same data as the main report
             $data['results'] = $this->studentfeemaster_model->getFeeCollectionReportColumnwise($start_date, $end_date, $feetype_id, $received_by, $group, $class_id, $section_id, $session_id);
             $data['fee_types'] = $this->studentfeemaster_model->getFeeTypesForColumnwise($start_date, $end_date, $feetype_id, $class_id, $section_id, $session_id);
-
-            // Debug: Log data counts
-            log_message('debug', 'Export Data: results_count=' . count($data['results']) . ', fee_types_count=' . count($data['fee_types']));
-
-            // Debug: Check if results are empty and log sample data
-            if (empty($data['results'])) {
-                log_message('error', 'Export Error: No results found for the given parameters');
-                log_message('debug', 'Export Debug: Parameters used - start_date=' . $start_date . ', end_date=' . $end_date . ', session_id=' . $session_id . ', class_id=' . $class_id . ', section_id=' . $section_id);
-
-                // Try to get data with broader parameters to see if there's any data at all
-                log_message('debug', 'Export Debug: Trying broader search...');
-                $test_results = $this->studentfeemaster_model->getFeeCollectionReportColumnwise($start_date, $end_date, null, null, null, null, null, $session_id);
-                log_message('debug', 'Export Debug: Broader search found ' . count($test_results) . ' results');
-            } else {
-                // Log detailed data structure for debugging
-                log_message('debug', 'Export Debug: Fee types count: ' . count($data['fee_types']));
-                log_message('debug', 'Export Debug: Fee types list: ' . json_encode(array_column($data['fee_types'], 'type')));
-
-                // Log sample student data to see available fee types
-                $sample_student = array_values($data['results'])[0];
-                if (isset($sample_student['fee_types'])) {
-                    log_message('debug', 'Export Debug: Sample student fee types: ' . json_encode(array_keys($sample_student['fee_types'])));
-
-                    // Log detailed structure of first student's fee data
-                    $first_fee_type = array_keys($sample_student['fee_types'])[0];
-                    $fee_structure = $sample_student['fee_types'][$first_fee_type];
-                    log_message('debug', 'Export Debug: Sample fee structure for ' . $first_fee_type . ': ' . json_encode($fee_structure));
-                } else {
-                    log_message('debug', 'Export Debug: No fee_types found in student data');
-                }
-
-                // Log complete structure of first student for debugging
-                log_message('debug', 'Export Debug: First student complete structure: ' . json_encode($sample_student));
-            }
 
             // Get school settings
             $data['sch_setting'] = $this->sch_setting_detail;
@@ -1239,7 +1416,6 @@ class Financereports extends Admin_Controller
             }
 
         } catch (Exception $e) {
-            log_message('error', 'Export Fee Collection Columnwise Error: ' . $e->getMessage());
             show_error('An error occurred while exporting the report: ' . $e->getMessage());
         }
     }
@@ -1249,24 +1425,19 @@ class Financereports extends Admin_Controller
      */
     private function validate_export_data($data)
     {
-        log_message('debug', 'Validating export data structure...');
-
         // Ensure results is an array
         if (!isset($data['results']) || !is_array($data['results'])) {
-            log_message('debug', 'Results not found or not array, setting to empty array');
             $data['results'] = array();
         }
 
         // Ensure fee_types is an array
         if (!isset($data['fee_types']) || !is_array($data['fee_types'])) {
-            log_message('debug', 'Fee types not found or not array, setting to empty array');
             $data['fee_types'] = array();
         }
 
         // Validate each student record
         foreach ($data['results'] as $index => $student) {
             if (!is_array($student)) {
-                log_message('debug', 'Student record ' . $index . ' is not an array, skipping');
                 unset($data['results'][$index]);
                 continue;
             }
@@ -1287,8 +1458,6 @@ class Financereports extends Admin_Controller
 
         // Re-index results array to remove gaps
         $data['results'] = array_values($data['results']);
-
-        log_message('debug', 'Data validation complete. Results: ' . count($data['results']) . ', Fee types: ' . count($data['fee_types']));
 
         return $data;
     }
@@ -1327,8 +1496,7 @@ class Financereports extends Admin_Controller
         // Use Rs. instead of currency symbol to avoid encoding issues
         $currency_symbol = 'Rs.';
 
-        // Log data structure for debugging
-        log_message('debug', 'CSV Export: Building content with ' . count($data['results']) . ' students and ' . count($data['fee_types']) . ' fee types');
+
 
         // Title row
         fputcsv($output, array('Fee Collection Report Column Wise'));
@@ -1346,8 +1514,7 @@ class Financereports extends Admin_Controller
         // Mirror the frontend logic: foreach ($fee_types as $fee_type)
         $fee_types = isset($data['fee_types']) ? $data['fee_types'] : array();
 
-        // Log fee types being used for headers
-        log_message('debug', 'CSV Export: Fee types for headers: ' . json_encode(array_column($fee_types, 'type')));
+
 
         foreach ($fee_types as $fee_type) {
             $headers[] = $fee_type['type'];
@@ -1355,12 +1522,11 @@ class Financereports extends Admin_Controller
         $headers[] = 'Grand Total';
         fputcsv($output, $headers);
 
-        // Log headers being written
-        log_message('debug', 'CSV Export: Headers written: ' . json_encode($headers));
+
 
         // Data rows - Use EXACT same logic as frontend view
         $results = isset($data['results']) ? $data['results'] : array();
-        log_message('debug', 'CSV Export: Processing ' . count($results) . ' student records');
+
 
         if (isset($results) && is_array($results)) {
             $row_count = 0;
@@ -1381,13 +1547,7 @@ class Financereports extends Admin_Controller
                 $row_data[] = isset($student['class']) ? $student['class'] : '';
                 $row_data[] = isset($student['section']) ? $student['section'] : '';
 
-                // Log first few students for debugging
-                if ($row_count <= 3) {
-                    log_message('debug', 'CSV Export: Student ' . $row_count . ' basic info: ' . json_encode(array_slice($row_data, 0, 4)));
-                    if (isset($student['fee_types'])) {
-                        log_message('debug', 'CSV Export: Student ' . $row_count . ' fee types available: ' . json_encode(array_keys($student['fee_types'])));
-                    }
-                }
+
 
                 // Mirror frontend logic: foreach ($fee_types as $fee_type)
                 foreach ($fee_types as $fee_type) {
@@ -1399,10 +1559,7 @@ class Financereports extends Admin_Controller
                         'payments' => array()
                     );
 
-                    // Log fee data for first few students and fee types
-                    if ($row_count <= 2) {
-                        log_message('debug', 'CSV Export: Student ' . $row_count . ', Fee Type "' . $fee_type_name . '": ' . json_encode($fee_data));
-                    }
+
 
                     // Handle old format (just amount) vs new format (detailed data) - EXACT same logic as frontend
                     if (is_numeric($fee_data)) {
@@ -1451,26 +1608,17 @@ class Financereports extends Admin_Controller
                     $row_data[] = $payment_details;
                     $student_total += $paid_amount;
 
-                    // Log payment details for first few records
-                    if ($row_count <= 2) {
-                        log_message('debug', 'CSV Export: Student ' . $row_count . ', Fee "' . $fee_type_name . '" payment details: ' . $payment_details);
-                    }
+
                 }
 
                 // Grand total for student
                 $row_data[] = $currency_symbol . ' ' . number_format($student_total, 0);
 
-                // Log complete row for first few students
-                if ($row_count <= 2) {
-                    log_message('debug', 'CSV Export: Student ' . $row_count . ' complete row (' . count($row_data) . ' columns): ' . json_encode($row_data));
-                }
+
 
                 fputcsv($output, $row_data);
             }
 
-            log_message('debug', 'CSV Export: Processed ' . $row_count . ' student rows');
-        } else {
-            log_message('debug', 'CSV Export: No results array found or results is not an array');
         }
 
         // Add grand totals
@@ -1560,7 +1708,7 @@ class Financereports extends Admin_Controller
         fputcsv($output, array('Total Fee Types: ' . count($fee_types)));
         fputcsv($output, array('Export Date: ' . date('Y-m-d H:i:s')));
 
-        log_message('debug', 'CSV Export: Content building complete');
+
     }
 
 
@@ -2607,7 +2755,6 @@ class Financereports extends Admin_Controller
 
 
 
-
     public function yearreportduefees()
     {
         if (!$this->rbac->hasPrivilege('balance_fees_statement', 'can_view')) {
@@ -2848,145 +2995,6 @@ class Financereports extends Admin_Controller
     }
 
 
-    // public function typewisebalancereport()
-    // {
-    //     // if (!$this->rbac->hasPrivilege('balance_fees_statement', 'can_view')) {
-    //     //     access_denied();
-    //     // }
-
-    //     $session_result           = $this->session_model->get();
-    //     $data['sessionlist']      = $session_result;
-    //     $class               = $this->class_model->get();
-    //     $data['classlist']   = $class;
-    //     $feetype             = $this->feetype_model->get();
-    //     $data['feetypeList'] = $feetype;
-
-
-    //     $this->session->set_userdata('top_menu', 'Reports');
-    //     $this->session->set_userdata('sub_menu', 'Reports/finance');
-    //     $this->session->set_userdata('subsub_menu', 'Reports/finance/typewisebalacereport');
-
-
-    //     $this->form_validation->set_rules('sch_session_id', $this->lang->line('sch_session_id'), 'trim|required|xss_clean');
-    //     $this->form_validation->set_rules('class_id', $this->lang->line('class_id'), 'trim|required|xss_clean');
-    //     $this->form_validation->set_rules('section_id', $this->lang->line('section_id'), 'trim|required|xss_clean');
-    //     $this->form_validation->set_rules('feetype_id', $this->lang->line('feetype_id'), 'trim|required|xss_clean');
-
-
-
-    //     if ($this->form_validation->run() == false) {
-
-    //     } else {
-
-    //         $session_id = $this->input->post('sch_session_id');
-    //         $class_id = $this->input->post('class_id');
-    //         $section_id = $this->input->post('section_id');
-    //         $type_id = $this->input->post('feetype_id');
-
-    //         $data['results']=$this->studentfeemaster_model->gettypewisereportt($session_id,$type_id,$class_id,$section_id);
-    //     }
-    //     $data['sch_setting'] = $this->sch_setting_detail;
-    //     $this->load->view('layout/header', $data);
-    //     $this->load->view('financereports/typewisereport', $data);
-    //     $this->load->view('layout/footer', $data);
-    // }
-
-
-
-    // public function typewisebalancereport()
-    // {
-    //     // if (!$this->rbac->hasPrivilege('balance_fees_statement', 'can_view')) {
-    //     //     access_denied();
-    //     // }
-
-    //     $session_result           = $this->session_model->get();
-    //     $data['sessionlist']      = $session_result;
-    //     $class               = $this->class_model->get();
-    //     $data['classlist']   = $class;
-
-    //     $feegroup             = $this->feegroup_model->get();
-    //     $data['feegroupList'] = $feegroup;
-
-    //     $feetype             = $this->feetype_model->get();
-    //     $data['feetypeList'] = $feetype;
-
-
-    //     $this->session->set_userdata('top_menu', 'Reports');
-    //     $this->session->set_userdata('sub_menu', 'Reports/finance');
-    //     $this->session->set_userdata('subsub_menu', 'Reports/finance/typewisebalacereport');
-
-
-    //     $this->form_validation->set_rules('sch_session_id', $this->lang->line('sch_session_id'), 'trim|required|xss_clean');
-    //     // $this->form_validation->set_rules('class_id', $this->lang->line('class_id'), 'trim|required|xss_clean');
-    //     // $this->form_validation->set_rules('section_id', $this->lang->line('section_id'), 'trim|required|xss_clean');
-    //     $this->form_validation->set_rules('feetype_id', $this->lang->line('feetype_id'), 'trim|required|xss_clean');
-
-
-
-    //     if ($this->form_validation->run() == false) {
-
-    //     } else {
-
-    //         $session_id = $this->input->post('sch_session_id');
-    //         $class_id = $this->input->post('class_id');
-    //         $section_id = $this->input->post('section_id');
-    //         $group_id = $this->input->post('feegroup_id');
-    //         $type_id = $this->input->post('feetype_id');
-
-    //         $data['results']=$this->studentfeemaster_model->gettypewisereportt($session_id,$type_id,$group_id,$class_id,$section_id);
-    //     }
-    //     $data['sch_setting'] = $this->sch_setting_detail;
-    //     $this->load->view('layout/header', $data);
-    //     $this->load->view('financereports/typewisereport', $data);
-    //     $this->load->view('layout/footer', $data);
-    // }
-
-    //     public function typewisebalancereport()
-    // {
-    //     // Load data for dropdowns
-    //     $session_result = $this->session_model->get();
-    //     $data['sessionlist'] = $session_result;
-    //     $class = $this->class_model->get();
-    //     $data['classlist'] = $class;
-
-    //     $feegroup = $this->feegroup_model->get();
-    //     $data['feegroupList'] = $feegroup;
-
-    //     $feetype = $this->feetype_model->get();
-    //     $data['feetypeList'] = $feetype;
-
-    //     $this->session->set_userdata('top_menu', 'Reports');
-    //     $this->session->set_userdata('sub_menu', 'Reports/finance');
-    //     $this->session->set_userdata('subsub_menu', 'Reports/finance/typewisebalacereport');
-
-    //     // Define validation rules
-    //     $this->form_validation->set_rules('sch_session_id', 'Session', 'trim|required|xss_clean');
-    //     $this->form_validation->set_rules('feetype_ids[]', 'Fee Type', 'trim|required|xss_clean');
-
-    //     if ($this->form_validation->run() == false) {
-    //         // Handle validation errors if necessary
-    //         $this->load->view('layout/header', $data);
-    //         $this->load->view('financereports/typewisereport', $data);
-    //         $this->load->view('layout/footer', $data);
-    //     } else {
-    //         // Retrieve form inputs
-    //         $session_id = $this->input->post('sch_session_id');
-    //         $class_id = $this->input->post('class_id');
-    //         $section_id = $this->input->post('section_id');
-    //         $group_ids = $this->input->post('feegroup_ids'); // Retrieve array of selected fee group IDs
-    //         $feetype_ids = $this->input->post('feetype_ids'); // Retrieve array of selected fee type IDs
-
-    //         // Process the selected fee type IDs
-    //         $data['results'] = $this->studentfeemaster_model->gettypewisereportt($session_id, $feetype_ids, $group_ids, $class_id, $section_id);
-
-    //         // Load the view with results
-    //         $this->load->view('layout/header', $data);
-    //         $this->load->view('financereports/typewisereport', $data);
-    //         $this->load->view('layout/footer', $data);
-    //     }
-    // }
-
-
-
 
 }
+

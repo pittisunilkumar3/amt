@@ -3,6 +3,269 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
 ?>
 
 <style>
+/* CSS Fix for Student Fee Search Page - Prevents styling loss during validation */
+
+/* Ensure core layout elements maintain styling */
+.content-wrapper {
+    min-height: 100% !important;
+    background-color: #ecf0f5 !important;
+    z-index: 800 !important;
+}
+
+.content-header {
+    padding: 15px !important;
+    margin: 0 0 0 0 !important;
+}
+
+.content {
+    min-height: 250px !important;
+    padding: 0 15px !important;
+}
+
+/* Fix for box styling during validation errors */
+.box {
+    position: relative !important;
+    border-radius: 3px !important;
+    background: #ffffff !important;
+    border-top: 3px solid #d2d6de !important;
+    margin-bottom: 20px !important;
+    width: 100% !important;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.1) !important;
+}
+
+.box.box-primary {
+    border-top-color: #3c8dbc !important;
+}
+
+.box-header {
+    color: #444 !important;
+    display: block !important;
+    padding: 10px !important;
+    position: relative !important;
+}
+
+.box-header.with-border {
+    border-bottom: 1px solid #f4f4f4 !important;
+}
+
+.box-body {
+    border-top-left-radius: 0 !important;
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 3px !important;
+    border-bottom-left-radius: 3px !important;
+    padding: 10px !important;
+}
+
+/* Ensure form elements maintain styling during validation */
+.form-control {
+    display: block !important;
+    width: 100% !important;
+    padding: 6px 12px !important;
+    font-size: 14px !important;
+    line-height: 1.42857143 !important;
+    color: #555 !important;
+    background-color: #fff !important;
+    background-image: none !important;
+    border: 1px solid #ccc !important;
+    border-radius: 4px !important;
+    box-shadow: inset 0 1px 1px rgba(0,0,0,.075) !important;
+    transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s !important;
+}
+
+.form-control:focus {
+    border-color: #66afe9 !important;
+    outline: 0 !important;
+    box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6) !important;
+}
+
+/* Fix for error state styling */
+.form-control.error,
+.has-error .form-control {
+    border-color: #a94442 !important;
+    box-shadow: inset 0 1px 1px rgba(0,0,0,.075) !important;
+}
+
+.form-control.error:focus,
+.has-error .form-control:focus {
+    border-color: #843534 !important;
+    box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 6px #ce8483 !important;
+}
+
+/* Fix for validation error messages */
+.text-danger {
+    color: #a94442 !important;
+    font-size: 12px !important;
+    margin-top: 5px !important;
+    display: block !important;
+}
+
+/* Ensure buttons maintain styling */
+.btn {
+    display: inline-block !important;
+    padding: 6px 12px !important;
+    margin-bottom: 0 !important;
+    font-size: 14px !important;
+    font-weight: normal !important;
+    line-height: 1.42857143 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+    cursor: pointer !important;
+    border: 1px solid transparent !important;
+    border-radius: 4px !important;
+    text-decoration: none !important;
+}
+
+.btn-primary {
+    color: #fff !important;
+    background-color: #337ab7 !important;
+    border-color: #2e6da4 !important;
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+    color: #fff !important;
+    background-color: #286090 !important;
+    border-color: #204d74 !important;
+}
+
+/* Fix for row and column layout */
+.row {
+    margin-right: -15px !important;
+    margin-left: -15px !important;
+}
+
+.col-md-12,
+.col-md-6,
+.col-sm-6,
+.col-sm-12 {
+    position: relative !important;
+    min-height: 1px !important;
+    padding-right: 15px !important;
+    padding-left: 15px !important;
+}
+
+/* Responsive fixes */
+@media (min-width: 768px) {
+    .col-sm-6 {
+        width: 50% !important;
+        float: left !important;
+    }
+    .col-sm-12 {
+        width: 100% !important;
+        float: left !important;
+    }
+}
+
+@media (min-width: 992px) {
+    .col-md-6 {
+        width: 50% !important;
+        float: left !important;
+    }
+    .col-md-12 {
+        width: 100% !important;
+        float: left !important;
+    }
+}
+
+/* Fix for form group spacing */
+.form-group {
+    margin-bottom: 15px !important;
+}
+
+.form-group label {
+    display: inline-block !important;
+    max-width: 100% !important;
+    margin-bottom: 5px !important;
+    font-weight: bold !important;
+}
+
+/* Ensure icons are displayed properly */
+.fa {
+    display: inline-block !important;
+    font: normal normal normal 14px/1 FontAwesome !important;
+    font-size: inherit !important;
+    text-rendering: auto !important;
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
+}
+
+/* Fix for DataTable styling */
+.table {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-bottom: 20px !important;
+    background-color: transparent !important;
+}
+
+.table > thead > tr > th,
+.table > tbody > tr > th,
+.table > tfoot > tr > th,
+.table > thead > tr > td,
+.table > tbody > tr > td,
+.table > tfoot > tr > td {
+    padding: 8px !important;
+    line-height: 1.42857143 !important;
+    vertical-align: top !important;
+    border-top: 1px solid #ddd !important;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) {
+    background-color: #f9f9f9 !important;
+}
+
+.table-bordered {
+    border: 1px solid #ddd !important;
+}
+
+.table-bordered > thead > tr > th,
+.table-bordered > tbody > tr > th,
+.table-bordered > tfoot > tr > th,
+.table-bordered > thead > tr > td,
+.table-bordered > tbody > tr > td,
+.table-bordered > tfoot > tr > td {
+    border: 1px solid #ddd !important;
+}
+
+/* Fix for alert messages */
+.alert {
+    padding: 15px !important;
+    margin-bottom: 20px !important;
+    border: 1px solid transparent !important;
+    border-radius: 4px !important;
+}
+
+.alert-success {
+    color: #3c763d !important;
+    background-color: #dff0d8 !important;
+    border-color: #d6e9c6 !important;
+}
+
+.alert-danger {
+    color: #a94442 !important;
+    background-color: #f2dede !important;
+    border-color: #ebccd1 !important;
+}
+
+/* Clearfix for proper layout */
+.clearfix:before,
+.clearfix:after {
+    content: " " !important;
+    display: table !important;
+}
+
+.clearfix:after {
+    clear: both !important;
+}
+
+/* Fix for pull-right alignment */
+.pull-right {
+    float: right !important;
+}
+
+.pull-left {
+    float: left !important;
+}
 /* Multi-select dropdown enhancements */
 .SumoSelect {
     width: 100% !important;
@@ -343,11 +606,28 @@ $(document).ready(function() {
         console.log('Document ready, jQuery version:', $.fn.jquery);
         console.log('Found multiselect dropdowns:', $('.multiselect-dropdown').length);
 
+        // Debug: Comprehensive page initialization check
+        console.log('🚀 STUDENT FEE SEARCH PAGE INITIALIZATION');
+        console.log('Current URL:', window.location.href);
+        console.log('Page Title:', document.title);
+        console.log('Form Action:', $('.class_search_form').attr('action'));
+
+        // Ensure we're on the correct page
+        if (window.location.href.indexOf('studentfee') === -1) {
+            console.error('🚫 WARNING: Not on studentfee page! Current URL:', window.location.href);
+            alert('Page navigation error detected. You will be redirected to the correct page.');
+            window.location.href = '<?php echo base_url(); ?>studentfee';
+            return;
+        }
+
         // Check if SumoSelect is available
         if (typeof $.fn.SumoSelect === 'undefined') {
             console.error('SumoSelect plugin not loaded!');
             return;
         }
+
+        // Prevent any unwanted form submissions during dropdown changes
+        window.preventFormSubmission = false;
 
         // Initialize SumoSelect for all multi-select dropdowns
         $('.multiselect-dropdown').SumoSelect({
@@ -374,6 +654,18 @@ $(document).ready(function() {
 
         // Handle class dropdown changes for section population
         $(document).on('change', '#class_id', function (e) {
+            // Prevent any form submission or page navigation
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Set flag to prevent form submission
+            window.preventFormSubmission = true;
+
+            console.log('🔍 Class dropdown changed - preventing any redirects');
+            console.log('Selected class IDs:', $(this).val());
+            console.log('Current URL:', window.location.href);
+            console.log('Form submission prevented:', window.preventFormSubmission);
+
             var sectionDropdown = $('#section_id')[0];
             if (sectionDropdown && sectionDropdown.sumo) {
                 sectionDropdown.sumo.removeAll();
@@ -423,6 +715,12 @@ $(document).ready(function() {
                         // Refresh the dropdown to ensure proper display
                         sectionDropdown.sumo.reload();
                     }
+
+                    // Reset form submission flag after dropdown population is complete
+                    setTimeout(function() {
+                        window.preventFormSubmission = false;
+                        console.log('✅ Form submission re-enabled after section population');
+                    }, 500);
                 });
             }
         });
@@ -438,40 +736,139 @@ $(document).ready(function() {
 
 $(document).on('submit','.class_search_form',function(e){
     e.preventDefault(); // avoid to execute the actual submit of the form.
-        var $this = $("button[type=submit][clicked=true]");
-    var form = $(this);
-    var url = form.attr('action');
-    var form_data = form.serializeArray();
-    form_data.push({name: 'search_type', value: $this.attr('value')});
-    $.ajax({
-           url: url,
-           type: "POST",
-           dataType:'JSON',
-           data: form_data, // serializes the form's elements.
-              beforeSend: function () {
-                $('[id^=error]').html("");
-                $this.button('loading');
-                resetFields($this.attr('name'));
-               },
-              success: function(response) { // your success handler
-                if(!response.status){
-                    $.each(response.error, function(key, value) {
-                    $('#error_' + key).html(value);
-                });
-                }else{
-                    initDatatable('student-list','studentfee/ajaxSearch',response.params,[],100);
-                }
-              },
-             error: function(xhr, status, error) { // your error handler
-                 console.error('AJAX Error:', status, error);
-                 showErrorMessage('Network error occurred. Please check your connection and try again.');
-                 $this.button('reset');
-             },
-             complete: function() {
-             $this.button('reset');
-             }
-         });
 
+    // Check if form submission should be prevented (during dropdown changes)
+    if (window.preventFormSubmission) {
+        console.log('🚫 Form submission blocked - dropdown change in progress');
+        setTimeout(function() {
+            window.preventFormSubmission = false;
+        }, 1000);
+        return false;
+    }
+
+    try {
+        var $this = $("button[type=submit][clicked=true]");
+        var form = $(this);
+        var url = form.attr('action');
+        var form_data = form.serializeArray();
+        form_data.push({name: 'search_type', value: $this.attr('value')});
+
+        console.log('📝 Form submission started');
+        console.log('Form URL:', url);
+        console.log('Current page URL:', window.location.href);
+
+        // Enhanced validation before AJAX call
+        if (!url) {
+            console.error('Form action URL is missing');
+            showErrorMessage('Form configuration error. Please refresh the page and try again.');
+            return false;
+        }
+
+        $.ajax({
+               url: url,
+               type: "POST",
+               dataType:'JSON',
+               data: form_data, // serializes the form's elements.
+               timeout: 30000, // 30 second timeout
+                  beforeSend: function () {
+                    // Clear previous errors with enhanced error handling
+                    try {
+                        $('[id^=error]').html("");
+                        $this.button('loading');
+                        resetFields($this.attr('name'));
+
+                        // Ensure form styling is preserved
+                        $('.form-control').removeClass('error');
+                        $('.has-error').removeClass('has-error');
+
+                    } catch (beforeSendError) {
+                        console.error('Error in beforeSend:', beforeSendError);
+                    }
+                   },
+                  success: function(response) { // your success handler
+                    try {
+                        if(!response.status){
+                            // Handle validation errors while preserving CSS
+                            $.each(response.error, function(key, value) {
+                                var errorElement = $('#error_' + key);
+                                if (errorElement.length) {
+                                    errorElement.html(value);
+                                    // Add error class to form control
+                                    var formControl = $('#' + key);
+                                    if (formControl.length) {
+                                        formControl.addClass('error');
+                                        formControl.closest('.form-group').addClass('has-error');
+                                    }
+                                } else {
+                                    console.warn('Error element not found for key:', key);
+                                }
+                            });
+
+                            // Show general error message if no specific errors
+                            if (Object.keys(response.error).length === 0) {
+                                showErrorMessage('Please fill in the required fields and try again.');
+                            }
+                        } else {
+                            // Success - initialize datatable
+                            if (typeof initDatatable === 'function') {
+                                initDatatable('student-list','studentfee/ajaxSearch',response.params,[],100);
+                            } else {
+                                console.error('initDatatable function not found');
+                                showErrorMessage('Table initialization failed. Please refresh the page.');
+                            }
+                        }
+                    } catch (successError) {
+                        console.error('Error in success handler:', successError);
+                        showErrorMessage('An error occurred while processing the response.');
+                    }
+                  },
+                 error: function(xhr, status, error) { // your error handler
+                     console.error('AJAX Error Details:', {
+                         status: status,
+                         error: error,
+                         responseText: xhr.responseText,
+                         statusCode: xhr.status
+                     });
+
+                     var errorMessage = 'Network error occurred. ';
+                     if (status === 'timeout') {
+                         errorMessage += 'Request timed out. Please try again.';
+                     } else if (status === 'parsererror') {
+                         errorMessage += 'Invalid response format.';
+                     } else if (xhr.status === 404) {
+                         errorMessage += 'Search endpoint not found.';
+                     } else if (xhr.status === 500) {
+                         errorMessage += 'Server error occurred.';
+                     } else {
+                         errorMessage += 'Please check your connection and try again.';
+                     }
+
+                     showErrorMessage(errorMessage);
+                     $this.button('reset');
+                 },
+                 complete: function() {
+                     try {
+                         $this.button('reset');
+
+                         // Ensure form styling is preserved after completion
+                         setTimeout(function() {
+                             $('.form-control').each(function() {
+                                 if (!$(this).hasClass('error')) {
+                                     $(this).removeClass('error');
+                                     $(this).closest('.form-group').removeClass('has-error');
+                                 }
+                             });
+                         }, 100);
+
+                     } catch (completeError) {
+                         console.error('Error in complete handler:', completeError);
+                     }
+                 }
+             });
+    } catch (formError) {
+        console.error('Form submission error:', formError);
+        showErrorMessage('Form submission failed. Please refresh the page and try again.');
+    }
 });
 
     });
@@ -493,35 +890,97 @@ $(document).on('submit','.class_search_form',function(e){
         }
     }
 
-    // Helper functions for user feedback
+    // Enhanced helper functions for user feedback with CSS preservation
     function showSuccessMessage(message) {
-        $('.alert').remove(); // Remove any existing alerts
-        var alertHtml = '<div class="alert alert-success alert-dismissible" role="alert">' +
-                       '<button type="button" class="close" data-dismiss="alert" aria-label="Close">' +
-                       '<span aria-hidden="true">&times;</span></button>' +
-                       '<i class="fa fa-check-circle"></i> ' + message +
-                       '</div>';
-        $('.box-body').prepend(alertHtml);
+        try {
+            $('.alert').remove(); // Remove any existing alerts
 
-        // Auto-hide after 5 seconds
-        setTimeout(function() {
-            $('.alert-success').fadeOut();
-        }, 5000);
+            var alertHtml = '<div class="alert alert-success alert-dismissible" role="alert" style="' +
+                           'padding: 15px !important; ' +
+                           'margin-bottom: 20px !important; ' +
+                           'border: 1px solid #d6e9c6 !important; ' +
+                           'border-radius: 4px !important; ' +
+                           'color: #3c763d !important; ' +
+                           'background-color: #dff0d8 !important; ' +
+                           'display: block !important;">' +
+                           '<button type="button" class="close" data-dismiss="alert" aria-label="Close" style="' +
+                           'float: right !important; ' +
+                           'font-size: 21px !important; ' +
+                           'font-weight: bold !important; ' +
+                           'line-height: 1 !important; ' +
+                           'color: #000 !important; ' +
+                           'text-shadow: 0 1px 0 #fff !important; ' +
+                           'opacity: 0.2 !important; ' +
+                           'cursor: pointer !important;">' +
+                           '<span aria-hidden="true">&times;</span></button>' +
+                           '<i class="fa fa-check-circle" style="margin-right: 8px !important;"></i> ' + message +
+                           '</div>';
+
+            var targetContainer = $('.box-body').first();
+            if (targetContainer.length) {
+                targetContainer.prepend(alertHtml);
+            } else {
+                // Fallback to content area
+                $('.content').prepend(alertHtml);
+            }
+
+            // Auto-hide after 5 seconds
+            setTimeout(function() {
+                $('.alert-success').fadeOut(500, function() {
+                    $(this).remove();
+                });
+            }, 5000);
+
+        } catch (error) {
+            console.error('Error showing success message:', error);
+        }
     }
 
     function showErrorMessage(message) {
-        $('.alert').remove(); // Remove any existing alerts
-        var alertHtml = '<div class="alert alert-danger alert-dismissible" role="alert">' +
-                       '<button type="button" class="close" data-dismiss="alert" aria-label="Close">' +
-                       '<span aria-hidden="true">&times;</span></button>' +
-                       '<i class="fa fa-exclamation-triangle"></i> ' + message +
-                       '</div>';
-        $('.box-body').prepend(alertHtml);
+        try {
+            $('.alert').remove(); // Remove any existing alerts
 
-        // Auto-hide after 8 seconds
-        setTimeout(function() {
-            $('.alert-danger').fadeOut();
-        }, 8000);
+            var alertHtml = '<div class="alert alert-danger alert-dismissible" role="alert" style="' +
+                           'padding: 15px !important; ' +
+                           'margin-bottom: 20px !important; ' +
+                           'border: 1px solid #ebccd1 !important; ' +
+                           'border-radius: 4px !important; ' +
+                           'color: #a94442 !important; ' +
+                           'background-color: #f2dede !important; ' +
+                           'display: block !important;">' +
+                           '<button type="button" class="close" data-dismiss="alert" aria-label="Close" style="' +
+                           'float: right !important; ' +
+                           'font-size: 21px !important; ' +
+                           'font-weight: bold !important; ' +
+                           'line-height: 1 !important; ' +
+                           'color: #000 !important; ' +
+                           'text-shadow: 0 1px 0 #fff !important; ' +
+                           'opacity: 0.2 !important; ' +
+                           'cursor: pointer !important;">' +
+                           '<span aria-hidden="true">&times;</span></button>' +
+                           '<i class="fa fa-exclamation-triangle" style="margin-right: 8px !important;"></i> ' + message +
+                           '</div>';
+
+            var targetContainer = $('.box-body').first();
+            if (targetContainer.length) {
+                targetContainer.prepend(alertHtml);
+            } else {
+                // Fallback to content area
+                $('.content').prepend(alertHtml);
+            }
+
+            // Auto-hide after 8 seconds
+            setTimeout(function() {
+                $('.alert-danger').fadeOut(500, function() {
+                    $(this).remove();
+                });
+            }, 8000);
+
+        } catch (error) {
+            console.error('Error showing error message:', error);
+            // Fallback to basic alert
+            alert('Error: ' + message);
+        }
     }
 
     // Enhanced loading state for SumoSelect dropdowns

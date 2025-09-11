@@ -952,14 +952,67 @@ if (empty($results)) {
 
 
 
-    // Form validation
+    // Form validation with comprehensive debugging
     $('form').on('submit', function(e) {
+        console.log('=== FRONTEND: Form Submission Started ===');
+        
+        // Get all form values
         var search_type = $('select[name="search_type"]').val();
+        var class_ids = $('#class_id').val();
+        var section_ids = $('#section_id').val();
+        var session_ids = $('#sch_session_id').val();
+        var feetype_ids = $('#feetype_id').val();
+        var collect_by_ids = $('#collect_by').val();
+        var group = $('select[name="group"]').val();
+        
+        // Log all form values with types
+        console.log('FRONTEND: Form Field Values:');
+        console.log('  - search_type:', search_type, '(type:', typeof search_type, ')');
+        console.log('  - class_ids:', class_ids, '(type:', typeof class_ids, ', length:', class_ids ? class_ids.length : 'null', ')');
+        console.log('  - section_ids:', section_ids, '(type:', typeof section_ids, ', length:', section_ids ? section_ids.length : 'null', ')');
+        console.log('  - session_ids:', session_ids, '(type:', typeof session_ids, ', length:', session_ids ? session_ids.length : 'null', ')');
+        console.log('  - feetype_ids:', feetype_ids, '(type:', typeof feetype_ids, ', length:', feetype_ids ? feetype_ids.length : 'null', ')');
+        console.log('  - collect_by_ids:', collect_by_ids, '(type:', typeof collect_by_ids, ', length:', collect_by_ids ? collect_by_ids.length : 'null', ')');
+        console.log('  - group:', group, '(type:', typeof group, ')');
+        
+        // Log serialized form data
+        var formData = $(this).serializeArray();
+        console.log('FRONTEND: Serialized form data:', formData);
+        
+        // Log form data as will be sent to server
+        var formDataObject = {};
+        $.each(formData, function(i, field) {
+            if (formDataObject[field.name]) {
+                if (!Array.isArray(formDataObject[field.name])) {
+                    formDataObject[field.name] = [formDataObject[field.name]];
+                }
+                formDataObject[field.name].push(field.value);
+            } else {
+                formDataObject[field.name] = field.value;
+            }
+        });
+        console.log('FRONTEND: Form data as object:', formDataObject);
+        
+        // Validate search type
         if (!search_type) {
+            console.log('FRONTEND: Validation failed - no search_type selected');
             e.preventDefault();
             alert('<?php echo $this->lang->line("please_select_search_duration"); ?>');
             return false;
         }
+        
+        // Log SumoSelect states
+        ['class_id', 'section_id', 'sch_session_id', 'feetype_id', 'collect_by'].forEach(function(fieldId) {
+            var element = $('#' + fieldId)[0];
+            if (element && element.sumo) {
+                console.log('FRONTEND: SumoSelect ' + fieldId + ' - Selected:', element.sumo.getSelected());
+                console.log('FRONTEND: SumoSelect ' + fieldId + ' - String:', element.sumo.getSelStr());
+            }
+        });
+        
+        console.log('FRONTEND: Form validation passed, submitting to server...');
+        console.log('=== FRONTEND: Form Submission Processing ===');
+        
         return true;
     });
 

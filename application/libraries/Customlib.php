@@ -1768,11 +1768,37 @@ class Customlib
         $filter_record = array();
 
         if (isset($_POST['class_id']) && $_POST['class_id'] != '') {
-            $filter_record['class'] = $this->CI->messages_model->get_classname($_POST['class_id']);
+            // Handle both single values and arrays
+            $class_id = $_POST['class_id'];
+            if (is_array($class_id) && count($class_id) > 0) {
+                // For arrays, get names for all selected classes
+                $class_names = array();
+                foreach ($class_id as $cid) {
+                    if (!empty($cid)) {
+                        $class_names[] = $this->CI->messages_model->get_classname($cid);
+                    }
+                }
+                $filter_record['class'] = implode(', ', $class_names);
+            } elseif (!is_array($class_id) && !empty($class_id)) {
+                $filter_record['class'] = $this->CI->messages_model->get_classname($class_id);
+            }
         }
 
         if (isset($_POST['section_id']) && $_POST['section_id'] != '') {
-            $filter_record['section'] = $this->CI->messages_model->get_sectionname($_POST['section_id']);
+            // Handle both single values and arrays
+            $section_id = $_POST['section_id'];
+            if (is_array($section_id) && count($section_id) > 0) {
+                // For arrays, get names for all selected sections
+                $section_names = array();
+                foreach ($section_id as $sid) {
+                    if (!empty($sid)) {
+                        $section_names[] = $this->CI->messages_model->get_sectionname($sid);
+                    }
+                }
+                $filter_record['section'] = implode(', ', $section_names);
+            } elseif (!is_array($section_id) && !empty($section_id)) {
+                $filter_record['section'] = $this->CI->messages_model->get_sectionname($section_id);
+            }
         }
 
         if (isset($_POST['category_id']) && $_POST['category_id'] != '') {
