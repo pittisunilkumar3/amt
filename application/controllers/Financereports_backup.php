@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 if (!defined('BASEPATH')) {
     exit('No direct script access allowed');
@@ -1462,6 +1462,131 @@ class Financereports extends Admin_Controller
         $data['results'] = array_values($data['results']);
 
         return $data;
+    }
+
+    private function export_excel_columnwise($data)
+    {
+        // Generate filename
+        $filename = 'Fee_Collection_Report_Columnwise_' . date('Y-m-d_H-i-s') . '.xls';
+
+        // Set headers for Excel download
+        header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+        header('Content-Disposition: attachment;filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+
+        // Build Excel HTML content
+        echo $this->build_excel_content($data);
+        exit;
+    }
+
+    private function build_excel_content($data)
+    {
+        $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
+        
+        $html = '<html>';
+        $html .= '<head><meta charset="UTF-8"></head>';
+        $html .= '<body>';
+        $html .= '<table border="1" style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif;">';
+        
+        // Title row
+        $html .= '<tr><td colspan="20" style="text-align: center; font-weight: bold; font-size: 16px; padding: 10px;">Fee Collection Report Column Wise</td></tr>';
+        $html .= '<tr><td colspan="20"></td></tr>'; // Empty row
+
+        // Date range
+        if (!empty($data['start_date']) && !empty($data['end_date'])) {
+            $html .= '<tr><td colspan="20" style="text-align: center; font-weight: bold;">Period: ' . date('d-M-Y', strtotime($data['start_date'])) . ' to ' . date('d-M-Y', strtotime($data['end_date'])) . '</td></tr>';
+            $html .= '<tr><td colspan="20"></td></tr>'; // Empty row
+        }
+
+        // Headers
+        $html .= '<tr style="background-color: #f8f9fa; font-weight: bold;">';
+        $html .= '<td style="border: 1px solid #333; padding: 8px; text-align: center;">S.No</td>';
+        $html .= '<td style="border: 1px solid #333; padding: 8px; text-align: center;">Admission No</td>';
+        $html .= '<td style="border: 1px solid #333; padding: 8px; text-align: center;">Student Name</td>';
+        $html .= '<td style="border: 1px solid #333; padding: 8px; text-align: center;">Phone</td>';
+        $html .= '<td style="border: 1px solid #333; padding: 8px; text-align: center;">Class</td>';
+        $html .= '<td style="border: 1px solid #333; padding: 8px; text-align: center;">Section</td>';
+
+        // Dynamic fee type headers
+        $fee_types = isset($data['fee_types']) ? $data['fee_types'] : array();
+        foreach ($fee_types as $fee_type) {
+            $html .= '<td style="border: 1px solid #333; padding: 8px; text-align: center; background-color: #e8f4fd;">' . htmlspecialchars($fee_type['type']) . '</td>';
+        }
+        $html .= '<td style="border: 1px solid #333; padding: 8px; text-align: center; background-color: #d4edda;">Grand Total</td>';
+        $html .= '</tr>';
+
+        // Data rows
+        $results = isset($data['results']) ? $data['results'] : array();
+        $grand_total = 0;
+        $grand_totals_by_type = array();
+        
+        // Initialize grand totals for each fee type
+        foreach ($fee_types as $fee_type) {
+            $grand_totals_by_type[$fee_type['type']] = 0;
+        }
+
+        if (isset($results) && is_array($results)) {
+            $row_count = 0;
+            foreach ($results as $student) {
+                $row_count++;
+                $student_total = 0;
+
+                $html .= '<tr>';
+                $html .= '<td style="border: 1px solid #333; padding: 4px; text-align: center;">' . $row_count . '</td>';
+                $html .= '<td style="border: 1px solid #333; padding: 4px;">' . htmlspecialchars(isset($student['admission_no']) ? $student['admission_no'] : '') . '</td>';
+                
+                $student_name = $this->customlib->getFullName(
+                    isset($student['firstname']) ? $student['firstname'] : '',
+                    isset($student['middlename']) ? $student['middlename'] : '',
+                    isset($student['lastname']) ? $student['lastname'] : '',
+                    $data['sch_setting']->middlename,
+                    $data['sch_setting']->lastname
+                );
+                $html .= '<td style="border: 1px solid #333; padding: 4px;">' . htmlspecialchars($student_name) . '</td>';
+                $html .= '<td style="border: 1px solid #333; padding: 4px;">' . htmlspecialchars(isset($student['guardian_phone']) ? $student['guardian_phone'] : '') . '</td>';
+                $html .= '<td style="border: 1px solid #333; padding: 4px;">' . htmlspecialchars(isset($student['class']) ? $student['class'] : '') . '</td>';
+                $html .= '<td style="border: 1px solid #333; padding: 4px;">' . htmlspecialchars(isset($student['section']) ? $student['section'] : '') . '</td>';
+
+                // Dynamic fee type columns
+                foreach ($fee_types as $fee_type) {
+                    $fee_type_name = $fee_type['type'];
+                    $fee_data = isset($student['fee_types'][$fee_type_name]) ? $student['fee_types'][$fee_type_name] : array(
+                        'total_amount' => 0,
+                        'paid_amount' => 0,
+                        'remaining_amount' => 0
+                    );
+
+                    if (is_numeric($fee_data)) {
+                        $paid_amount = $fee_data;
+                    } else {
+                        $paid_amount = isset($fee_data['paid_amount']) ? $fee_data['paid_amount'] : 0;
+                    }
+
+                    $html .= '<td style="border: 1px solid #333; padding: 4px; text-align: right;">' . $currency_symbol . number_format($paid_amount, 0) . '</td>';
+                    $student_total += $paid_amount;
+                    $grand_totals_by_type[$fee_type_name] += $paid_amount;
+                }
+
+                $html .= '<td style="border: 1px solid #333; padding: 4px; text-align: right; font-weight: bold; background-color: #fff3cd;">' . $currency_symbol . number_format($student_total, 0) . '</td>';
+                $html .= '</tr>';
+                
+                $grand_total += $student_total;
+            }
+        }
+
+        // Grand totals row
+        $html .= '<tr style="background-color: #e8f4fd; font-weight: bold;">';
+        $html .= '<td colspan="6" style="border: 1px solid #333; padding: 8px; text-align: center;">Grand Total</td>';
+        foreach ($fee_types as $fee_type) {
+            $html .= '<td style="border: 1px solid #333; padding: 4px; text-align: right;">' . $currency_symbol . number_format($grand_totals_by_type[$fee_type['type']], 0) . '</td>';
+        }
+        $html .= '<td style="border: 1px solid #333; padding: 4px; text-align: right; background-color: #d4edda;">' . $currency_symbol . number_format($grand_total, 0) . '</td>';
+        $html .= '</tr>';
+
+        $html .= '</table>';
+        $html .= '</body></html>';
+
+        return $html;
     }
 
     private function export_csv_columnwise($data)
