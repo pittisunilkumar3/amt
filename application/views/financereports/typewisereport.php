@@ -38,6 +38,97 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
         margin-bottom: 10px; /* Space below the search input */
         padding: 0 10px; /* Padding inside the search input */
     }
+
+    /* Dynamic table styling */
+    #headerTable {
+        font-size: 12px;
+        border-collapse: collapse;
+        min-width: 100%;
+        white-space: nowrap;
+    }
+    
+    #headerTable th {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+        vertical-align: middle;
+        font-weight: bold;
+        background-color: #f8f9fa;
+        min-width: 80px;
+    }
+    
+    #headerTable td {
+        border: 1px solid #ddd;
+        padding: 6px;
+        vertical-align: middle;
+        min-width: 80px;
+        text-align: center;
+    }
+    
+    #headerTable .total-bg {
+        background-color: #337ab7 !important;
+        color: white !important;
+        font-weight: bold !important;
+    }
+    
+    /* Responsive table */
+    .table-responsive {
+        overflow-x: auto;
+        min-height: 400px;
+        width: 100%;
+    }
+    
+    /* Fee type header styling */
+    #headerTable thead tr:first-child th {
+        background-color: #2c3e50;
+        color: white;
+        font-weight: bold;
+        min-width: 100px;
+    }
+    
+    #headerTable thead tr:nth-child(2) th {
+        background-color: #34495e;
+        color: white;
+        font-size: 10px;
+        padding: 4px;
+        min-width: 70px;
+    }
+    
+    /* Highlight balance columns */
+    #headerTable td:last-child,
+    #headerTable td:nth-last-child(2),
+    #headerTable td:nth-last-child(3) {
+        font-weight: bold;
+    }
+    
+    /* Fixed width columns for better visibility */
+    .fee-column {
+        min-width: 90px !important;
+        max-width: 120px;
+        padding: 5px !important;
+    }
+    
+    .student-info {
+        min-width: 120px;
+        max-width: 200px;
+    }
+    
+    /* Print specific styles */
+    @media print {
+        #headerTable {
+            font-size: 8px;
+        }
+        
+        #headerTable th,
+        #headerTable td {
+            padding: 2px;
+            min-width: 50px;
+        }
+        
+        .btn {
+            display: none !important;
+        }
+    }
 </style>
 
 
@@ -258,14 +349,179 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                                             <?php
                         } else {
                             $sn=0;
+                            
+                            // Prepare data for dynamic column structure
+                            $students = array();
+                            $fee_types = array();
+                            $fee_groups = array();
+                            
+                            // Organize data by student and collect unique fee types and groups
+                            foreach ($results as $row) {
+                                $student_key = $row['admission_no'];
+                                
+                                if (!isset($students[$student_key])) {
+                                    $students[$student_key] = array(
+                                        'admission_no' => $row['admission_no'],
+                                        'name' => $row['firstname'] . ' ' . $row['middlename'] . ' ' . $row['lastname'],
+                                        'mobileno' => $row['mobileno'],
+                                        'class' => $row['class'],
+                                        'section' => $row['section'],
+                                        'fees' => array()
+                                    );
+                                }
+                                
+                                // Create a unique key for fee type + fee group combination
+                                $fee_key = $row['feegroupname'] . ' - ' . $row['type'];
+                                $fee_types[$fee_key] = array(
+                                    'group' => $row['feegroupname'],
+                                    'type' => $row['type']
+                                );
+                                
+                                $students[$student_key]['fees'][$fee_key] = array(
+                                    'total' => $row['total'],
+                                    'fine' => $row['total_fine'],
+                                    'discount' => $row['total_discount'],
+                                    'paid' => $row['total_amount'],
+                                    'balance' => $row['total'] - $row['total_amount'] - $row['total_discount']
+                                );
+                            }
+                            
+                            // Sort fee types for consistent column order
+                            ksort($fee_types);
+                            
+                            // Calculate grand totals for summary
+                            $grand_totals = array();
+                            foreach ($fee_types as $fee_key => $fee_info) {
+                                $grand_totals[$fee_key] = array(
+                                    'total' => 0, 'fine' => 0, 'discount' => 0, 'paid' => 0, 'balance' => 0
+                                );
+                            }
+                            $grand_totals['overall'] = array('total' => 0, 'paid' => 0, 'balance' => 0);
+                            
+                            // Calculate totals
+                            foreach ($students as $student) {
+                                foreach ($fee_types as $fee_key => $fee_info) {
+                                    $fee_data = isset($student['fees'][$fee_key]) ? $student['fees'][$fee_key] : array(
+                                        'total' => 0, 'fine' => 0, 'discount' => 0, 'paid' => 0, 'balance' => 0
+                                    );
+                                    $grand_totals[$fee_key]['total'] += $fee_data['total'];
+                                    $grand_totals[$fee_key]['fine'] += $fee_data['fine'];
+                                    $grand_totals[$fee_key]['discount'] += $fee_data['discount'];
+                                    $grand_totals[$fee_key]['paid'] += $fee_data['paid'];
+                                    $grand_totals[$fee_key]['balance'] += $fee_data['balance'];
+                                    
+                                    $grand_totals['overall']['total'] += $fee_data['total'];
+                                    $grand_totals['overall']['paid'] += $fee_data['paid'];
+                                    $grand_totals['overall']['balance'] += $fee_data['balance'];
+                                }
+                            }
+                            
+                            // Calculate summary statistics
+                            $summary_stats = array(
+                                'total_students' => count($students),
+                                'total_fee_types' => count($fee_types),
+                                'total_amount' => $grand_totals['overall']['total'],
+                                'total_paid' => $grand_totals['overall']['paid'],
+                                'total_balance' => $grand_totals['overall']['balance'],
+                                'collection_percentage' => $grand_totals['overall']['total'] > 0 ? 
+                                    round(($grand_totals['overall']['paid'] / $grand_totals['overall']['total']) * 100, 2) : 0
+                            );
                     ?>
                     <div class="">
                         <div class="box-header ptbnull"></div>
                         <div class="box-header ptbnull">
-                            <h3 class="box-title titlefix"><i class="fa fa-money"></i> <?php ?> <?php echo $this->lang->line('fees_collection_report'); ?></h3>
+                            <h3 class="box-title titlefix"><i class="fa fa-money"></i> <?php echo $this->lang->line('fees_collection_report'); ?> - Dynamic Column View</h3>
+                            <div class="box-info">
+                                <small class="text-muted">
+                                    <i class="fa fa-info-circle"></i> 
+                                    This report displays fee collection data with dynamic columns for each fee type and fee group combination.
+                                    Each student's fees are shown across columns for easy comparison and analysis.
+                                </small>
+                            </div>
                         </div>
+                        <?php
+                        if (!empty($results)) {
+                            // Calculate summary statistics
+                            $summary_stats = array(
+                                'total_students' => count($students),
+                                'total_fee_types' => count($fee_types),
+                                'total_amount' => $grand_totals['overall']['total'],
+                                'total_paid' => $grand_totals['overall']['paid'],
+                                'total_balance' => $grand_totals['overall']['balance'],
+                                'collection_percentage' => $grand_totals['overall']['total'] > 0 ? 
+                                    round(($grand_totals['overall']['paid'] / $grand_totals['overall']['total']) * 100, 2) : 0
+                            );
+                        ?>
+                        <div class="row" style="margin-bottom: 15px;">
+                            <div class="col-md-12">
+                                <div class="box box-info">
+                                    <div class="box-header with-border">
+                                        <h4 class="box-title"><i class="fa fa-bar-chart"></i> Report Summary</h4>
+                                    </div>
+                                    <div class="box-body">
+                                        <div class="row">
+                                            <div class="col-md-2">
+                                                <div class="info-box bg-blue">
+                                                    <span class="info-box-icon"><i class="fa fa-users"></i></span>
+                                                    <div class="info-box-content">
+                                                        <span class="info-box-text">Students</span>
+                                                        <span class="info-box-number"><?php echo $summary_stats['total_students']; ?></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <div class="info-box bg-green">
+                                                    <span class="info-box-icon"><i class="fa fa-list"></i></span>
+                                                    <div class="info-box-content">
+                                                        <span class="info-box-text">Fee Types</span>
+                                                        <span class="info-box-number"><?php echo $summary_stats['total_fee_types']; ?></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <div class="info-box bg-yellow">
+                                                    <span class="info-box-icon"><i class="fa fa-money"></i></span>
+                                                    <div class="info-box-content">
+                                                        <span class="info-box-text">Total Amount</span>
+                                                        <span class="info-box-number"><?php echo $currency_symbol . number_format($summary_stats['total_amount'], 2); ?></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <div class="info-box bg-aqua">
+                                                    <span class="info-box-icon"><i class="fa fa-check"></i></span>
+                                                    <div class="info-box-content">
+                                                        <span class="info-box-text">Total Paid</span>
+                                                        <span class="info-box-number"><?php echo $currency_symbol . number_format($summary_stats['total_paid'], 2); ?></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <div class="info-box bg-red">
+                                                    <span class="info-box-icon"><i class="fa fa-exclamation"></i></span>
+                                                    <div class="info-box-content">
+                                                        <span class="info-box-text">Balance</span>
+                                                        <span class="info-box-number"><?php echo $currency_symbol . number_format($summary_stats['total_balance'], 2); ?></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <div class="info-box bg-purple">
+                                                    <span class="info-box-icon"><i class="fa fa-percent"></i></span>
+                                                    <div class="info-box-content">
+                                                        <span class="info-box-text">Collection %</span>
+                                                        <span class="info-box-number"><?php echo $summary_stats['collection_percentage']; ?>%</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <?php } ?>
                         
-                       
+                        
                                 
                                 
                         <div class="box-body table-responsive" id="transfee">
@@ -277,89 +533,197 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                             $this->customlib->get_postmessage();
                             ?>
                         </div>
+                        
+                        <!-- Debug Information -->
+                        <?php if (!empty($results)): ?>
+                            <div class="alert alert-info" style="margin-bottom: 15px;">
+                                <strong><i class="fa fa-info-circle"></i> Report Information:</strong><br>
+                                <small>
+                                    • Total Records Found: <strong><?php echo count($results); ?></strong><br>
+                                    • Unique Students: <strong><?php echo count($students); ?></strong><br>
+                                    • Fee Type Combinations: <strong><?php echo count($fee_types); ?></strong><br>
+                                    <?php if (!empty($fee_types)): ?>
+                                        • Fee Types: 
+                                        <?php 
+                                        $fee_list = array();
+                                        foreach ($fee_types as $fee_key => $fee_info) {
+                                            $fee_list[] = $fee_info['group'] . ' - ' . $fee_info['type'];
+                                        }
+                                        echo '<strong>' . implode(', ', $fee_list) . '</strong>';
+                                        ?>
+                                    <?php endif; ?>
+                                </small>
+                            </div>
+                        <?php endif; ?>
     
    
 
                             <a class="btn btn-default btn-xs pull-right" id="print" onclick="printDiv()" ><i class="fa fa-print"></i></a>
                             <a class="btn btn-default btn-xs pull-right" id="btnExport" onclick="exportToExcel();"> <i class="fa fa-file-excel-o"></i> </a>
 
-                            <table class="table table-striped table-bordered table-hover " id="headerTable">
+                            <table class="table table-striped table-bordered table-hover" id="headerTable" style="width: 100%; table-layout: auto;">
                                 <thead class="header">
-                                
                                     <tr>
-                                        <th><?php echo $this->lang->line('s_no'); ?></th>
-                                        <th><?php echo $this->lang->line('admission_no'); ?></th>
-                                        <th><?php echo $this->lang->line('name'); ?></th>
-                                        <th><?php echo $this->lang->line('phone'); ?></th>
-                                        <th><?php echo $this->lang->line('class'); ?></th>
-                                        <th><?php echo $this->lang->line('section'); ?></th>
-                                        <th><?php echo $this->lang->line('fees_group');?></th>
-                                        <th><?php echo $this->lang->line('fee_type'); ?></th>
-                                        <th><?php echo $this->lang->line('total'); ?></th>
-                                        <th><?php echo $this->lang->line('fine');?></th>
-                                        <th><?php echo $this->lang->line('discount')?></th>
-                                        <th><?php echo $this->lang->line('paid'); ?></th>
-                                        <th><?php echo $this->lang->line('balance'); ?></th>
+                                        <th rowspan="2" class="student-info"><?php echo $this->lang->line('s_no'); ?></th>
+                                        <th rowspan="2" class="student-info"><?php echo $this->lang->line('admission_no'); ?></th>
+                                        <th rowspan="2" class="student-info"><?php echo $this->lang->line('name'); ?></th>
+                                        <th rowspan="2" class="student-info"><?php echo $this->lang->line('phone'); ?></th>
+                                        <th rowspan="2" class="student-info"><?php echo $this->lang->line('class'); ?></th>
+                                        <th rowspan="2" class="student-info"><?php echo $this->lang->line('section'); ?></th>
+                                        <?php 
+                                        if (!empty($fee_types)) {
+                                            foreach ($fee_types as $fee_key => $fee_info): ?>
+                                                <th colspan="5" class="fee-column" style="text-align: center; background-color: #3498db; color: white; border: 2px solid #2980b9;">
+                                                    <strong><?php echo htmlspecialchars($fee_info['group'] . ' - ' . $fee_info['type']); ?></strong>
+                                                </th>
+                                            <?php endforeach;
+                                        } else {
+                                            // Show placeholder columns if no fee types found
+                                            ?>
+                                            <th colspan="5" class="fee-column" style="text-align: center; background-color: #95a5a6; color: white;">
+                                                <strong>No Fee Types Selected</strong>
+                                            </th>
+                                            <?php
+                                        }
+                                        ?>
+                                        <th rowspan="2" style="background-color: #e74c3c; color: white; min-width: 100px;"><strong>Total Amount</strong></th>
+                                        <th rowspan="2" style="background-color: #27ae60; color: white; min-width: 100px;"><strong>Total Paid</strong></th>
+                                        <th rowspan="2" style="background-color: #f39c12; color: white; min-width: 100px;"><strong>Total Balance</strong></th>
+                                    </tr>
+                                    <tr>
+                                        <?php 
+                                        if (!empty($fee_types)) {
+                                            foreach ($fee_types as $fee_key => $fee_info): ?>
+                                                <th class="fee-column" style="font-size: 11px; background-color: #ecf0f1; color: #2c3e50; border: 1px solid #bdc3c7;"><strong>Total</strong></th>
+                                                <th class="fee-column" style="font-size: 11px; background-color: #ecf0f1; color: #2c3e50; border: 1px solid #bdc3c7;"><strong>Fine</strong></th>
+                                                <th class="fee-column" style="font-size: 11px; background-color: #ecf0f1; color: #2c3e50; border: 1px solid #bdc3c7;"><strong>Discount</strong></th>
+                                                <th class="fee-column" style="font-size: 11px; background-color: #ecf0f1; color: #2c3e50; border: 1px solid #bdc3c7;"><strong>Paid</strong></th>
+                                                <th class="fee-column" style="font-size: 11px; background-color: #ecf0f1; color: #2c3e50; border: 1px solid #bdc3c7;"><strong>Balance</strong></th>
+                                            <?php endforeach;
+                                        } else {
+                                            // Show placeholder sub-columns
+                                            ?>
+                                            <th class="fee-column" style="font-size: 11px; background-color: #ecf0f1; color: #2c3e50;">-</th>
+                                            <th class="fee-column" style="font-size: 11px; background-color: #ecf0f1; color: #2c3e50;">-</th>
+                                            <th class="fee-column" style="font-size: 11px; background-color: #ecf0f1; color: #2c3e50;">-</th>
+                                            <th class="fee-column" style="font-size: 11px; background-color: #ecf0f1; color: #2c3e50;">-</th>
+                                            <th class="fee-column" style="font-size: 11px; background-color: #ecf0f1; color: #2c3e50;">-</th>
+                                            <?php
+                                        }
+                                        ?>
                                     </tr>
                                 </thead>
-                                
-                                
+                                <tbody>
                                 <?php 
-
-                                    if(!empty($results)){
-                                        $total_fine = 0;
-                                        $total_paid =0;
-                                        $total_discount =0;
-                                        $total_amount =0;
-                                        $total_bal = 0;
-                                
-                                    foreach ($results as $row){ 
-                                        $total_fine += $row['total_fine'];
-                                        $total_paid +=$row['total_amount'];
-                                        $total_discount +=$row['total_discount'];
-                                        $total_amount +=$row['total'];
-                                        
-                                    $sn++;
-                                    ?>
-                                   <tr>
-                                        <td><?php echo $sn; ?></td>
-                                        <td><?php echo $row['admission_no']; ?></td>
-                                        <td><?php echo $row['firstname'].' '.$row['middlename'].' '.$row['lastname']; ?></td>
-                                        <td><?php echo $row['mobileno']; ?></td>
-                                        <td><?php echo $row['class']; ?></td>
-                                        <td><?php echo $row['section']; ?></td>
-                                        <td><?php echo $row['feegroupname'];?></td>
-                                        <td><?php echo $row['type']; ?></td>
-                                        <td><?php echo $row['total'];?></td>
-                                        <td><?php echo $row['total_fine'];?></td>
-                                        <td><?php echo $row['total_discount'];?></td>
-                                        <td><?php echo $row['total_amount']; ?></td>
-                                        <td><?php echo $row['total']-$row['total_amount']-$row['total_discount']; ?></td>
-                                        
-                                   </tr>
-                                <?php } 
-                                
-                                
+                                if (!empty($students)) {
+                                    $sn = 0;
+                                    
+                                    foreach ($students as $student) {
+                                        $sn++;
+                                        $row_total = 0;
+                                        $row_paid = 0;
+                                        $row_balance = 0;
                                 ?>
-
-                                <tr class="box box-solid total-bg">
-                                    <td></td>
-                                    <td></td>
-                                    <td></td>
-                                    <td></td>
-                                    <td></td>
-                                    <td></td>
-                                    <td></td>
-                                    <td></td>
-                                    <td><?php echo $total_amount;?></td>
-                                    <td><?php echo $total_fine;?></td>
-                                    <td><?php echo $total_discount;?></td>
-                                    <td><?php echo $total_paid;?></td>
-                                    <td><?php echo $total_amount-$total_paid-$total_discount; ?></td>
+                                    <tr style="<?php echo ($sn % 2 == 0) ? 'background-color: #f8f9fa;' : ''; ?>">
+                                        <td style="text-align: center; font-weight: bold;"><?php echo $sn; ?></td>
+                                        <td style="text-align: center; font-weight: bold; color: #3498db;"><?php echo htmlspecialchars($student['admission_no']); ?></td>
+                                        <td style="text-align: left; padding-left: 10px;"><?php echo htmlspecialchars($student['name']); ?></td>
+                                        <td style="text-align: center;"><?php echo htmlspecialchars($student['mobileno']); ?></td>
+                                        <td style="text-align: center; color: #8e44ad; font-weight: bold;"><?php echo htmlspecialchars($student['class']); ?></td>
+                                        <td style="text-align: center; color: #8e44ad; font-weight: bold;"><?php echo htmlspecialchars($student['section']); ?></td>
+                                        
+                                        <?php 
+                                        if (!empty($fee_types)) {
+                                            foreach ($fee_types as $fee_key => $fee_info): 
+                                                $fee_data = isset($student['fees'][$fee_key]) ? $student['fees'][$fee_key] : array(
+                                                    'total' => 0, 'fine' => 0, 'discount' => 0, 'paid' => 0, 'balance' => 0
+                                                );
+                                                
+                                                // Add to row totals
+                                                $row_total += $fee_data['total'];
+                                                $row_paid += $fee_data['paid'];
+                                                $row_balance += $fee_data['balance'];
+                                        ?>
+                                                <td class="fee-column" style="text-align: right; <?php echo $fee_data['total'] > 0 ? 'background-color: #ebf3fd; color: #2980b9; font-weight: bold;' : 'color: #95a5a6;'; ?>">
+                                                    <?php echo $fee_data['total'] > 0 ? number_format($fee_data['total'], 2) : '-'; ?>
+                                                </td>
+                                                <td class="fee-column" style="text-align: right; <?php echo $fee_data['fine'] > 0 ? 'background-color: #fdf2e9; color: #e67e22; font-weight: bold;' : 'color: #95a5a6;'; ?>">
+                                                    <?php echo $fee_data['fine'] > 0 ? number_format($fee_data['fine'], 2) : '-'; ?>
+                                                </td>
+                                                <td class="fee-column" style="text-align: right; <?php echo $fee_data['discount'] > 0 ? 'background-color: #eafaf1; color: #27ae60; font-weight: bold;' : 'color: #95a5a6;'; ?>">
+                                                    <?php echo $fee_data['discount'] > 0 ? number_format($fee_data['discount'], 2) : '-'; ?>
+                                                </td>
+                                                <td class="fee-column" style="text-align: right; <?php echo $fee_data['paid'] > 0 ? 'background-color: #e8f6f3; color: #16a085; font-weight: bold;' : 'color: #95a5a6;'; ?>">
+                                                    <?php echo $fee_data['paid'] > 0 ? number_format($fee_data['paid'], 2) : '-'; ?>
+                                                </td>
+                                                <td class="fee-column" style="text-align: right; <?php echo $fee_data['balance'] > 0 ? 'background-color: #fdedec; color: #e74c3c; font-weight: bold;' : ($fee_data['balance'] == 0 && $fee_data['total'] > 0 ? 'background-color: #eafaf1; color: #27ae60; font-weight: bold;' : 'color: #95a5a6;'); ?>">
+                                                    <?php echo $fee_data['balance'] != 0 ? number_format($fee_data['balance'], 2) : ($fee_data['total'] > 0 ? '0.00' : '-'); ?>
+                                                </td>
+                                        <?php 
+                                            endforeach;
+                                        } else {
+                                            // Show placeholder cells if no fee types
+                                            ?>
+                                            <td class="fee-column" style="text-align: center; color: #95a5a6;">-</td>
+                                            <td class="fee-column" style="text-align: center; color: #95a5a6;">-</td>
+                                            <td class="fee-column" style="text-align: center; color: #95a5a6;">-</td>
+                                            <td class="fee-column" style="text-align: center; color: #95a5a6;">-</td>
+                                            <td class="fee-column" style="text-align: center; color: #95a5a6;">-</td>
+                                            <?php
+                                        }
+                                        ?>
+                                        
+                                        <td style="text-align: right; font-weight: bold; background-color: #fbeee6; color: #d35400; border: 2px solid #e67e22;">
+                                            <?php echo number_format($row_total, 2); ?>
+                                        </td>
+                                        <td style="text-align: right; font-weight: bold; background-color: #eafaf1; color: #27ae60; border: 2px solid #2ecc71;">
+                                            <?php echo number_format($row_paid, 2); ?>
+                                        </td>
+                                        <td style="text-align: right; font-weight: bold; background-color: #<?php echo $row_balance > 0 ? 'fdedec; color: #e74c3c; border: 2px solid #e74c3c;' : 'eafaf1; color: #27ae60; border: 2px solid #27ae60;'; ?>">
+                                            <?php echo number_format($row_balance, 2); ?>
+                                        </td>
+                                    </tr>
+                                <?php } ?>
+                                
+                                <!-- Grand Total Row -->
+                                <tr class="total-bg" style="background-color: #2c3e50 !important; color: white !important; font-weight: bold !important; border-top: 3px solid #34495e;">
+                                    <td colspan="6" style="text-align: center; font-weight: bold; font-size: 14px; padding: 10px;">
+                                        <i class="fa fa-calculator"></i> GRAND TOTAL
+                                    </td>
+                                    <?php 
+                                    if (!empty($fee_types)) {
+                                        foreach ($fee_types as $fee_key => $fee_info): ?>
+                                            <td class="fee-column" style="text-align: right; font-weight: bold;"><?php echo number_format($grand_totals[$fee_key]['total'], 2); ?></td>
+                                            <td class="fee-column" style="text-align: right; font-weight: bold;"><?php echo number_format($grand_totals[$fee_key]['fine'], 2); ?></td>
+                                            <td class="fee-column" style="text-align: right; font-weight: bold;"><?php echo number_format($grand_totals[$fee_key]['discount'], 2); ?></td>
+                                            <td class="fee-column" style="text-align: right; font-weight: bold;"><?php echo number_format($grand_totals[$fee_key]['paid'], 2); ?></td>
+                                            <td class="fee-column" style="text-align: right; font-weight: bold;"><?php echo number_format($grand_totals[$fee_key]['balance'], 2); ?></td>
+                                        <?php endforeach;
+                                    } else {
+                                        // Show placeholder cells in grand total
+                                        ?>
+                                        <td class="fee-column" style="text-align: center;">-</td>
+                                        <td class="fee-column" style="text-align: center;">-</td>
+                                        <td class="fee-column" style="text-align: center;">-</td>
+                                        <td class="fee-column" style="text-align: center;">-</td>
+                                        <td class="fee-column" style="text-align: center;">-</td>
+                                        <?php
+                                    }
+                                    ?>
+                                    <td style="text-align: right; font-weight: bold; font-size: 14px;"><?php echo number_format($grand_totals['overall']['total'], 2); ?></td>
+                                    <td style="text-align: right; font-weight: bold; font-size: 14px;"><?php echo number_format($grand_totals['overall']['paid'], 2); ?></td>
+                                    <td style="text-align: right; font-weight: bold; font-size: 14px;"><?php echo number_format($grand_totals['overall']['balance'], 2); ?></td>
                                 </tr>
-
-                                <?php }?>
-
+                                <?php 
+                                } else {
+                                    // Show message when no students found
+                                ?>
+                                    <tr>
+                                        <td colspan="<?php echo 9 + (count($fee_types) * 5); ?>" style="text-align: center; padding: 20px; color: #7f8c8d; font-style: italic;">
+                                            <i class="fa fa-info-circle"></i> No student data found for the selected criteria. Please adjust your filters and try again.
+                                        </td>
+                                    </tr>
+                                <?php } ?>
                                 </tbody>
                             </table>
                         </div>
@@ -434,11 +798,21 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
         document.getElementById("print").style.display = "none";
         document.getElementById("btnExport").style.display = "none";
         document.getElementById("printhead").style.display = "block";
+        
+        // Create a print-specific version with smaller fonts
         var divElements = document.getElementById('transfee').innerHTML;
+        var printContent = divElements.replace(/class="table table-striped table-bordered table-hover"/g, 'class="table table-bordered" style="font-size: 8px;"');
+        
         var oldPage = document.body.innerHTML;
         document.body.innerHTML =
-                "<html><head><title><?php echo $this->lang->line('typewisebalancereport'); ?></title></head><body>" +
-                divElements + "</body>";
+                "<html><head><title><?php echo $this->lang->line('typewisebalancereport'); ?></title>" +
+                "<style>@page { size: landscape; margin: 0.5in; } " +
+                "table { border-collapse: collapse; width: 100%; font-size: 8px; } " +
+                "th, td { border: 1px solid #000; padding: 2px; text-align: center; } " +
+                "th { background-color: #f0f0f0; font-weight: bold; } " +
+                ".total-bg { background-color: #d9d9d9 !important; font-weight: bold; }" +
+                "</style></head><body>" +
+                printContent + "</body>";
         window.print();
         document.body.innerHTML = oldPage;
         document.getElementById("printhead").style.display = "none";
@@ -452,7 +826,7 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
     function exportToExcel(){
         var htmls = "";
         var uri = 'data:application/vnd.ms-excel;base64,';
-        var template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table>{table}</table></body></html>';
+        var template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table border="1">{table}</table></body></html>';
         var base64 = function(s) {
             return window.btoa(unescape(encodeURIComponent(s)))
         };
@@ -462,11 +836,17 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                 return c[p];
             })
         };
-        var tab_text = "<tr >";
+        
+        var tab_text = "<tr>";
         var textRange;
         var j = 0;
         var val="";
         tab = document.getElementById('headerTable'); // id of table
+
+        // Add report title
+        tab_text += "<tr><td colspan='20' style='text-align:center;font-weight:bold;font-size:16px;'><?php echo $this->lang->line('typewisebalancereport'); ?></td></tr>";
+        tab_text += "<tr><td colspan='20' style='text-align:center;'><?php echo date('Y-m-d H:i:s'); ?></td></tr>";
+        tab_text += "<tr><td colspan='20'></td></tr>";
 
         for (j = 0; j < tab.rows.length; j++)
         {
@@ -474,12 +854,12 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
         }
 
         var ctx = {
-            worksheet : 'Worksheet',
+            worksheet : 'Type Wise Balance Report',
             table : tab_text
         }
 
         var link = document.createElement("a");
-        link.download = "studentfee_collection_report.xls";
+        link.download = "typewise_balance_report_" + new Date().toISOString().slice(0,10) + ".xls";
         link.href = uri + base64(format(template, ctx));
         link.click();
     }
@@ -668,6 +1048,26 @@ $(document).ready(function() {
                 document.getElementById('feetype_id').value = selected.join(',');
             });
         });
+        
+        // Ensure table is responsive and visible
+        const table = document.getElementById('headerTable');
+        if (table) {
+            table.style.display = 'table';
+            table.style.width = '100%';
+            table.style.tableLayout = 'auto';
+            
+            // Make sure parent container allows horizontal scrolling
+            const tableContainer = table.closest('.table-responsive');
+            if (tableContainer) {
+                tableContainer.style.overflowX = 'auto';
+                tableContainer.style.width = '100%';
+            }
+        }
+        
+        // Add some debug information to console
+        console.log('Table initialized:', table);
+        console.log('Table rows:', table ? table.rows.length : 0);
+        console.log('Table container:', table ? table.closest('.table-responsive') : null);
     });
 </script>
 
