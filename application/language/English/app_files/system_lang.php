@@ -2653,7 +2653,7 @@ $lang['discount_req'] = "Discount Request";
 $lang['are_you_sure_to_approve_discount']="Are You Sure To Approve Discount";
 
 $lang['are_you_sure_to_retrive_discount']="Are You Sure To Retrive Discount";
-
+$lang['other_fees_and_collection_report_combined']="Other Fee and Collection Fee Combined";
 
 
 

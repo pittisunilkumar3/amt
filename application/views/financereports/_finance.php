@@ -46,6 +46,10 @@
 
                     <?php   }  if ($this->rbac->hasPrivilege('fees_collection_report', 'can_view')) {   ?>
 
+                        <li class="col-lg-4 col-md-4 col-sm-6 <?php echo set_SubSubmenu('Reports/finance/combined_collection_report'); ?>"><a href="<?php echo base_url(); ?>financereports/combined_collection_report"><i class="fa fa-file-text-o"></i> Other Fee and Collection Fee Combined</a></li>
+
+                    <?php   }  if ($this->rbac->hasPrivilege('fees_collection_report', 'can_view')) {   ?>
+
                         <li class="col-lg-4 col-md-4 col-sm-6 <?php echo set_SubSubmenu('Reports/finance/fee_collection_report_columnwise'); ?>"><a href="<?php echo base_url(); ?>financereports/fee_collection_report_columnwise"><i class="fa fa-file-text-o"></i> <?php echo $this->lang->line('fee_collection_report_column_wise'); ?></a></li>
 
 
