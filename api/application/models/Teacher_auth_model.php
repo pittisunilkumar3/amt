@@ -457,6 +457,302 @@ class Teacher_auth_model extends CI_Model
         }
     }
 
+    /**
+     * Get complete staff profile with QR code functionality
+     */
+    public function getCompleteProfile($staff_id)
+    {
+        // Get basic staff profile information
+        $staff_profile = $this->getTeacherInformation($staff_id);
+
+        if (!$staff_profile) {
+            return array('status' => 0, 'message' => 'Staff member not found.');
+        }
+
+        // Get custom fields data
+        $custom_fields = $this->getCustomFields($staff_id);
+
+        // Get school settings for field visibility
+        $this->load->model('setting_model');
+        $school_settings = $this->setting_model->get();
+
+        // Generate QR code data
+        $qr_data = $this->generateQRCodeData($staff_profile);
+
+        // Prepare comprehensive profile response
+        $profile_data = array(
+            'status' => 1,
+            'message' => 'Profile retrieved successfully.',
+            'staff_id' => $staff_profile->id,
+            'basic_info' => $this->formatBasicInfo($staff_profile),
+            'contact_info' => $this->formatContactInfo($staff_profile),
+            'personal_info' => $this->formatPersonalInfo($staff_profile),
+            'address_info' => $this->formatAddressInfo($staff_profile),
+            'bank_details' => $this->formatBankDetails($staff_profile),
+            'social_media' => $this->formatSocialMedia($staff_profile),
+            'documents' => $this->formatDocuments($staff_profile),
+            'custom_fields' => $custom_fields,
+            'qr_code' => $qr_data,
+            'profile_image' => $this->getProfileImageURL($staff_profile->image, $staff_profile->gender),
+            'school_settings' => $this->formatSchoolSettings($school_settings)
+        );
+
+        return $profile_data;
+    }
+
+    /**
+     * Format basic staff information
+     */
+    private function formatBasicInfo($staff)
+    {
+        return array(
+            'id' => $staff->id,
+            'employee_id' => $staff->employee_id,
+            'name' => $staff->name,
+            'surname' => $staff->surname,
+            'full_name' => trim($staff->name . ' ' . $staff->surname),
+            'designation' => $staff->designation,
+            'designation_name' => $staff->designation_name ?? '',
+            'department' => $staff->department,
+            'department_name' => $staff->department_name ?? '',
+            'user_type' => $staff->user_type ?? '',
+            'role_id' => $staff->role_id ?? '',
+            'is_active' => $staff->is_active,
+            'date_of_joining' => $staff->date_of_joining,
+            'date_of_leaving' => $staff->date_of_leaving,
+            'disable_at' => $staff->disable_at ?? null
+        );
+    }
+
+    /**
+     * Format contact information
+     */
+    private function formatContactInfo($staff)
+    {
+        return array(
+            'email' => $staff->email,
+            'contact_no' => $staff->contact_no,
+            'emergency_contact_no' => $staff->emergency_contact_no
+        );
+    }
+
+    /**
+     * Format personal information
+     */
+    private function formatPersonalInfo($staff)
+    {
+        return array(
+            'gender' => $staff->gender,
+            'dob' => $staff->dob,
+            'marital_status' => $staff->marital_status,
+            'father_name' => $staff->father_name,
+            'mother_name' => $staff->mother_name,
+            'qualification' => $staff->qualification,
+            'work_exp' => $staff->work_exp,
+            'note' => $staff->note
+        );
+    }
+
+    /**
+     * Format address information
+     */
+    private function formatAddressInfo($staff)
+    {
+        return array(
+            'local_address' => $staff->local_address,
+            'permanent_address' => $staff->permanent_address
+        );
+    }
+
+    /**
+     * Format bank details
+     */
+    private function formatBankDetails($staff)
+    {
+        return array(
+            'account_title' => $staff->account_title,
+            'bank_name' => $staff->bank_name,
+            'bank_branch' => $staff->bank_branch,
+            'bank_account_no' => $staff->bank_account_no,
+            'ifsc_code' => $staff->ifsc_code,
+            'payscale' => $staff->payscale,
+            'basic_salary' => $staff->basic_salary,
+            'epf_no' => $staff->epf_no,
+            'contract_type' => $staff->contract_type,
+            'shift' => $staff->shift,
+            'location' => $staff->location
+        );
+    }
+
+    /**
+     * Format social media links
+     */
+    private function formatSocialMedia($staff)
+    {
+        return array(
+            'facebook' => $staff->facebook,
+            'twitter' => $staff->twitter,
+            'linkedin' => $staff->linkedin,
+            'instagram' => $staff->instagram
+        );
+    }
+
+    /**
+     * Format document information
+     */
+    private function formatDocuments($staff)
+    {
+        $documents = array();
+
+        if (!empty($staff->resume)) {
+            $documents['resume'] = array(
+                'filename' => $staff->resume,
+                'download_url' => base_url() . 'api/teacher/download-document/' . $staff->id . '/resume',
+                'type' => 'resume'
+            );
+        }
+
+        if (!empty($staff->joining_letter)) {
+            $documents['joining_letter'] = array(
+                'filename' => $staff->joining_letter,
+                'download_url' => base_url() . 'api/teacher/download-document/' . $staff->id . '/joining_letter',
+                'type' => 'joining_letter'
+            );
+        }
+
+        if (!empty($staff->resignation_letter)) {
+            $documents['resignation_letter'] = array(
+                'filename' => $staff->resignation_letter,
+                'download_url' => base_url() . 'api/teacher/download-document/' . $staff->id . '/resignation_letter',
+                'type' => 'resignation_letter'
+            );
+        }
+
+        if (!empty($staff->other_document_file)) {
+            $documents['other_document'] = array(
+                'filename' => $staff->other_document_file,
+                'name' => $staff->other_document_name ?? 'Other Document',
+                'download_url' => base_url() . 'api/teacher/download-document/' . $staff->id . '/other_document_file',
+                'type' => 'other_document'
+            );
+        }
+
+        return $documents;
+    }
+
+    /**
+     * Get custom fields for staff
+     */
+    private function getCustomFields($staff_id)
+    {
+        $this->db->select('cf.name, cf.type, cfv.field_value');
+        $this->db->from('custom_field_values cfv');
+        $this->db->join('custom_fields cf', 'cf.id = cfv.custom_field_id');
+        $this->db->where('cfv.belong_table_id', $staff_id);
+        $this->db->where('cf.belong_to', 'staff');
+        $query = $this->db->get();
+
+        $custom_fields = array();
+        if ($query->num_rows() > 0) {
+            foreach ($query->result() as $field) {
+                $field_value = $field->field_value;
+
+                // Handle JSON arrays for multi-select fields
+                if (is_string($field_value) && is_array(json_decode($field_value, true)) && (json_last_error() == JSON_ERROR_NONE)) {
+                    $field_value = json_decode($field_value, true);
+                }
+
+                $custom_fields[] = array(
+                    'name' => $field->name,
+                    'type' => $field->type,
+                    'value' => $field_value
+                );
+            }
+        }
+
+        return $custom_fields;
+    }
+
+    /**
+     * Generate QR code data for staff profile
+     */
+    private function generateQRCodeData($staff)
+    {
+        $qr_data = array(
+            'type' => 'staff_profile',
+            'staff_id' => $staff->id,
+            'employee_id' => $staff->employee_id,
+            'name' => trim($staff->name . ' ' . $staff->surname),
+            'designation' => $staff->designation_name ?? '',
+            'department' => $staff->department_name ?? '',
+            'email' => $staff->email,
+            'contact' => $staff->contact_no,
+            'profile_url' => base_url() . 'api/teacher/profile/' . $staff->id
+        );
+
+        // Generate QR code string (JSON format)
+        $qr_string = json_encode($qr_data);
+
+        return array(
+            'data' => $qr_data,
+            'qr_string' => $qr_string,
+            'qr_code_url' => $this->generateQRCodeImage($qr_string, $staff->id)
+        );
+    }
+
+    /**
+     * Generate QR code image URL (placeholder - implement with actual QR library)
+     */
+    private function generateQRCodeImage($qr_string, $staff_id)
+    {
+        // For now, return a placeholder URL
+        // In production, implement with a QR code library like phpqrcode
+        return base_url() . 'api/teacher/qr-code/' . $staff_id;
+    }
+
+    /**
+     * Get profile image URL with fallback
+     */
+    private function getProfileImageURL($image, $gender)
+    {
+        if (!empty($image)) {
+            return base_url() . 'uploads/staff_images/' . $image;
+        } else {
+            // Default image based on gender
+            $default_image = ($gender == 'Male') ? 'default_male.jpg' : 'default_female.jpg';
+            return base_url() . 'uploads/staff_images/' . $default_image;
+        }
+    }
+
+    /**
+     * Format school settings for field visibility
+     */
+    private function formatSchoolSettings($settings)
+    {
+        if (empty($settings) || !is_array($settings)) {
+            return array();
+        }
+
+        $setting = $settings[0]; // Get first setting record
+
+        return array(
+            'staff_phone' => $setting['staff_phone'] ?? 1,
+            'staff_emergency_contact' => $setting['staff_emergency_contact'] ?? 1,
+            'staff_marital_status' => $setting['staff_marital_status'] ?? 1,
+            'staff_father_name' => $setting['staff_father_name'] ?? 1,
+            'staff_mother_name' => $setting['staff_mother_name'] ?? 1,
+            'staff_qualification' => $setting['staff_qualification'] ?? 1,
+            'staff_work_experience' => $setting['staff_work_experience'] ?? 1,
+            'staff_note' => $setting['staff_note'] ?? 1,
+            'staff_current_address' => $setting['staff_current_address'] ?? 1,
+            'staff_permanent_address' => $setting['staff_permanent_address'] ?? 1,
+            'staff_account_details' => $setting['staff_account_details'] ?? 1,
+            'staff_social_media' => $setting['staff_social_media'] ?? 1,
+            'staff_upload_documents' => $setting['staff_upload_documents'] ?? 1,
+            'staff_barcode' => $setting['staff_barcode'] ?? 1
+        );
+    }
+
     public function get_dashboard_data()
     {
         $auth_check = $this->auth();

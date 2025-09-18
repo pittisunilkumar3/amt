@@ -264,6 +264,8 @@ class Teacher_auth extends CI_Controller
         }
     }
 
+
+
     /**
      * Teacher Logout
      * POST /teacher/logout
@@ -291,26 +293,46 @@ class Teacher_auth extends CI_Controller
     }
 
     /**
-     * Get Teacher Profile
-     * GET /teacher/profile
+     * Get Teacher Profile with QR Code (Comprehensive)
+     * GET /teacher/profile/{staff_id} or POST /teacher/profile
      */
-    public function profile()
+    public function profile($staff_id = null)
     {
         $method = $this->input->server('REQUEST_METHOD');
 
-        if ($method != 'GET') {
-            json_output(400, array('status' => 400, 'message' => 'Bad request.'));
-        } else {
-            $check_auth_client = $this->teacher_auth_model->check_auth_client();
-            if ($check_auth_client == true) {
-                $auth_check = $this->teacher_auth_model->auth();
-                if ($auth_check['status'] == 200) {
-                    $response = $this->teacher_auth_model->get_profile();
-                    json_output(200, $response);
-                } else {
-                    json_output(401, $auth_check);
-                }
+        if ($method == 'GET') {
+            // Handle GET request with staff_id in URL parameter
+            if ($staff_id === null) {
+                $staff_id = $this->uri->segment(3); // /teacher/profile/{staff_id}
             }
+        } else if ($method == 'POST') {
+            // Handle POST request with staff_id in body
+            $params = json_decode(file_get_contents('php://input'), true);
+            $staff_id = isset($params['staff_id']) ? $params['staff_id'] : null;
+        } else {
+            json_output(400, array('status' => 0, 'message' => 'Bad request. Only GET and POST methods are allowed.'));
+            return;
+        }
+
+        // Check authentication headers
+        $check_auth_client = $this->teacher_auth_model->check_auth_client();
+        if (!$check_auth_client) {
+            json_output(401, array('status' => 0, 'message' => 'Unauthorized. Please check Client-Service and Auth-Key headers.'));
+            return;
+        }
+
+        // Validate staff_id parameter
+        if (empty($staff_id) || !is_numeric($staff_id)) {
+            json_output(400, array('status' => 0, 'message' => 'Valid staff_id is required.'));
+            return;
+        }
+
+        try {
+            $response = $this->teacher_auth_model->getCompleteProfile($staff_id);
+            json_output(200, $response);
+        } catch (Exception $e) {
+            log_message('error', 'Teacher profile API error: ' . $e->getMessage());
+            json_output(500, array('status' => 0, 'message' => 'Internal server error.'));
         }
     }
 
@@ -441,6 +463,123 @@ class Teacher_auth extends CI_Controller
                 $response = $this->teacher_auth_model->validate_jwt_token($params['jwt_token']);
                 json_output(200, $response);
             }
+        }
+    }
+
+    /**
+     * Generate QR Code for Staff Profile
+     * GET /teacher/qr-code/{staff_id}
+     */
+    public function generate_qr_code($staff_id = null)
+    {
+        // Check authentication headers
+        $check_auth_client = $this->teacher_auth_model->check_auth_client();
+        if (!$check_auth_client) {
+            json_output(401, array('status' => 0, 'message' => 'Unauthorized. Please check Client-Service and Auth-Key headers.'));
+            return;
+        }
+
+        // Validate staff_id parameter
+        if (empty($staff_id) || !is_numeric($staff_id)) {
+            json_output(400, array('status' => 0, 'message' => 'Valid staff_id is required.'));
+            return;
+        }
+
+        try {
+            // Get staff information
+            $staff_info = $this->teacher_auth_model->getTeacherInformation($staff_id);
+
+            if (!$staff_info) {
+                json_output(404, array('status' => 0, 'message' => 'Staff member not found.'));
+                return;
+            }
+
+            // Generate QR code data
+            $qr_data = array(
+                'type' => 'staff_profile',
+                'staff_id' => $staff_info->id,
+                'employee_id' => $staff_info->employee_id,
+                'name' => trim($staff_info->name . ' ' . $staff_info->surname),
+                'designation' => $staff_info->designation_name ?? '',
+                'department' => $staff_info->department_name ?? '',
+                'email' => $staff_info->email,
+                'contact' => $staff_info->contact_no,
+                'profile_url' => base_url() . 'api/teacher/profile/' . $staff_info->id
+            );
+
+            // For now, return QR data as JSON
+            // In production, you would generate an actual QR code image
+            json_output(200, array(
+                'status' => 1,
+                'message' => 'QR code data generated successfully.',
+                'qr_data' => $qr_data,
+                'qr_string' => json_encode($qr_data)
+            ));
+
+        } catch (Exception $e) {
+            log_message('error', 'QR code generation error: ' . $e->getMessage());
+            json_output(500, array('status' => 0, 'message' => 'Internal server error.'));
+        }
+    }
+
+    /**
+     * Download Staff Document
+     * GET /teacher/download-document/{staff_id}/{document_type}
+     */
+    public function download_document($staff_id = null, $document_type = null)
+    {
+        // Check authentication headers
+        $check_auth_client = $this->teacher_auth_model->check_auth_client();
+        if (!$check_auth_client) {
+            json_output(401, array('status' => 0, 'message' => 'Unauthorized. Please check Client-Service and Auth-Key headers.'));
+            return;
+        }
+
+        // Validate parameters
+        if (empty($staff_id) || !is_numeric($staff_id) || empty($document_type)) {
+            json_output(400, array('status' => 0, 'message' => 'Valid staff_id and document_type are required.'));
+            return;
+        }
+
+        try {
+            // Get staff information
+            $staff_info = $this->teacher_auth_model->getTeacherInformation($staff_id);
+
+            if (!$staff_info) {
+                json_output(404, array('status' => 0, 'message' => 'Staff member not found.'));
+                return;
+            }
+
+            // Validate document type and get filename
+            $allowed_types = array('resume', 'joining_letter', 'resignation_letter', 'other_document_file');
+            if (!in_array($document_type, $allowed_types)) {
+                json_output(400, array('status' => 0, 'message' => 'Invalid document type.'));
+                return;
+            }
+
+            $filename = $staff_info->{$document_type};
+            if (empty($filename)) {
+                json_output(404, array('status' => 0, 'message' => 'Document not found.'));
+                return;
+            }
+
+            // For now, return document information
+            // In production, you would serve the actual file
+            json_output(200, array(
+                'status' => 1,
+                'message' => 'Document information retrieved successfully.',
+                'document' => array(
+                    'staff_id' => $staff_id,
+                    'document_type' => $document_type,
+                    'filename' => $filename,
+                    'file_path' => 'uploads/staff_documents/' . $staff_id . '/' . $filename,
+                    'download_note' => 'In production, this would serve the actual file for download.'
+                )
+            ));
+
+        } catch (Exception $e) {
+            log_message('error', 'Document download error: ' . $e->getMessage());
+            json_output(500, array('status' => 0, 'message' => 'Internal server error.'));
         }
     }
 }

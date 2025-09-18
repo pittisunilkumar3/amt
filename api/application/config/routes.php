@@ -67,12 +67,15 @@ $route['teacher/debug-login'] = 'teacher_auth/debug_login';
 $route['teacher/simple-login'] = 'teacher_auth/simple_login';
 $route['teacher/login'] = 'teacher_auth/login';
 $route['teacher/logout'] = 'teacher_auth/logout';
+$route['teacher/profile/(:num)'] = 'teacher_auth/profile/$1';
 $route['teacher/profile'] = 'teacher_auth/profile';
 $route['teacher/profile/update'] = 'teacher_auth/update_profile';
 $route['teacher/change-password'] = 'teacher_auth/change_password';
 $route['teacher/dashboard'] = 'teacher_auth/dashboard';
 $route['teacher/refresh-token'] = 'teacher_auth/refresh_token';
 $route['teacher/validate-token'] = 'teacher_auth/validate_token';
+$route['teacher/qr-code/(:num)'] = 'teacher_auth/generate_qr_code/$1';
+$route['teacher/download-document/(:num)/(:any)'] = 'teacher_auth/download_document/$1/$2';
 
 // Teacher Webservice Routes
 $route['teacher/menu'] = 'teacher_webservice/menu';
