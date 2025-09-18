@@ -492,9 +492,7 @@ if (empty($results)) {
                                 $t = $collect['amount'] + $collect['amount_fine'];
                                 echo number_format($t, 2, '.', '');
                                 ?>
-                            </td>
-                                            
-                                            
+                            </td>               
                         </tr>                    
                                             
                  <?php } ?>                            

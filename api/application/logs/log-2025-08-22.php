@@ -204,13 +204,7 @@ ERROR - 2025-08-22 06:36:45 --> Unable to connect to the database
 ERROR - 2025-08-22 06:36:45 --> Severity: error --> Exception: Call to a member function real_escape_string() on bool C:\xampp\htdocs\amt\api\system\database\drivers\mysqli\mysqli_driver.php 401
 ERROR - 2025-08-22 06:36:57 --> Query error: Unknown column 'app_key' in 'field list' - Invalid query: UPDATE `staff` SET `app_key` = 'optional_device_token'
 WHERE `id` = '2'
-ERROR - 2025-08-22 07:52:11 --> Query error: Unknown column 'app_key' in 'field list' - Invalid query: UPDATE `staff` SET `app_key` = 'test-device-token'
+ERROR - 2025-08-22 04:51:44 --> Query error: Unknown column 'app_key' in 'SET' - Invalid query: UPDATE `staff` SET `app_key` = 'dmju4wQVyzY:APA91bGV8MUPod52ykp0DH9ip8QBMjjJC1NZJ_GJyoXk2Kk0DavKQDT9YimKI3a-HmK_0fKd_e4fWQ0Vxer2TIae61dWxebxxFOHt8zlwOTOXPjMMe31wY8'
 WHERE `id` = '6'
-ERROR - 2025-08-22 07:53:00 --> Query error: Unknown column 'app_key' in 'field list' - Invalid query: UPDATE `staff` SET `app_key` = 'test-device-token'
-WHERE `id` = '6'
-ERROR - 2025-08-22 07:53:42 --> Severity: Warning --> Undefined property: stdClass::$work_shift C:\xampp\htdocs\amt\api\application\models\Teacher_auth_model.php 377
-ERROR - 2025-08-22 07:53:42 --> Severity: Warning --> Undefined property: stdClass::$work_location C:\xampp\htdocs\amt\api\application\models\Teacher_auth_model.php 378
-ERROR - 2025-08-22 07:54:19 --> Severity: Warning --> Undefined property: stdClass::$work_shift C:\xampp\htdocs\amt\api\application\models\Teacher_auth_model.php 377
-ERROR - 2025-08-22 07:54:19 --> Severity: Warning --> Undefined property: stdClass::$work_location C:\xampp\htdocs\amt\api\application\models\Teacher_auth_model.php 378
-ERROR - 2025-08-22 07:54:20 --> Query error: Unknown column 'app_key' in 'where clause' - Invalid query: UPDATE `staff` SET `app_key` = NULL
-WHERE `app_key` = 'test-device-token'
+ERROR - 2025-08-22 04:58:37 --> Query error: Unknown column 'app_key' in 'WHERE' - Invalid query: UPDATE `staff` SET `app_key` = NULL
+WHERE `app_key` = 'dmju4wQVyzY:APA91bGV8MUPod52ykp0DH9ip8QBMjjJC1NZJ_GJyoXk2Kk0DavKQDT9YimKI3a-HmK_0fKd_e4fWQ0Vxer2TIae61dWxebxxFOHt8zlwOTOXPjMMe31wY8'
