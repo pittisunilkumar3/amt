@@ -167,6 +167,10 @@ class Feesdiscountapproval extends Admin_Controller
                 $row[] = $student['fgrname']; // Fee group name
                 $row[] = $student['amount']; // Discount amount
 
+                // Discount note column
+                $discount_note = !empty($student['discount_note']) ? $student['discount_note'] : '-';
+                $row[] = $discount_note;
+
                 // Status column
                 $status = '';
                 if ($student['approval_status'] == 0) {

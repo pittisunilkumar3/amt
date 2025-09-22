@@ -476,6 +476,42 @@ class Teacher_auth_model extends CI_Model
         $this->load->model('setting_model');
         $school_settings = $this->setting_model->get();
 
+        // Get additional data sections with error handling
+        try {
+            $payroll_data = $this->getPayrollData($staff_id);
+        } catch (Exception $e) {
+            log_message('error', 'Payroll data error: ' . $e->getMessage());
+            $payroll_data = array('payroll_records' => array(), 'salary_summary' => array());
+        }
+
+        try {
+            $timeline_data = $this->getTimelineData($staff_id);
+        } catch (Exception $e) {
+            log_message('error', 'Timeline data error: ' . $e->getMessage());
+            $timeline_data = array('timeline_events' => array(), 'total_events' => 0);
+        }
+
+        try {
+            $leave_data = $this->getLeaveData($staff_id);
+        } catch (Exception $e) {
+            log_message('error', 'Leave data error: ' . $e->getMessage());
+            $leave_data = array('leave_requests' => array(), 'leave_balance' => array(), 'total_requests' => 0);
+        }
+
+        try {
+            $attendance_data = $this->getAttendanceData($staff_id);
+        } catch (Exception $e) {
+            log_message('error', 'Attendance data error: ' . $e->getMessage());
+            $attendance_data = array('attendance_summary' => array(), 'recent_attendance' => array(), 'attendance_types' => array());
+        }
+
+        try {
+            $rating_data = $this->getRatingData($staff_id);
+        } catch (Exception $e) {
+            log_message('error', 'Rating data error: ' . $e->getMessage());
+            $rating_data = array('average_rating' => 0, 'total_reviews' => 0, 'can_view_rating' => false, 'reviews' => array());
+        }
+
         // Generate QR code data
         $qr_data = $this->generateQRCodeData($staff_profile);
 
@@ -492,12 +528,201 @@ class Teacher_auth_model extends CI_Model
             'social_media' => $this->formatSocialMedia($staff_profile),
             'documents' => $this->formatDocuments($staff_profile),
             'custom_fields' => $custom_fields,
+            'payroll_details' => $payroll_data,
+            'timeline' => $timeline_data,
+            'leave_records' => $leave_data,
+            'attendance_records' => $attendance_data,
+            'ratings_reviews' => $rating_data,
             'qr_code' => $qr_data,
             'profile_image' => $this->getProfileImageURL($staff_profile->image, $staff_profile->gender),
             'school_settings' => $this->formatSchoolSettings($school_settings)
         );
 
         return $profile_data;
+    }
+
+    /**
+     * Get payroll data for staff
+     */
+    private function getPayrollData($staff_id)
+    {
+        // Get staff payroll records
+        $this->db->select('*');
+        $this->db->from('staff_payslip');
+        $this->db->where('staff_id', $staff_id);
+        $this->db->order_by('year DESC, month DESC');
+        $payroll_records = $this->db->get()->result_array();
+
+        // Get salary summary directly from database
+        $this->db->select('sum(net_salary) as net_salary, sum(total_allowance) as earnings, sum(total_deduction) as deduction, sum(basic) as basic_salary, sum(tax) as tax');
+        $this->db->from('staff_payslip');
+        $this->db->where('staff_id', $staff_id);
+        $this->db->where('status', 'paid');
+        $salary_summary = $this->db->get()->row_array();
+
+        return array(
+            'payroll_records' => $payroll_records,
+            'salary_summary' => $salary_summary ?? array()
+        );
+    }
+
+    /**
+     * Get timeline/activity data for staff
+     */
+    private function getTimelineData($staff_id)
+    {
+        // Get staff timeline directly from database
+        $this->db->select('*');
+        $this->db->from('staff_timeline');
+        $this->db->where('staff_id', $staff_id);
+        $this->db->where('status', 'yes');
+        $this->db->order_by('timeline_date', 'ASC');
+        $timeline_list = $this->db->get()->result_array();
+
+        return array(
+            'timeline_events' => $timeline_list,
+            'total_events' => count($timeline_list)
+        );
+    }
+
+    /**
+     * Get leave data for staff
+     */
+    private function getLeaveData($staff_id)
+    {
+        // Get staff leave requests directly from database
+        $this->db->select('staff.name,staff.surname,staff.employee_id,staff_leave_request.*,leave_types.type');
+        $this->db->from('staff_leave_request');
+        $this->db->join('staff', 'staff.id = staff_leave_request.staff_id');
+        $this->db->join('leave_types', 'leave_types.id = staff_leave_request.leave_type_id');
+        $this->db->where('staff_leave_request.staff_id', $staff_id);
+        $this->db->where('staff.is_active', '1');
+        $this->db->order_by('staff_leave_request.id', 'desc');
+        $staff_leaves = $this->db->get()->result_array();
+
+        // Get allotted leave types
+        $this->db->select('staff_leave_details.*,leave_types.type');
+        $this->db->from('staff_leave_details');
+        $this->db->join('leave_types', 'staff_leave_details.leave_type_id = leave_types.id');
+        $this->db->where('staff_id', $staff_id);
+        $alloted_leavetype = $this->db->get()->result_array();
+
+        // Calculate leave details
+        $leave_details = array();
+        foreach ($alloted_leavetype as $key => $value) {
+            // Count approved leaves
+            $this->db->select('sum(leave_days) as approve_leave');
+            $this->db->from('staff_leave_request');
+            $this->db->where('staff_id', $staff_id);
+            $this->db->where('leave_type_id', $value["leave_type_id"]);
+            $this->db->where('status', 'approve');
+            $approved = $this->db->get()->row_array();
+
+            $leave_details[] = array(
+                'type' => $value["type"],
+                'alloted_leave' => $value["alloted_leave"],
+                'approve_leave' => $approved['approve_leave'] ?? 0,
+                'remaining_leave' => $value["alloted_leave"] - ($approved['approve_leave'] ?? 0)
+            );
+        }
+
+        return array(
+            'leave_requests' => $staff_leaves,
+            'leave_balance' => $leave_details,
+            'total_requests' => count($staff_leaves)
+        );
+    }
+
+    /**
+     * Get attendance data for staff
+     */
+    private function getAttendanceData($staff_id)
+    {
+        // Get attendance types directly from database
+        $this->db->select('*');
+        $this->db->from('staff_attendance_type');
+        $this->db->where('is_active', 'yes');
+        $this->db->order_by('id');
+        $attendance_types = $this->db->get()->result_array();
+
+        // Get current year attendance count
+        $current_year = date('Y');
+        $attendance_count = array();
+
+        foreach ($attendance_types as $att_type) {
+            $this->db->select('count(*) as count');
+            $this->db->from('staff_attendance');
+            $this->db->where('staff_id', $staff_id);
+            $this->db->where('YEAR(date)', $current_year);
+            $this->db->where('staff_attendance_type_id', $att_type['id']);
+            $count_result = $this->db->get()->row_array();
+
+            $attendance_count[$att_type['type']] = $count_result['count'] ?? 0;
+        }
+
+        // Get recent attendance records (last 30 days)
+        $this->db->select('staff_attendance.*, staff_attendance_type.type as att_type, staff_attendance_type.key_value');
+        $this->db->from('staff_attendance');
+        $this->db->join('staff_attendance_type', 'staff_attendance_type.id = staff_attendance.staff_attendance_type_id', 'left');
+        $this->db->where('staff_attendance.staff_id', $staff_id);
+        $this->db->where('staff_attendance.date >=', date('Y-m-d', strtotime('-30 days')));
+        $this->db->order_by('staff_attendance.date', 'DESC');
+        $recent_attendance = $this->db->get()->result_array();
+
+        return array(
+            'attendance_summary' => $attendance_count,
+            'recent_attendance' => $recent_attendance,
+            'attendance_types' => $attendance_types
+        );
+    }
+
+    /**
+     * Get rating and review data for staff
+     */
+    private function getRatingData($staff_id)
+    {
+        // Skip ratings for admin user (id = 1)
+        if ($staff_id == '1') {
+            return array(
+                'average_rating' => 0,
+                'total_reviews' => 0,
+                'can_view_rating' => false,
+                'reviews' => array()
+            );
+        }
+
+        // Get staff rating summary
+        $this->db->select('sum(rate) as rate, count(*) as total');
+        $this->db->from('staff_rating');
+        $this->db->where('staff_id', $staff_id);
+        $this->db->where('status', 1);
+        $staff_rating = $this->db->get()->row_array();
+
+        $average_rating = 0;
+        $can_view_rating = false;
+
+        if ($staff_rating['total'] >= 3) {
+            $average_rating = ($staff_rating['rate'] / $staff_rating['total']);
+            $can_view_rating = true;
+        }
+
+        // Get detailed reviews
+        $this->db->select('staff_rating.rate,staff_rating.comment,staff_rating.role,students.firstname,students.middlename,students.lastname,students.guardian_name');
+        $this->db->from('staff_rating');
+        $this->db->join('users', 'users.id = staff_rating.user_id', 'inner');
+        $this->db->join('staff', 'staff_rating.staff_id = staff.id', 'inner');
+        $this->db->join('students', 'students.id = staff_rating.user_id', 'left');
+        $this->db->where('staff.is_active', 1);
+        $this->db->where('staff_rating.staff_id', $staff_id);
+        $this->db->where('staff_rating.status', 1);
+        $user_reviews = $this->db->get()->result_array();
+
+        return array(
+            'average_rating' => round($average_rating, 2),
+            'total_reviews' => $staff_rating['total'] ?? 0,
+            'can_view_rating' => $can_view_rating,
+            'reviews' => $user_reviews
+        );
     }
 
     /**

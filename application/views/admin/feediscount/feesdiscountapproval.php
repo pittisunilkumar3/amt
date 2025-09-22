@@ -329,6 +329,7 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                                             <th><?php echo $this->lang->line('mobile_number'); ?></th>
                                             <th><?php echo $this->lang->line('fee_group');?></th>
                                             <th><?php echo $this->lang->line('discount_amountt'); ?></th>
+                                            <th><?php echo $this->lang->line('note'); ?></th>
                                             <th><?php echo $this->lang->line('discount_status'); ?></th>
                                             <th class="text-center no-sort"><?php echo $this->lang->line('action'); ?></th>
                                         </tr>
