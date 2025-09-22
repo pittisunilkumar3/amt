@@ -5503,3 +5503,73 @@ ERROR - 2025-09-22 17:08:26 --> Severity: Warning --> Undefined array key "total
 ERROR - 2025-09-22 17:08:26 --> Severity: Warning --> Undefined variable $selected_section C:\xampp\htdocs\amt\application\views\financereports\typewisereport.php 833
 ERROR - 2025-09-22 13:38:26 --> Could not find the language line "thanks_for_contacting_us"
 ERROR - 2025-09-22 13:38:26 --> Could not find the language line "thank_you_for_your_complain"
+ERROR - 2025-09-22 17:25:34 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:25:34 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:25:34 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:25:34 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:25:34 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:25:34 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:25:35 --> Severity: error --> Exception: syntax error, unexpected token "else", expecting end of file C:\xampp\htdocs\amt\application\views\financereports\typewisereport.php 822
+ERROR - 2025-09-22 17:25:53 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:25:53 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:25:53 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:25:53 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:25:53 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:25:53 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:25:55 --> Severity: error --> Exception: syntax error, unexpected token "else", expecting end of file C:\xampp\htdocs\amt\application\views\financereports\typewisereport.php 833
+ERROR - 2025-09-22 17:26:23 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:26:23 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:26:23 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:26:23 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:26:23 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:26:23 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:26:25 --> Severity: error --> Exception: syntax error, unexpected token "else", expecting end of file C:\xampp\htdocs\amt\application\views\financereports\typewisereport.php 833
+ERROR - 2025-09-22 17:26:33 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:26:33 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:26:33 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:26:34 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:26:34 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:26:34 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:26:34 --> Severity: error --> Exception: syntax error, unexpected token "else", expecting end of file C:\xampp\htdocs\amt\application\views\financereports\typewisereport.php 833
+ERROR - 2025-09-22 17:26:43 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:26:43 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:26:43 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:26:43 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:26:43 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:26:43 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:26:43 --> Severity: error --> Exception: syntax error, unexpected token "else", expecting end of file C:\xampp\htdocs\amt\application\views\financereports\typewisereport.php 833
+ERROR - 2025-09-22 17:31:43 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:31:43 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:31:43 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:31:43 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:31:43 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:31:43 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:31:44 --> Severity: error --> Exception: syntax error, unexpected token "else", expecting end of file C:\xampp\htdocs\amt\application\views\financereports\typewisereport.php 889
+ERROR - 2025-09-22 17:32:31 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:32:31 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:32:31 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:32:32 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:32:32 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:32:32 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:32:32 --> Severity: error --> Exception: syntax error, unexpected token "else", expecting end of file C:\xampp\htdocs\amt\application\views\financereports\typewisereport.php 894
+ERROR - 2025-09-22 17:34:46 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:34:46 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:34:46 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:34:46 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:34:46 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:34:46 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:34:46 --> Severity: Warning --> Undefined variable $count C:\xampp\htdocs\amt\application\views\financereports\typewisereport.php 179
+ERROR - 2025-09-22 17:34:46 --> Severity: Warning --> Undefined variable $selected_section C:\xampp\htdocs\amt\application\views\financereports\typewisereport.php 925
+ERROR - 2025-09-22 14:04:46 --> Could not find the language line "thanks_for_contacting_us"
+ERROR - 2025-09-22 14:04:46 --> Could not find the language line "thank_you_for_your_complain"
+ERROR - 2025-09-22 17:35:06 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:35:06 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:35:06 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-22 17:35:06 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:35:06 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:35:06 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-22 17:35:06 --> Severity: Warning --> Undefined variable $count C:\xampp\htdocs\amt\application\views\financereports\typewisereport.php 179
+ERROR - 2025-09-22 17:35:06 --> Severity: Warning --> Undefined array key "total_fee_groups" C:\xampp\htdocs\amt\application\views\financereports\typewisereport.php 671
+ERROR - 2025-09-22 17:35:06 --> Severity: Warning --> Undefined variable $selected_section C:\xampp\htdocs\amt\application\views\financereports\typewisereport.php 925
+ERROR - 2025-09-22 14:05:06 --> Could not find the language line "thanks_for_contacting_us"
+ERROR - 2025-09-22 14:05:06 --> Could not find the language line "thank_you_for_your_complain"

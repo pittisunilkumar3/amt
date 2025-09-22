@@ -354,50 +354,70 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                             $students = array();
                             $fee_types = array();
                             $fee_groups = array();
+
+                            // Initialize results if not set
+                            if (!isset($results)) {
+                                $results = array();
+                            }
                             
-                            // Organize data by student and collect unique fee types and groups separately
-                            foreach ($results as $row) {
-                                $student_key = $row['admission_no'];
+                            // Organize data hierarchically by student and fee group for rowspan implementation
+                            if (!empty($results) && is_array($results)) {
+                                foreach ($results as $row) {
+                                    // Skip invalid rows
+                                    if (!is_array($row) || empty($row['admission_no'])) {
+                                        continue;
+                                    }
+
+                                    $student_key = $row['admission_no'];
 
                                 if (!isset($students[$student_key])) {
                                     $students[$student_key] = array(
-                                        'admission_no' => $row['admission_no'],
-                                        'name' => $row['firstname'] . ' ' . $row['middlename'] . ' ' . $row['lastname'],
-                                        'mobileno' => $row['mobileno'],
-                                        'class' => $row['class'],
-                                        'section' => $row['section'],
-                                        'fee_groups' => array(), // Store fee groups for this student
-                                        'fees' => array()
+                                        'admission_no' => isset($row['admission_no']) ? $row['admission_no'] : '',
+                                        'name' => trim((isset($row['firstname']) ? $row['firstname'] : '') . ' ' .
+                                                      (isset($row['middlename']) ? $row['middlename'] : '') . ' ' .
+                                                      (isset($row['lastname']) ? $row['lastname'] : '')),
+                                        'mobileno' => isset($row['mobileno']) ? $row['mobileno'] : '',
+                                        'class' => isset($row['class']) ? $row['class'] : '',
+                                        'section' => isset($row['section']) ? $row['section'] : '',
+                                        'fee_groups' => array() // Store fee groups with their fee type data
                                     );
                                 }
 
-                                // Use fee type as the main key (without fee group)
-                                $fee_type_key = $row['type'];
-                                $fee_types[$fee_type_key] = array(
-                                    'type' => $row['type']
+                                // Collect unique fee types for column headers (with safety checks)
+                                $fee_type_key = isset($row['type']) ? $row['type'] : 'Unknown';
+                                if (!empty($fee_type_key)) {
+                                    $fee_types[$fee_type_key] = array(
+                                        'type' => $fee_type_key
+                                    );
+                                }
+
+                                // Create unique key for fee group + fee type combination
+                                $fee_group_key = isset($row['feegroupname']) ? $row['feegroupname'] : 'Unknown Group';
+                                $unique_key = $fee_group_key . '|' . $fee_type_key;
+
+                                // Initialize fee group if not exists
+                                if (!isset($students[$student_key]['fee_groups'][$fee_group_key])) {
+                                    $students[$student_key]['fee_groups'][$fee_group_key] = array(
+                                        'group_name' => $fee_group_key,
+                                        'fee_types' => array()
+                                    );
+                                }
+
+                                // Store fee data by fee type within each fee group (with safe array access)
+                                $total = isset($row['total']) ? $row['total'] : 0;
+                                $total_fine = isset($row['total_fine']) ? $row['total_fine'] : 0;
+                                $total_discount = isset($row['total_discount']) ? $row['total_discount'] : 0;
+                                $total_amount = isset($row['total_amount']) ? $row['total_amount'] : 0;
+
+                                $students[$student_key]['fee_groups'][$fee_group_key]['fee_types'][$fee_type_key] = array(
+                                    'total' => $total,
+                                    'fine' => $total_fine,
+                                    'discount' => $total_discount,
+                                    'paid' => $total_amount,
+                                    'balance' => $total - $total_amount - $total_discount
                                 );
-
-                                // Store fee group information separately for this student and fee type
-                                $fee_group_key = $row['feegroupname'];
-                                if (!isset($students[$student_key]['fee_groups'][$fee_type_key])) {
-                                    $students[$student_key]['fee_groups'][$fee_type_key] = array();
-                                }
-                                $students[$student_key]['fee_groups'][$fee_type_key][] = $fee_group_key;
-
-                                // Store fee data by fee type only
-                                if (!isset($students[$student_key]['fees'][$fee_type_key])) {
-                                    $students[$student_key]['fees'][$fee_type_key] = array(
-                                        'total' => 0, 'fine' => 0, 'discount' => 0, 'paid' => 0, 'balance' => 0
-                                    );
-                                }
-
-                                // Aggregate amounts for the same fee type (in case multiple fee groups have same fee type)
-                                $students[$student_key]['fees'][$fee_type_key]['total'] += $row['total'];
-                                $students[$student_key]['fees'][$fee_type_key]['fine'] += $row['total_fine'];
-                                $students[$student_key]['fees'][$fee_type_key]['discount'] += $row['total_discount'];
-                                $students[$student_key]['fees'][$fee_type_key]['paid'] += $row['total_amount'];
-                                $students[$student_key]['fees'][$fee_type_key]['balance'] += ($row['total'] - $row['total_amount'] - $row['total_discount']);
-                            }
+                                } // End foreach ($results as $row)
+                            } // End if (!empty($results))
                             
                             // Sort fee types for consistent column order
                             ksort($fee_types);
@@ -411,32 +431,62 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                             }
                             $grand_totals['overall'] = array('total' => 0, 'paid' => 0, 'balance' => 0);
 
-                            // Calculate totals
-                            foreach ($students as $student) {
-                                foreach ($fee_types as $fee_type_key => $fee_info) {
-                                    $fee_data = isset($student['fees'][$fee_type_key]) ? $student['fees'][$fee_type_key] : array(
-                                        'total' => 0, 'fine' => 0, 'discount' => 0, 'paid' => 0, 'balance' => 0
-                                    );
-                                    $grand_totals[$fee_type_key]['total'] += $fee_data['total'];
-                                    $grand_totals[$fee_type_key]['fine'] += $fee_data['fine'];
-                                    $grand_totals[$fee_type_key]['discount'] += $fee_data['discount'];
-                                    $grand_totals[$fee_type_key]['paid'] += $fee_data['paid'];
-                                    $grand_totals[$fee_type_key]['balance'] += $fee_data['balance'];
+                            // Calculate totals from hierarchical structure
+                            if (!empty($students) && is_array($students)) {
+                                foreach ($students as $student) {
+                                    if (!isset($student['fee_groups']) || !is_array($student['fee_groups'])) {
+                                        continue;
+                                    }
 
-                                    $grand_totals['overall']['total'] += $fee_data['total'];
-                                    $grand_totals['overall']['paid'] += $fee_data['paid'];
-                                    $grand_totals['overall']['balance'] += $fee_data['balance'];
+                                    foreach ($student['fee_groups'] as $fee_group) {
+                                        if (!isset($fee_group['fee_types']) || !is_array($fee_group['fee_types'])) {
+                                            continue;
+                                        }
+
+                                        foreach ($fee_types as $fee_type_key => $fee_info) {
+                                            $fee_data = isset($fee_group['fee_types'][$fee_type_key]) ? $fee_group['fee_types'][$fee_type_key] : array(
+                                                'total' => 0, 'fine' => 0, 'discount' => 0, 'paid' => 0, 'balance' => 0
+                                            );
+
+                                            // Ensure grand_totals array exists for this fee type
+                                            if (!isset($grand_totals[$fee_type_key])) {
+                                                $grand_totals[$fee_type_key] = array(
+                                                    'total' => 0, 'fine' => 0, 'discount' => 0, 'paid' => 0, 'balance' => 0
+                                                );
+                                            }
+
+                                            $grand_totals[$fee_type_key]['total'] += isset($fee_data['total']) ? $fee_data['total'] : 0;
+                                            $grand_totals[$fee_type_key]['fine'] += isset($fee_data['fine']) ? $fee_data['fine'] : 0;
+                                            $grand_totals[$fee_type_key]['discount'] += isset($fee_data['discount']) ? $fee_data['discount'] : 0;
+                                            $grand_totals[$fee_type_key]['paid'] += isset($fee_data['paid']) ? $fee_data['paid'] : 0;
+                                            $grand_totals[$fee_type_key]['balance'] += isset($fee_data['balance']) ? $fee_data['balance'] : 0;
+
+                                            $grand_totals['overall']['total'] += isset($fee_data['total']) ? $fee_data['total'] : 0;
+                                            $grand_totals['overall']['paid'] += isset($fee_data['paid']) ? $fee_data['paid'] : 0;
+                                            $grand_totals['overall']['balance'] += isset($fee_data['balance']) ? $fee_data['balance'] : 0;
+                                        }
+                                    }
                                 }
                             }
                             
                             // Calculate summary statistics
+                            $total_fee_groups = 0;
+                            if (!empty($students) && is_array($students)) {
+                                foreach ($students as $student) {
+                                    if (isset($student['fee_groups']) && is_array($student['fee_groups'])) {
+                                        $total_fee_groups += count($student['fee_groups']);
+                                    }
+                                }
+                            }
+
                             $summary_stats = array(
                                 'total_students' => count($students),
+                                'total_fee_groups' => $total_fee_groups,
                                 'total_fee_types' => count($fee_types),
                                 'total_amount' => $grand_totals['overall']['total'],
                                 'total_paid' => $grand_totals['overall']['paid'],
                                 'total_balance' => $grand_totals['overall']['balance'],
-                                'collection_percentage' => $grand_totals['overall']['total'] > 0 ? 
+                                'collection_percentage' => $grand_totals['overall']['total'] > 0 ?
                                     round(($grand_totals['overall']['paid'] / $grand_totals['overall']['total']) * 100, 2) : 0
                             );
                     ?>
@@ -553,9 +603,20 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                                 white-space: normal !important;
                                 word-wrap: break-word !important;
                                 text-align: left !important;
-                                vertical-align: top !important;
-                                max-width: 200px;
+                                vertical-align: middle !important;
+                                max-width: 180px;
                                 overflow-wrap: break-word;
+                            }
+                            /* Hierarchical row styling */
+                            #headerTable tbody tr:hover {
+                                background-color: #f0f8ff !important;
+                            }
+                            #headerTable .student-rowspan {
+                                border-right: 3px solid #3498db;
+                                background-color: rgba(52, 152, 219, 0.05);
+                            }
+                            #headerTable .fee-group-row {
+                                border-left: 3px solid #9b59b6;
                             }
                             #headerTable .student-info {
                                 white-space: nowrap;
@@ -572,8 +633,8 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                                     min-width: 1000px;
                                 }
                                 .fee-groups-col {
-                                    width: 180px !important;
-                                    min-width: 180px !important;
+                                    width: 160px !important;
+                                    min-width: 160px !important;
                                 }
                             }
                             @media (max-width: 768px) {
@@ -607,7 +668,8 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                                 <small>
                                     • Total Records Found: <strong><?php echo count($results); ?></strong><br>
                                     • Unique Students: <strong><?php echo count($students); ?></strong><br>
-                                    • Fee Type Combinations: <strong><?php echo count($fee_types); ?></strong><br>
+                                    • Total Fee Groups: <strong><?php echo $summary_stats['total_fee_groups']; ?></strong><br>
+                                    • Unique Fee Types: <strong><?php echo count($fee_types); ?></strong><br>
                                     <?php if (!empty($fee_types)): ?>
                                         • Fee Types:
                                         <?php
@@ -636,7 +698,7 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                                         <th rowspan="2" class="student-info" style="width: 100px; min-width: 100px;"><?php echo $this->lang->line('phone'); ?></th>
                                         <th rowspan="2" class="student-info" style="width: 80px; min-width: 80px;"><?php echo $this->lang->line('class'); ?></th>
                                         <th rowspan="2" class="student-info" style="width: 80px; min-width: 80px;"><?php echo $this->lang->line('section'); ?></th>
-                                        <th rowspan="2" class="fee-groups-col" style="background-color: #9b59b6; color: white; width: 200px; min-width: 200px; font-weight: bold; text-align: center !important;"><strong>Fee Groups</strong></th>
+                                        <th rowspan="2" class="fee-groups-col" style="background-color: #9b59b6; color: white; width: 180px; min-width: 180px; font-weight: bold; text-align: center !important;"><strong>Fee Group</strong></th>
                                         <?php
                                         if (!empty($fee_types)) {
                                             foreach ($fee_types as $fee_type_key => $fee_info): ?>
@@ -681,52 +743,74 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                                     </tr>
                                 </thead>
                                 <tbody>
-                                <?php 
+                                <?php
                                 if (!empty($students)) {
                                     $sn = 0;
-                                    
-                                    foreach ($students as $student) {
-                                        $sn++;
-                                        $row_total = 0;
-                                        $row_paid = 0;
-                                        $row_balance = 0;
-                                ?>
-                                    <tr style="<?php echo ($sn % 2 == 0) ? 'background-color: #f8f9fa;' : ''; ?>">
-                                        <td style="text-align: center; font-weight: bold;"><?php echo $sn; ?></td>
-                                        <td style="text-align: center; font-weight: bold; color: #3498db;"><?php echo htmlspecialchars($student['admission_no']); ?></td>
-                                        <td style="text-align: left; padding-left: 10px;"><?php echo htmlspecialchars($student['name']); ?></td>
-                                        <td style="text-align: center;"><?php echo htmlspecialchars($student['mobileno']); ?></td>
-                                        <td style="text-align: center; color: #8e44ad; font-weight: bold;"><?php echo htmlspecialchars($student['class']); ?></td>
-                                        <td style="text-align: center; color: #8e44ad; font-weight: bold;"><?php echo htmlspecialchars($student['section']); ?></td>
 
-                                        <!-- Fee Groups Column -->
-                                        <td class="fee-groups-col" style="padding: 8px; background-color: #f4f3ff; color: #6c5ce7; font-size: 12px; width: 200px; min-width: 200px; line-height: 1.4;">
-                                            <?php
-                                            $all_fee_groups = array();
-                                            if (!empty($student['fee_groups'])) {
-                                                foreach ($student['fee_groups'] as $fee_type_key => $groups) {
-                                                    $all_fee_groups = array_merge($all_fee_groups, $groups);
-                                                }
-                                                $unique_groups = array_unique($all_fee_groups);
-                                                // Display each group on a new line for better readability
-                                                echo implode('<br>', array_map('htmlspecialchars', $unique_groups));
-                                            } else {
-                                                echo '-';
+                                    foreach ($students as $student) {
+                                        // Skip invalid student data
+                                        if (!is_array($student) || !isset($student['fee_groups']) || !is_array($student['fee_groups'])) {
+                                            continue;
+                                        }
+
+                                        $sn++;
+                                        $fee_groups = $student['fee_groups'];
+                                        $fee_group_count = count($fee_groups);
+
+                                        // Skip students with no fee groups
+                                        if ($fee_group_count == 0) {
+                                            continue;
+                                        }
+
+                                        // Calculate student totals across all fee groups
+                                        $student_total = 0;
+                                        $student_paid = 0;
+                                        $student_balance = 0;
+
+                                        foreach ($fee_groups as $fee_group) {
+                                            if (!isset($fee_group['fee_types']) || !is_array($fee_group['fee_types'])) {
+                                                continue;
                                             }
-                                            ?>
+
+                                            foreach ($fee_group['fee_types'] as $fee_data) {
+                                                if (!is_array($fee_data)) {
+                                                    continue;
+                                                }
+
+                                                $student_total += isset($fee_data['total']) ? $fee_data['total'] : 0;
+                                                $student_paid += isset($fee_data['paid']) ? $fee_data['paid'] : 0;
+                                                $student_balance += isset($fee_data['balance']) ? $fee_data['balance'] : 0;
+                                            }
+                                        }
+
+                                        $group_index = 0;
+                                        foreach ($fee_groups as $fee_group_name => $fee_group) {
+                                            $is_first_row = ($group_index == 0);
+                                            $row_style = ($sn % 2 == 0) ? 'background-color: #f8f9fa;' : '';
+                                ?>
+                                    <tr style="<?php echo $row_style; ?>">
+                                        <?php if ($is_first_row): ?>
+                                            <!-- Student information with rowspan -->
+                                            <td rowspan="<?php echo $fee_group_count; ?>" style="text-align: center; font-weight: bold; vertical-align: middle; border-right: 2px solid #3498db;"><?php echo $sn; ?></td>
+                                            <td rowspan="<?php echo $fee_group_count; ?>" style="text-align: center; font-weight: bold; color: #3498db; vertical-align: middle; border-right: 2px solid #3498db;"><?php echo htmlspecialchars($student['admission_no']); ?></td>
+                                            <td rowspan="<?php echo $fee_group_count; ?>" style="text-align: left; padding-left: 10px; vertical-align: middle; border-right: 2px solid #3498db;"><?php echo htmlspecialchars($student['name']); ?></td>
+                                            <td rowspan="<?php echo $fee_group_count; ?>" style="text-align: center; vertical-align: middle; border-right: 2px solid #3498db;"><?php echo htmlspecialchars($student['mobileno']); ?></td>
+                                            <td rowspan="<?php echo $fee_group_count; ?>" style="text-align: center; color: #8e44ad; font-weight: bold; vertical-align: middle; border-right: 2px solid #3498db;"><?php echo htmlspecialchars($student['class']); ?></td>
+                                            <td rowspan="<?php echo $fee_group_count; ?>" style="text-align: center; color: #8e44ad; font-weight: bold; vertical-align: middle; border-right: 2px solid #3498db;"><?php echo htmlspecialchars($student['section']); ?></td>
+                                        <?php endif; ?>
+
+                                        <!-- Fee Group Column -->
+                                        <td class="fee-groups-col" style="padding: 8px; background-color: #f4f3ff; color: #6c5ce7; font-size: 12px; font-weight: bold; text-align: left; vertical-align: middle; border-right: 2px solid #9b59b6;">
+                                            <?php echo htmlspecialchars(isset($fee_group['group_name']) ? $fee_group['group_name'] : 'Unknown Group'); ?>
                                         </td>
 
                                         <?php
+                                        // Display fee type data for this fee group
                                         if (!empty($fee_types)) {
                                             foreach ($fee_types as $fee_type_key => $fee_info):
-                                                $fee_data = isset($student['fees'][$fee_type_key]) ? $student['fees'][$fee_type_key] : array(
+                                                $fee_data = isset($fee_group['fee_types'][$fee_type_key]) ? $fee_group['fee_types'][$fee_type_key] : array(
                                                     'total' => 0, 'fine' => 0, 'discount' => 0, 'paid' => 0, 'balance' => 0
                                                 );
-
-                                                // Add to row totals
-                                                $row_total += $fee_data['total'];
-                                                $row_paid += $fee_data['paid'];
-                                                $row_balance += $fee_data['balance'];
                                         ?>
                                                 <td class="fee-column" style="text-align: right; <?php echo $fee_data['total'] > 0 ? 'background-color: #ebf3fd; color: #2980b9; font-weight: bold;' : 'color: #95a5a6;'; ?>">
                                                     <?php echo $fee_data['total'] > 0 ? number_format($fee_data['total'], 2) : '-'; ?>
@@ -756,19 +840,26 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                                             <?php
                                         }
                                         ?>
-                                        
-                                        <td style="text-align: right; font-weight: bold; background-color: #fbeee6; color: #d35400; border: 2px solid #e67e22;">
-                                            <?php echo number_format($row_total, 2); ?>
-                                        </td>
-                                        <td style="text-align: right; font-weight: bold; background-color: #eafaf1; color: #27ae60; border: 2px solid #2ecc71;">
-                                            <?php echo number_format($row_paid, 2); ?>
-                                        </td>
-                                        <td style="text-align: right; font-weight: bold; background-color: #<?php echo $row_balance > 0 ? 'fdedec; color: #e74c3c; border: 2px solid #e74c3c;' : 'eafaf1; color: #27ae60; border: 2px solid #27ae60;'; ?>">
-                                            <?php echo number_format($row_balance, 2); ?>
-                                        </td>
+
+                                        <?php if ($is_first_row): ?>
+                                            <!-- Student totals with rowspan -->
+                                            <td rowspan="<?php echo $fee_group_count; ?>" style="text-align: right; font-weight: bold; background-color: #fbeee6; color: #d35400; border: 2px solid #e67e22; vertical-align: middle;">
+                                                <?php echo number_format($student_total, 2); ?>
+                                            </td>
+                                            <td rowspan="<?php echo $fee_group_count; ?>" style="text-align: right; font-weight: bold; background-color: #eafaf1; color: #27ae60; border: 2px solid #2ecc71; vertical-align: middle;">
+                                                <?php echo number_format($student_paid, 2); ?>
+                                            </td>
+                                            <td rowspan="<?php echo $fee_group_count; ?>" style="text-align: right; font-weight: bold; background-color: #<?php echo $student_balance > 0 ? 'fdedec; color: #e74c3c; border: 2px solid #e74c3c;' : 'eafaf1; color: #27ae60; border: 2px solid #27ae60;'; ?> vertical-align: middle;">
+                                                <?php echo number_format($student_balance, 2); ?>
+                                            </td>
+                                        <?php endif; ?>
                                     </tr>
-                                <?php } ?>
-                                
+                                <?php
+                                            $group_index++;
+                                        } // End fee groups loop
+                                    } // End students loop
+                                ?>
+
                                 <!-- Grand Total Row -->
                                 <tr class="total-bg" style="background-color: #2c3e50 !important; color: white !important; font-weight: bold !important; border-top: 3px solid #34495e;">
                                     <td colspan="7" style="text-align: center; font-weight: bold; font-size: 14px; padding: 10px;">
@@ -798,8 +889,9 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
                                     <td style="text-align: right; font-weight: bold; font-size: 14px;"><?php echo number_format($grand_totals['overall']['paid'], 2); ?></td>
                                     <td style="text-align: right; font-weight: bold; font-size: 14px;"><?php echo number_format($grand_totals['overall']['balance'], 2); ?></td>
                                 </tr>
-                                <?php 
-                                } else {
+                                <?php
+                                } // End if students not empty
+                                else {
                                     // Show message when no students found
                                 ?>
                                     <tr>

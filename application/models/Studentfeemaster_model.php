@@ -2410,6 +2410,8 @@ $module=$this->module_model->getPermissionByModulename('transport');
                 $result['total_discount']=$total_discount;
             }else{
                 $result['total_amount']=0;
+                $result['total_fine']=0;
+                $result['total_discount']=0;
             }
         }
 
