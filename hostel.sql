@@ -5,8 +5,8 @@ INSERT INTO `permission_category` (`id`, `perm_group_id`, `name`, `short_code`, 
 
 
 INSERT INTO `roles_permissions` (`id`, `role_id`, `perm_cat_id`, `can_view`, `can_add`, `can_edit`, `can_delete`, `created_at`) VALUES
-(1898, 1, 11046, 1, 1, 1, 1, '2024-01-01 00:00:00'),
-(1899, 1, 11047, 1, 1, 1, 1, '2024-01-01 00:00:00');
+(10021, 1, 11046, 1, 1, 1, 1, '2024-01-01 00:00:00'),
+(10022, 1, 11047, 1, 1, 1, 1, '2024-01-01 00:00:00');
 
 
 INSERT INTO `sidebar_sub_menus` (`id`, `sidebar_menu_id`, `menu`, `key`, `lang_key`, `url`, `level`, `access_permissions`, `permission_group_id`, `activate_controller`, `activate_methods`, `addon_permission`, `is_active`, `created_at`) VALUES
