@@ -428,3 +428,50 @@ ERROR - 2025-09-24 23:45:39 --> Severity: Warning --> Undefined array key 1 C:\x
 ERROR - 2025-09-24 23:45:40 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
 ERROR - 2025-09-24 20:15:40 --> Could not find the language line "thanks_for_contacting_us"
 ERROR - 2025-09-24 20:15:40 --> Could not find the language line "thank_you_for_your_complain"
+ERROR - 2025-09-24 23:54:36 --> Could not find the language line "not_generated"
+ERROR - 2025-09-24 23:54:36 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-24 23:54:36 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-24 20:24:37 --> Could not find the language line "thanks_for_contacting_us"
+ERROR - 2025-09-24 20:24:37 --> Could not find the language line "thank_you_for_your_complain"
+ERROR - 2025-09-24 23:54:41 --> Could not find the language line "not_generated"
+ERROR - 2025-09-24 23:54:41 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-24 23:54:41 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-24 20:24:44 --> Could not find the language line "thanks_for_contacting_us"
+ERROR - 2025-09-24 20:24:44 --> Could not find the language line "thank_you_for_your_complain"
+ERROR - 2025-09-24 23:54:53 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\libraries\Customlib.php 26
+ERROR - 2025-09-24 23:54:53 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\libraries\Customlib.php 26
+ERROR - 2025-09-24 23:54:53 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\libraries\Customlib.php 26
+ERROR - 2025-09-24 23:54:53 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\libraries\Customlib.php 26
+ERROR - 2025-09-24 23:54:53 --> Severity: Warning --> Undefined variable $is_captcha C:\xampp\htdocs\amt\application\views\admin\login.php 83
+ERROR - 2025-09-24 23:55:03 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-24 23:55:03 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-24 20:25:04 --> Could not find the language line "thanks_for_contacting_us"
+ERROR - 2025-09-24 20:25:04 --> Could not find the language line "thank_you_for_your_complain"
+ERROR - 2025-09-24 23:55:05 --> Severity: Warning --> Undefined variable $eventdata C:\xampp\htdocs\amt\application\controllers\admin\Calendar.php 298
+ERROR - 2025-09-24 23:56:57 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\libraries\Customlib.php 26
+ERROR - 2025-09-24 23:56:57 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\libraries\Customlib.php 26
+ERROR - 2025-09-24 23:56:57 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\libraries\Customlib.php 26
+ERROR - 2025-09-24 23:56:57 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\libraries\Customlib.php 26
+ERROR - 2025-09-24 23:56:57 --> Severity: Warning --> Undefined variable $is_captcha C:\xampp\htdocs\amt\application\views\admin\login.php 83
+ERROR - 2025-09-24 23:57:14 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-24 23:57:14 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-24 20:27:14 --> Could not find the language line "thanks_for_contacting_us"
+ERROR - 2025-09-24 20:27:14 --> Could not find the language line "thank_you_for_your_complain"
+ERROR - 2025-09-24 23:57:49 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-24 23:57:49 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-24 23:57:49 --> Could not find the language line "custom"
+ERROR - 2025-09-24 23:57:49 --> Could not find the language line "custom"
+ERROR - 2025-09-24 20:27:49 --> Could not find the language line "thanks_for_contacting_us"
+ERROR - 2025-09-24 20:27:49 --> Could not find the language line "thank_you_for_your_complain"
+ERROR - 2025-09-24 23:57:58 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-24 23:57:58 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-24 20:27:59 --> Could not find the language line "thanks_for_contacting_us"
+ERROR - 2025-09-24 20:27:59 --> Could not find the language line "thank_you_for_your_complain"
+ERROR - 2025-09-24 20:40:46 --> Could not find the language line "thanks_for_contacting_us"
+ERROR - 2025-09-24 20:40:46 --> Could not find the language line "thank_you_for_your_complain"
+ERROR - 2025-09-24 20:41:51 --> Could not find the language line "thanks_for_contacting_us"
+ERROR - 2025-09-24 20:41:51 --> Could not find the language line "thank_you_for_your_complain"
+ERROR - 2025-09-24 21:06:44 --> Could not find the language line "thanks_for_contacting_us"
+ERROR - 2025-09-24 21:06:44 --> Could not find the language line "thank_you_for_your_complain"
+ERROR - 2025-09-24 21:06:52 --> Could not find the language line "thanks_for_contacting_us"
+ERROR - 2025-09-24 21:06:52 --> Could not find the language line "thank_you_for_your_complain"

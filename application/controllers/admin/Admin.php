@@ -29,7 +29,7 @@ class Admin extends Admin_Controller
 
     public function dashboard()
     {
-       
+
         $role            = $this->customlib->getStaffRole();
         $role_id         = json_decode($role)->id;
         $data['role_id'] = $role_id;
@@ -49,6 +49,12 @@ class Admin extends Admin_Controller
         }
         $data['mysqlVersion'] = $this->setting_model->getMysqlVersion();
         $data['sqlMode']      = $this->setting_model->getSqlMode();
+
+        // Initialize permission flags for dashboard widgets
+        $data['can_view_income'] = $this->rbac->hasPrivilege('income_donut_graph', 'can_view') && $this->module_lib->hasActive('income');
+        $data['can_view_expense'] = $this->rbac->hasPrivilege('expense_donut_graph', 'can_view') && $this->module_lib->hasActive('expense');
+        $data['can_view_fees'] = $this->rbac->hasPrivilege('collect_fees', 'can_view') && $this->module_lib->hasActive('fees_collection');
+        $data['can_view_financial_summary'] = $data['can_view_income'] || $data['can_view_expense'] || $data['can_view_fees'];
         //========================== Current Attendence ==========================
         $current_date       = date('Y-m-d');
         $data['title']      = 'Dashboard';
@@ -259,42 +265,50 @@ class Admin extends Admin_Controller
             }
         }
 
-        $incomegraph = $this->income_model->getIncomeHeadsData($start_date, $end_date);
-        foreach ($incomegraph as $key => $value) {
-            $incomegraph[$key]['total'] = convertBaseAmountCurrencyFormat($value['total']);
+        // Load income data only if user has permission
+        $incomegraph = array();
+        $total_income = 0;
+        if ($data['can_view_income']) {
+            $incomegraph = $this->income_model->getIncomeHeadsData($start_date, $end_date);
+            foreach ($incomegraph as $key => $value) {
+                $incomegraph[$key]['total'] = convertBaseAmountCurrencyFormat($value['total']);
+                $total_income += convertBaseAmountCurrencyFormat($value['total']);
+            }
         }
         $data['incomegraph'] = $incomegraph;
 
-        $expensegraph = $this->expense_model->getExpenseHeadData($start_date, $end_date);
-        foreach ($expensegraph as $key => $value) {
-            $expensegraph[$key]['total'] = convertBaseAmountCurrencyFormat($value['total']);
-            if (!empty($value['total'])) {
-                $month_expense = $month_expense + convertBaseAmountCurrencyFormat($value['total']);
+        // Load expense data only if user has permission
+        $expensegraph = array();
+        $total_expense = 0;
+        if ($data['can_view_expense']) {
+            $expensegraph = $this->expense_model->getExpenseHeadData($start_date, $end_date);
+            foreach ($expensegraph as $key => $value) {
+                $expensegraph[$key]['total'] = convertBaseAmountCurrencyFormat($value['total']);
+                $total_expense += convertBaseAmountCurrencyFormat($value['total']);
+                if (!empty($value['total'])) {
+                    $month_expense = $month_expense + convertBaseAmountCurrencyFormat($value['total']);
+                }
             }
         }
         $data['expensegraph']  = $expensegraph;
         $data['month_expense'] = $month_expense;
 
-        // Calculate summary totals for dashboard cards
-        $total_income = 0;
-        foreach ($incomegraph as $income_item) {
-            $total_income += convertBaseAmountCurrencyFormat($income_item['total']);
+        // Calculate net profit only if user can view both income and expense
+        $net_profit = 0;
+        if ($data['can_view_income'] && $data['can_view_expense']) {
+            $net_profit = $total_income - $total_expense;
         }
 
-        $total_expense = 0;
-        foreach ($expensegraph as $expense_item) {
-            $total_expense += convertBaseAmountCurrencyFormat($expense_item['total']);
-        }
-
-        $net_profit = $total_income - $total_expense;
-
-        // Calculate fee collection total with error handling
-        try {
-            $total_fee_collection = $this->calculateFeeCollection($start_date, $end_date);
-            error_log("Dashboard fee collection calculated successfully: $total_fee_collection");
-        } catch (Exception $e) {
-            error_log("Error calculating fee collection in dashboard: " . $e->getMessage());
-            $total_fee_collection = 0; // Default to 0 on error to prevent dashboard crash
+        // Calculate fee collection total only if user has permission
+        $total_fee_collection = 0;
+        if ($data['can_view_fees']) {
+            try {
+                $total_fee_collection = $this->calculateFeeCollection($start_date, $end_date);
+                error_log("Dashboard fee collection calculated successfully: $total_fee_collection");
+            } catch (Exception $e) {
+                error_log("Error calculating fee collection in dashboard: " . $e->getMessage());
+                $total_fee_collection = 0; // Default to 0 on error to prevent dashboard crash
+            }
         }
 
         // Pass summary data to view
@@ -1169,11 +1183,17 @@ class Admin extends Admin_Controller
         $month = $this->input->post('month');
         $year = $this->input->post('year');
 
+        // Check user permissions for dashboard widgets
+        $can_view_income = $this->rbac->hasPrivilege('income_donut_graph', 'can_view') && $this->module_lib->hasActive('income');
+        $can_view_expense = $this->rbac->hasPrivilege('expense_donut_graph', 'can_view') && $this->module_lib->hasActive('expense');
+        $can_view_fees = $this->rbac->hasPrivilege('collect_fees', 'can_view') && $this->module_lib->hasActive('fees_collection');
+
         // Debug logging
         error_log("=== AJAX DASHBOARD SUMMARY DEBUG ===");
         error_log("Filter type: $filter_type");
         error_log("Month: $month, Year: $year");
         error_log("Start date: $start_date, End date: $end_date");
+        error_log("Permissions - Income: " . ($can_view_income ? 'YES' : 'NO') . ", Expense: " . ($can_view_expense ? 'YES' : 'NO') . ", Fees: " . ($can_view_fees ? 'YES' : 'NO'));
 
         // Calculate date range based on filter type
         switch ($filter_type) {
@@ -1207,28 +1227,39 @@ class Admin extends Admin_Controller
                 break;
         }
 
-        // Calculate totals
-        $incomegraph = $this->income_model->getIncomeHeadsData($start_date, $end_date);
+        // Calculate totals based on user permissions
         $total_income = 0;
-        foreach ($incomegraph as $income_item) {
-            $total_income += convertBaseAmountCurrencyFormat($income_item['total']);
+        if ($can_view_income) {
+            $incomegraph = $this->income_model->getIncomeHeadsData($start_date, $end_date);
+            foreach ($incomegraph as $income_item) {
+                $total_income += convertBaseAmountCurrencyFormat($income_item['total']);
+            }
         }
 
-        $expensegraph = $this->expense_model->getExpenseHeadData($start_date, $end_date);
         $total_expense = 0;
-        foreach ($expensegraph as $expense_item) {
-            $total_expense += convertBaseAmountCurrencyFormat($expense_item['total']);
+        if ($can_view_expense) {
+            $expensegraph = $this->expense_model->getExpenseHeadData($start_date, $end_date);
+            foreach ($expensegraph as $expense_item) {
+                $total_expense += convertBaseAmountCurrencyFormat($expense_item['total']);
+            }
         }
 
-        $net_profit = $total_income - $total_expense;
+        // Calculate net profit only if user can view both income and expense
+        $net_profit = 0;
+        if ($can_view_income && $can_view_expense) {
+            $net_profit = $total_income - $total_expense;
+        }
 
-        // Calculate fee collection with error handling
-        try {
-            $total_fee_collection = $this->calculateFeeCollection($start_date, $end_date);
-            error_log("Fee collection calculated successfully: $total_fee_collection");
-        } catch (Exception $e) {
-            error_log("Error calculating fee collection in AJAX: " . $e->getMessage());
-            $total_fee_collection = 0; // Default to 0 on error
+        // Calculate fee collection only if user has permission
+        $total_fee_collection = 0;
+        if ($can_view_fees) {
+            try {
+                $total_fee_collection = $this->calculateFeeCollection($start_date, $end_date);
+                error_log("Fee collection calculated successfully: $total_fee_collection");
+            } catch (Exception $e) {
+                error_log("Error calculating fee collection in AJAX: " . $e->getMessage());
+                $total_fee_collection = 0; // Default to 0 on error
+            }
         }
 
         // Format period display
@@ -1263,7 +1294,13 @@ class Admin extends Admin_Controller
                 'total_fee_collection' => $total_fee_collection,
                 'period_display' => $period_display,
                 'start_date' => $start_date,
-                'end_date' => $end_date
+                'end_date' => $end_date,
+                'permissions' => array(
+                    'can_view_income' => $can_view_income,
+                    'can_view_expense' => $can_view_expense,
+                    'can_view_fees' => $can_view_fees,
+                    'can_view_profit' => $can_view_income && $can_view_expense
+                )
             )
         );
 

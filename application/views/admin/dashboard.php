@@ -293,7 +293,7 @@ if ($this->module_lib->hasActive('student_attendance') && $sch_setting->attenden
             <div class="col-md-12">
                 <div class="row">
                     <!-- Total Income Card -->
-                    <?php if ($this->module_lib->hasActive('income') && $this->rbac->hasPrivilege('income_donut_graph', 'can_view')) { ?>
+                    <?php if ($can_view_income) { ?>
                     <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
                         <div class="info-box bg-green hover-expand-effect">
                             <span class="info-box-icon">
@@ -313,7 +313,7 @@ if ($this->module_lib->hasActive('student_attendance') && $sch_setting->attenden
                     <?php } ?>
 
                     <!-- Total Expenses Card -->
-                    <?php if ($this->module_lib->hasActive('expense') && $this->rbac->hasPrivilege('expense_donut_graph', 'can_view')) { ?>
+                    <?php if ($can_view_expense) { ?>
                     <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
                         <div class="info-box bg-red hover-expand-effect">
                             <span class="info-box-icon">
@@ -333,7 +333,7 @@ if ($this->module_lib->hasActive('student_attendance') && $sch_setting->attenden
                     <?php } ?>
 
                     <!-- Fee Collection Card -->
-                    <?php if ($this->module_lib->hasActive('fees_collection') && $this->rbac->hasPrivilege('fees_collection', 'can_view')) { ?>
+                    <?php if ($can_view_fees) { ?>
                     <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
                         <div class="info-box bg-blue hover-expand-effect">
                             <span class="info-box-icon">
@@ -353,9 +353,7 @@ if ($this->module_lib->hasActive('student_attendance') && $sch_setting->attenden
                     <?php } ?>
 
                     <!-- Net Profit/Loss Card -->
-                    <?php if ($this->module_lib->hasActive('income') && $this->module_lib->hasActive('expense') &&
-                              $this->rbac->hasPrivilege('income_donut_graph', 'can_view') &&
-                              $this->rbac->hasPrivilege('expense_donut_graph', 'can_view')) { ?>
+                    <?php if ($can_view_income && $can_view_expense) { ?>
                     <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
                         <div class="info-box <?php echo ($net_profit >= 0) ? 'bg-green' : 'bg-red'; ?> hover-expand-effect" id="net_profit_card">
                             <span class="info-box-icon">
@@ -1276,40 +1274,48 @@ if ($this->rbac->hasPrivilege('fees_collection_and_expense_yearly_chart', 'can_v
 
             console.log('=== UPDATE SUMMARY CARDS DEBUG ===');
             console.log('Received data:', data);
-            console.log('Fee collection amount:', data.total_fee_collection);
+            console.log('Permissions:', data.permissions);
 
-            // Update income card
-            $('#total_income_display').text(currencySymbol + numberFormat(data.total_income, 2));
-            $('#income_period').text(data.period_display);
+            // Update income card only if user has permission
+            if (data.permissions && data.permissions.can_view_income) {
+                $('#total_income_display').text(currencySymbol + numberFormat(data.total_income, 2));
+                $('#income_period').text(data.period_display);
+            }
 
-            // Update expense card
-            $('#total_expense_display').text(currencySymbol + numberFormat(data.total_expense, 2));
-            $('#expense_period').text(data.period_display);
+            // Update expense card only if user has permission
+            if (data.permissions && data.permissions.can_view_expense) {
+                $('#total_expense_display').text(currencySymbol + numberFormat(data.total_expense, 2));
+                $('#expense_period').text(data.period_display);
+            }
 
-            // Update fee collection card
-            var feeCollectionFormatted = currencySymbol + numberFormat(data.total_fee_collection, 2);
-            console.log('Formatted fee collection:', feeCollectionFormatted);
-            $('#total_fee_collection_display').text(feeCollectionFormatted);
-            $('#fee_period').text(data.period_display);
-            console.log('Fee collection card updated');
+            // Update fee collection card only if user has permission
+            if (data.permissions && data.permissions.can_view_fees) {
+                var feeCollectionFormatted = currencySymbol + numberFormat(data.total_fee_collection, 2);
+                console.log('Formatted fee collection:', feeCollectionFormatted);
+                $('#total_fee_collection_display').text(feeCollectionFormatted);
+                $('#fee_period').text(data.period_display);
+                console.log('Fee collection card updated');
+            }
 
-            // Update net profit/loss card
-            var netProfit = data.net_profit;
-            var isProfit = netProfit >= 0;
+            // Update net profit/loss card only if user has permission for both income and expense
+            if (data.permissions && data.permissions.can_view_profit) {
+                var netProfit = data.net_profit;
+                var isProfit = netProfit >= 0;
 
-            $('#net_profit_display').text(currencySymbol + numberFormat(Math.abs(netProfit), 2));
-            $('#net_profit_label').text(isProfit ? 'Net Profit' : 'Net Loss');
-            $('#profit_period').text(data.period_display);
+                $('#net_profit_display').text(currencySymbol + numberFormat(Math.abs(netProfit), 2));
+                $('#net_profit_label').text(isProfit ? 'Net Profit' : 'Net Loss');
+                $('#profit_period').text(data.period_display);
 
-            // Update card color
-            var cardElement = $('#net_profit_card');
-            cardElement.removeClass('bg-green bg-red');
-            cardElement.addClass(isProfit ? 'bg-green' : 'bg-red');
+                // Update card color
+                var cardElement = $('#net_profit_card');
+                cardElement.removeClass('bg-green bg-red');
+                cardElement.addClass(isProfit ? 'bg-green' : 'bg-red');
 
-            // Update icon
-            var iconElement = cardElement.find('.info-box-icon i');
-            iconElement.removeClass('fa-line-chart fa-exclamation-triangle');
-            iconElement.addClass(isProfit ? 'fa-line-chart' : 'fa-exclamation-triangle');
+                // Update icon
+                var iconElement = cardElement.find('.info-box-icon i');
+                iconElement.removeClass('fa-line-chart fa-exclamation-triangle');
+                iconElement.addClass(isProfit ? 'fa-line-chart' : 'fa-exclamation-triangle');
+            }
         }
 
         function numberFormat(number, decimals) {
