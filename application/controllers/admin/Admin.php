@@ -12,6 +12,9 @@ class Admin extends Admin_Controller
         parent::__construct();
         $this->load->model("classteacher_model");
         $this->load->model("Staff_model");
+        $this->load->model("studentfeemaster_model");
+        $this->load->model("studentfeemasteradding_model");
+
         $this->load->library('Enc_lib');
         $this->sch_setting_detail = $this->setting_model->getSetting();
     }
@@ -271,6 +274,37 @@ class Admin extends Admin_Controller
         }
         $data['expensegraph']  = $expensegraph;
         $data['month_expense'] = $month_expense;
+
+        // Calculate summary totals for dashboard cards
+        $total_income = 0;
+        foreach ($incomegraph as $income_item) {
+            $total_income += convertBaseAmountCurrencyFormat($income_item['total']);
+        }
+
+        $total_expense = 0;
+        foreach ($expensegraph as $expense_item) {
+            $total_expense += convertBaseAmountCurrencyFormat($expense_item['total']);
+        }
+
+        $net_profit = $total_income - $total_expense;
+
+        // Calculate fee collection total with error handling
+        try {
+            $total_fee_collection = $this->calculateFeeCollection($start_date, $end_date);
+            error_log("Dashboard fee collection calculated successfully: $total_fee_collection");
+        } catch (Exception $e) {
+            error_log("Error calculating fee collection in dashboard: " . $e->getMessage());
+            $total_fee_collection = 0; // Default to 0 on error to prevent dashboard crash
+        }
+
+        // Pass summary data to view
+        $data['total_income'] = $total_income;
+        $data['total_expense'] = $total_expense;
+        $data['net_profit'] = $net_profit;
+        $data['total_fee_collection'] = $total_fee_collection;
+        $data['current_month'] = date('F Y');
+        $data['start_date'] = $start_date;
+        $data['end_date'] = $end_date;
 
         $enquiry       = $this->admin_model->getAllEnquiryCount($start_date, $end_date);
         $total_counter = $total_paid + $total_unpaid + $total_partial;
@@ -1049,8 +1083,181 @@ class Admin extends Admin_Controller
 
     }
 
+    /**
+     * Calculate total fee collection for given date range
+     */
+    private function calculateFeeCollection($start_date, $end_date)
+    {
+        $total_collection = 0;
 
+        try {
+            // Debug logging
+            error_log("=== FEE COLLECTION DEBUG (Optimized) ===");
+            error_log("Date range: $start_date to $end_date");
 
+            // Use direct database queries for better performance and reliability
+            $total_collection = $this->calculateFeeCollectionDirect($start_date, $end_date);
+
+            error_log("Final total fee collection: $total_collection");
+
+        } catch (Exception $e) {
+            error_log("ERROR in calculateFeeCollection: " . $e->getMessage());
+            error_log("Stack trace: " . $e->getTraceAsString());
+            $total_collection = 0; // Return 0 on error to prevent dashboard crash
+        }
+
+        error_log("=== END FEE COLLECTION DEBUG ===");
+        return $total_collection;
+    }
+
+    /**
+     * Direct database calculation for fee collection (matches Combined Collection Report exactly)
+     */
+    private function calculateFeeCollectionDirect($start_date, $end_date)
+    {
+        $total_collection = 0;
+
+        try {
+            error_log("Using Combined Collection Report logic (no session filtering)...");
+
+            // Get regular fee collection data (same method as Combined Report)
+            $regular_fees = $this->studentfeemaster_model->getFeeCollectionReport(
+                $start_date, $end_date, null, null, null, null, null, null
+            );
+
+            // Get other fee collection data (same method as Combined Report)
+            $other_fees = $this->studentfeemasteradding_model->getFeeCollectionReport(
+                $start_date, $end_date, null, null, null, null, null, null
+            );
+
+            // Combine both results (same as Combined Report)
+            $combined_results = array_merge($regular_fees, $other_fees);
+
+            error_log("Regular fees: " . count($regular_fees) . " entries");
+            error_log("Other fees: " . count($other_fees) . " entries");
+            error_log("Combined total entries: " . count($combined_results));
+
+            // Calculate total using same formula: amount + amount_fine
+            foreach ($combined_results as $collect) {
+                $amount = floatval($collect['amount']);
+                $fine = floatval($collect['amount_fine']);
+                $total_collection += ($amount + $fine);
+            }
+
+            error_log("Dashboard now matches Combined Collection Report calculation");
+
+        } catch (Exception $e) {
+            error_log("Error in calculateFeeCollectionDirect: " . $e->getMessage());
+            $total_collection = 0;
+        }
+
+        return $total_collection;
+    }
+
+    /**
+     * AJAX method to get dashboard summary data for selected date range
+     */
+    public function getDashboardSummary()
+    {
+        if (!$this->input->is_ajax_request()) {
+            show_404();
+        }
+
+        $filter_type = $this->input->post('filter_type');
+        $start_date = $this->input->post('start_date');
+        $end_date = $this->input->post('end_date');
+        $month = $this->input->post('month');
+        $year = $this->input->post('year');
+
+        // Debug logging
+        error_log("=== AJAX DASHBOARD SUMMARY DEBUG ===");
+        error_log("Filter type: $filter_type");
+        error_log("Month: $month, Year: $year");
+        error_log("Start date: $start_date, End date: $end_date");
+
+        // Calculate date range based on filter type
+        switch ($filter_type) {
+            case 'monthly':
+                if ($month && $year) {
+                    $start_date = $year . '-' . str_pad($month, 2, '0', STR_PAD_LEFT) . '-01';
+                    $end_date = date('Y-m-t', strtotime($start_date));
+                }
+                break;
+            case 'yearly':
+                if ($year) {
+                    $start_date = $year . '-01-01';
+                    $end_date = $year . '-12-31';
+                }
+                break;
+            case 'custom':
+                // Use provided start_date and end_date
+                break;
+            default:
+                // Current month
+                $start_date = date('Y-m-01');
+                $end_date = date('Y-m-t');
+                break;
+        }
+
+        // Calculate totals
+        $incomegraph = $this->income_model->getIncomeHeadsData($start_date, $end_date);
+        $total_income = 0;
+        foreach ($incomegraph as $income_item) {
+            $total_income += convertBaseAmountCurrencyFormat($income_item['total']);
+        }
+
+        $expensegraph = $this->expense_model->getExpenseHeadData($start_date, $end_date);
+        $total_expense = 0;
+        foreach ($expensegraph as $expense_item) {
+            $total_expense += convertBaseAmountCurrencyFormat($expense_item['total']);
+        }
+
+        $net_profit = $total_income - $total_expense;
+
+        // Calculate fee collection with error handling
+        try {
+            $total_fee_collection = $this->calculateFeeCollection($start_date, $end_date);
+            error_log("Fee collection calculated successfully: $total_fee_collection");
+        } catch (Exception $e) {
+            error_log("Error calculating fee collection in AJAX: " . $e->getMessage());
+            $total_fee_collection = 0; // Default to 0 on error
+        }
+
+        // Format period display
+        $period_display = '';
+        switch ($filter_type) {
+            case 'monthly':
+                $period_display = date('F Y', strtotime($start_date));
+                break;
+            case 'yearly':
+                $period_display = $year;
+                break;
+            case 'custom':
+                $period_display = date('M j, Y', strtotime($start_date)) . ' - ' . date('M j, Y', strtotime($end_date));
+                break;
+            default:
+                $period_display = date('F Y');
+                break;
+        }
+
+        $response = array(
+            'status' => 'success',
+            'data' => array(
+                'total_income' => $total_income,
+                'total_expense' => $total_expense,
+                'net_profit' => $net_profit,
+                'total_fee_collection' => $total_fee_collection,
+                'period_display' => $period_display,
+                'start_date' => $start_date,
+                'end_date' => $end_date
+            )
+        );
+
+        error_log("Response data: " . json_encode($response));
+        error_log("=== END AJAX DASHBOARD SUMMARY DEBUG ===");
+
+        echo json_encode($response);
+    }
 
     // my changes
 

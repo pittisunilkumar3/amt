@@ -6,6 +6,114 @@
     .sidebar-collapse #lineChart{height: 100% !important;}
     /*.fc-day-grid-container{overflow: visible !important;}*/
     .tooltip-inner {max-width: 135px;}
+
+    /* Financial Summary Cards Styling */
+    .hover-expand-effect {
+        transition: all 0.3s ease;
+        cursor: pointer;
+        margin-bottom: 20px;
+    }
+
+    .hover-expand-effect:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .info-box {
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .info-box-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+    }
+
+    .info-box-number {
+        font-size: 22px;
+        font-weight: bold;
+        line-height: 1.2;
+    }
+
+    .info-box-text {
+        font-size: 14px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .progress-description {
+        font-size: 12px;
+        opacity: 0.8;
+        margin-top: 5px;
+    }
+
+    /* Date Filter Styling */
+    .date-filter-section {
+        background: #f4f4f4;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+        border: 1px solid #ddd;
+    }
+
+    .filter-controls {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    .filter-group {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .filter-group label {
+        margin: 0;
+        font-weight: normal;
+        white-space: nowrap;
+    }
+
+    .filter-group select,
+    .filter-group input {
+        min-width: 120px;
+    }
+
+    .btn-apply-filter {
+        background-color: #3c8dbc;
+        color: white;
+        border: none;
+        padding: 6px 15px;
+        border-radius: 3px;
+        cursor: pointer;
+    }
+
+    .btn-apply-filter:hover {
+        background-color: #2e6da4;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .info-box-number {
+            font-size: 18px;
+        }
+        .info-box-text {
+            font-size: 12px;
+        }
+
+        .filter-controls {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .filter-group {
+            justify-content: space-between;
+        }
+    }
 </style>
 
 <div class="content-wrapper">
@@ -112,6 +220,164 @@ if ($this->module_lib->hasActive('student_attendance') && $sch_setting->attenden
 }
 ?>
         </div><!--./row-->
+
+        <!-- Date Filter Section -->
+        <?php if (($this->module_lib->hasActive('income')) || ($this->module_lib->hasActive('expense'))) { ?>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="date-filter-section">
+                    <div class="filter-controls">
+                        <div class="filter-group">
+                            <label for="filter_type">Filter:</label>
+                            <select id="filter_type" class="form-control">
+                                <option value="current">Current Month</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="yearly">Yearly</option>
+                                <option value="custom">Custom Range</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group" id="monthly_filter" style="display: none;">
+                            <label for="month_select">Month:</label>
+                            <select id="month_select" class="form-control">
+                                <option value="1">January</option>
+                                <option value="2">February</option>
+                                <option value="3">March</option>
+                                <option value="4">April</option>
+                                <option value="5">May</option>
+                                <option value="6">June</option>
+                                <option value="7">July</option>
+                                <option value="8">August</option>
+                                <option value="9" selected>September</option>
+                                <option value="10">October</option>
+                                <option value="11">November</option>
+                                <option value="12">December</option>
+                            </select>
+                            <select id="year_select" class="form-control">
+                                <option value="2023">2023</option>
+                                <option value="2024">2024</option>
+                                <option value="2025" selected>2025</option>
+                                <option value="2026">2026</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group" id="yearly_filter" style="display: none;">
+                            <label for="year_only_select">Year:</label>
+                            <select id="year_only_select" class="form-control">
+                                <option value="2023">2023</option>
+                                <option value="2024">2024</option>
+                                <option value="2025" selected>2025</option>
+                                <option value="2026">2026</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group" id="custom_filter" style="display: none;">
+                            <label for="start_date">From:</label>
+                            <input type="date" id="start_date" class="form-control" value="<?php echo date('Y-m-01'); ?>">
+                            <label for="end_date">To:</label>
+                            <input type="date" id="end_date" class="form-control" value="<?php echo date('Y-m-t'); ?>">
+                        </div>
+
+                        <button type="button" id="apply_filter" class="btn-apply-filter">
+                            <i class="fa fa-refresh"></i> Apply Filter
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Financial Summary Cards -->
+        <div class="row" id="summary_cards">
+            <div class="col-md-12">
+                <div class="row">
+                    <!-- Total Income Card -->
+                    <?php if ($this->module_lib->hasActive('income') && $this->rbac->hasPrivilege('income_donut_graph', 'can_view')) { ?>
+                    <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
+                        <div class="info-box bg-green hover-expand-effect">
+                            <span class="info-box-icon">
+                                <i class="fa fa-arrow-up"></i>
+                            </span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Total Income</span>
+                                <span class="info-box-number" id="total_income_display">
+                                    <?php echo $currency_symbol . number_format($total_income, 2); ?>
+                                </span>
+                                <span class="progress-description" id="income_period">
+                                    <?php echo $current_month; ?>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <?php } ?>
+
+                    <!-- Total Expenses Card -->
+                    <?php if ($this->module_lib->hasActive('expense') && $this->rbac->hasPrivilege('expense_donut_graph', 'can_view')) { ?>
+                    <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
+                        <div class="info-box bg-red hover-expand-effect">
+                            <span class="info-box-icon">
+                                <i class="fa fa-arrow-down"></i>
+                            </span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Total Expenses</span>
+                                <span class="info-box-number" id="total_expense_display">
+                                    <?php echo $currency_symbol . number_format($total_expense, 2); ?>
+                                </span>
+                                <span class="progress-description" id="expense_period">
+                                    <?php echo $current_month; ?>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <?php } ?>
+
+                    <!-- Fee Collection Card -->
+                    <?php if ($this->module_lib->hasActive('fees_collection') && $this->rbac->hasPrivilege('fees_collection', 'can_view')) { ?>
+                    <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
+                        <div class="info-box bg-blue hover-expand-effect">
+                            <span class="info-box-icon">
+                                <i class="fa fa-graduation-cap"></i>
+                            </span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Fee Collection</span>
+                                <span class="info-box-number" id="total_fee_collection_display">
+                                    <?php echo $currency_symbol . number_format($total_fee_collection, 2); ?>
+                                </span>
+                                <span class="progress-description" id="fee_period">
+                                    <?php echo $current_month; ?>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <?php } ?>
+
+                    <!-- Net Profit/Loss Card -->
+                    <?php if ($this->module_lib->hasActive('income') && $this->module_lib->hasActive('expense') &&
+                              $this->rbac->hasPrivilege('income_donut_graph', 'can_view') &&
+                              $this->rbac->hasPrivilege('expense_donut_graph', 'can_view')) { ?>
+                    <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
+                        <div class="info-box <?php echo ($net_profit >= 0) ? 'bg-green' : 'bg-red'; ?> hover-expand-effect" id="net_profit_card">
+                            <span class="info-box-icon">
+                                <i class="fa <?php echo ($net_profit >= 0) ? 'fa-line-chart' : 'fa-exclamation-triangle'; ?>"></i>
+                            </span>
+                            <div class="info-box-content">
+                                <span class="info-box-text" id="net_profit_label">
+                                    <?php echo ($net_profit >= 0) ? 'Net Profit' : 'Net Loss'; ?>
+                                </span>
+                                <span class="info-box-number" id="net_profit_display">
+                                    <?php echo $currency_symbol . number_format(abs($net_profit), 2); ?>
+                                </span>
+                                <span class="progress-description" id="profit_period">
+                                    <?php echo $current_month; ?>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <?php } ?>
+                </div>
+            </div>
+        </div><!--./row-->
+        <?php } ?>
+
         <div class="row">
             <?php
 $bar_chart = true;
@@ -940,6 +1206,117 @@ if ($this->rbac->hasPrivilege('fees_collection_and_expense_yearly_chart', 'can_v
 ?>
 
     $(document).ready(function () {
+        // Date filter functionality
+        $('#filter_type').change(function() {
+            var filterType = $(this).val();
+
+            // Hide all filter groups
+            $('#monthly_filter, #yearly_filter, #custom_filter').hide();
+
+            // Show relevant filter group
+            if (filterType === 'monthly') {
+                $('#monthly_filter').show();
+            } else if (filterType === 'yearly') {
+                $('#yearly_filter').show();
+            } else if (filterType === 'custom') {
+                $('#custom_filter').show();
+            }
+        });
+
+        // Apply filter button click
+        $('#apply_filter').click(function() {
+            var filterType = $('#filter_type').val();
+            var data = {
+                filter_type: filterType
+            };
+
+            // Add specific filter data based on type
+            if (filterType === 'monthly') {
+                data.month = $('#month_select').val();
+                data.year = $('#year_select').val();
+            } else if (filterType === 'yearly') {
+                data.year = $('#year_only_select').val();
+            } else if (filterType === 'custom') {
+                data.start_date = $('#start_date').val();
+                data.end_date = $('#end_date').val();
+            }
+
+            // Show loading state
+            $(this).html('<i class="fa fa-spinner fa-spin"></i> Loading...');
+            $(this).prop('disabled', true);
+
+            // Make AJAX request
+            $.ajax({
+                type: 'POST',
+                url: base_url + 'admin/admin/getDashboardSummary',
+                data: data,
+                dataType: 'json',
+                success: function(response) {
+                    if (response.status === 'success') {
+                        updateSummaryCards(response.data);
+                    } else {
+                        alert('Error loading data. Please try again.');
+                    }
+                },
+                error: function() {
+                    alert('Error loading data. Please try again.');
+                },
+                complete: function() {
+                    // Reset button state
+                    $('#apply_filter').html('<i class="fa fa-refresh"></i> Apply Filter');
+                    $('#apply_filter').prop('disabled', false);
+                }
+            });
+        });
+
+        function updateSummaryCards(data) {
+            var currencySymbol = '<?php echo $currency_symbol; ?>';
+
+            console.log('=== UPDATE SUMMARY CARDS DEBUG ===');
+            console.log('Received data:', data);
+            console.log('Fee collection amount:', data.total_fee_collection);
+
+            // Update income card
+            $('#total_income_display').text(currencySymbol + numberFormat(data.total_income, 2));
+            $('#income_period').text(data.period_display);
+
+            // Update expense card
+            $('#total_expense_display').text(currencySymbol + numberFormat(data.total_expense, 2));
+            $('#expense_period').text(data.period_display);
+
+            // Update fee collection card
+            var feeCollectionFormatted = currencySymbol + numberFormat(data.total_fee_collection, 2);
+            console.log('Formatted fee collection:', feeCollectionFormatted);
+            $('#total_fee_collection_display').text(feeCollectionFormatted);
+            $('#fee_period').text(data.period_display);
+            console.log('Fee collection card updated');
+
+            // Update net profit/loss card
+            var netProfit = data.net_profit;
+            var isProfit = netProfit >= 0;
+
+            $('#net_profit_display').text(currencySymbol + numberFormat(Math.abs(netProfit), 2));
+            $('#net_profit_label').text(isProfit ? 'Net Profit' : 'Net Loss');
+            $('#profit_period').text(data.period_display);
+
+            // Update card color
+            var cardElement = $('#net_profit_card');
+            cardElement.removeClass('bg-green bg-red');
+            cardElement.addClass(isProfit ? 'bg-green' : 'bg-red');
+
+            // Update icon
+            var iconElement = cardElement.find('.info-box-icon i');
+            iconElement.removeClass('fa-line-chart fa-exclamation-triangle');
+            iconElement.addClass(isProfit ? 'fa-line-chart' : 'fa-exclamation-triangle');
+        }
+
+        function numberFormat(number, decimals) {
+            return parseFloat(number).toLocaleString('en-US', {
+                minimumFractionDigits: decimals,
+                maximumFractionDigits: decimals
+            });
+        }
+
         $(document).on('click', '.close_notice', function () {
         var data = $(this).data();
         $.ajax({

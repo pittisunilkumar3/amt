@@ -14,6 +14,7 @@ class Studentfeemaster_model extends MY_Model
     {
         parent::__construct();
         $this->load->config('ci-blog');
+        $this->load->model('Module_model', 'module_model');
         $this->balance_group   = $this->config->item('ci_balance_group');
         $this->balance_type    = $this->config->item('ci_balance_type');
         $this->current_session = $this->setting_model->getCurrentSession();
