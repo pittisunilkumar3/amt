@@ -231,6 +231,8 @@ if ($this->module_lib->hasActive('student_attendance') && $sch_setting->attenden
                             <label for="filter_type">Filter:</label>
                             <select id="filter_type" class="form-control">
                                 <option value="current">Current Month</option>
+                                <option value="today">Today</option>
+                                <option value="weekly">Weekly (Last 7 Days)</option>
                                 <option value="monthly">Monthly</option>
                                 <option value="yearly">Yearly</option>
                                 <option value="custom">Custom Range</option>

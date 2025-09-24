@@ -1177,6 +1177,14 @@ class Admin extends Admin_Controller
 
         // Calculate date range based on filter type
         switch ($filter_type) {
+            case 'today':
+                $start_date = date('Y-m-d');
+                $end_date = date('Y-m-d');
+                break;
+            case 'weekly':
+                $start_date = date('Y-m-d', strtotime('-6 days')); // 7 days including today
+                $end_date = date('Y-m-d');
+                break;
             case 'monthly':
                 if ($month && $year) {
                     $start_date = $year . '-' . str_pad($month, 2, '0', STR_PAD_LEFT) . '-01';
@@ -1226,6 +1234,12 @@ class Admin extends Admin_Controller
         // Format period display
         $period_display = '';
         switch ($filter_type) {
+            case 'today':
+                $period_display = 'Today (' . date('M j, Y') . ')';
+                break;
+            case 'weekly':
+                $period_display = 'Last 7 Days (' . date('M j', strtotime($start_date)) . ' - ' . date('M j, Y', strtotime($end_date)) . ')';
+                break;
             case 'monthly':
                 $period_display = date('F Y', strtotime($start_date));
                 break;
