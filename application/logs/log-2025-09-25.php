@@ -18,3 +18,6 @@ ERROR - 2025-09-25 00:36:43 --> Severity: Warning --> Undefined array key 1 C:\x
 ERROR - 2025-09-25 00:36:52 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
 ERROR - 2025-09-25 00:36:52 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
 ERROR - 2025-09-25 00:36:53 --> Severity: Warning --> Undefined variable $eventdata C:\xampp\htdocs\amt\application\controllers\admin\Calendar.php 298
+ERROR - 2025-09-25 00:48:56 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-09-25 00:48:56 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-09-25 00:48:57 --> Severity: Warning --> Undefined variable $eventdata C:\xampp\htdocs\amt\application\controllers\admin\Calendar.php 298

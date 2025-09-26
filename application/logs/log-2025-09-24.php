@@ -475,3 +475,5 @@ ERROR - 2025-09-24 21:06:44 --> Could not find the language line "thanks_for_con
 ERROR - 2025-09-24 21:06:44 --> Could not find the language line "thank_you_for_your_complain"
 ERROR - 2025-09-24 21:06:52 --> Could not find the language line "thanks_for_contacting_us"
 ERROR - 2025-09-24 21:06:52 --> Could not find the language line "thank_you_for_your_complain"
+ERROR - 2025-09-24 21:18:56 --> Could not find the language line "thanks_for_contacting_us"
+ERROR - 2025-09-24 21:18:56 --> Could not find the language line "thank_you_for_your_complain"

@@ -8,10 +8,19 @@ class Teacher_webservice extends CI_Controller
     public function __construct()
     {
         parent::__construct();
-        $this->load->model(array(
-            'teacher_auth_model', 'teacher_permission_model', 'staff_model',
-            'setting_model'
-        ));
+
+        // Load essential models first
+        $this->load->model('teacher_auth_model');
+        $this->load->helper('json_output');
+
+        // Load other models with error handling
+        try {
+            $this->load->model(array(
+                'teacher_permission_model', 'staff_model', 'setting_model'
+            ));
+        } catch (Exception $e) {
+            log_message('error', 'Error loading models: ' . $e->getMessage());
+        }
 
         // Load libraries with error handling
         try {
@@ -25,12 +34,27 @@ class Teacher_webservice extends CI_Controller
         } catch (Exception $e) {
             log_message('error', 'Customlib not available: ' . $e->getMessage());
         }
-        $this->load->helper('teacher_auth');
 
-        $setting = $this->setting_model->getSchoolDetail();
-        if ($setting->timezone != "") {
-            date_default_timezone_set($setting->timezone);
-        } else {
+        try {
+            $this->load->helper('teacher_auth');
+        } catch (Exception $e) {
+            log_message('error', 'Teacher auth helper not available: ' . $e->getMessage());
+        }
+
+        // Set timezone with error handling
+        try {
+            if (isset($this->setting_model)) {
+                $setting = $this->setting_model->getSchoolDetail();
+                if ($setting && isset($setting->timezone) && $setting->timezone != "") {
+                    date_default_timezone_set($setting->timezone);
+                } else {
+                    date_default_timezone_set('UTC');
+                }
+            } else {
+                date_default_timezone_set('UTC');
+            }
+        } catch (Exception $e) {
+            log_message('error', 'Error setting timezone: ' . $e->getMessage());
             date_default_timezone_set('UTC');
         }
     }
@@ -941,5 +965,165 @@ class Teacher_webservice extends CI_Controller
                 }
             }
         }
+    }
+
+    /**
+     * Simple test method
+     */
+    public function debug_test()
+    {
+        json_output(200, array(
+            'status' => 1,
+            'message' => 'Teacher webservice debug test successful',
+            'timestamp' => date('Y-m-d H:i:s'),
+            'controller' => 'Teacher_webservice'
+        ));
+    }
+
+    /**
+     * Get Staff Attendance Summary
+     * POST /teacher/attendance-summary
+     *
+     * Comprehensive attendance API that returns detailed attendance statistics
+     * for staff members including dates, leave information, and summaries.
+     */
+    public function attendance_summary()
+    {
+        // Enable error reporting for debugging
+        error_reporting(E_ALL);
+        ini_set('display_errors', 0); // Don't display errors in output
+
+        // Log that method was called
+        log_message('info', 'attendance_summary method called');
+
+        try {
+            $method = $this->input->server('REQUEST_METHOD');
+
+            if ($method != 'POST') {
+                json_output(400, array('status' => 400, 'message' => 'Bad request. Only POST method allowed.'));
+                return;
+            }
+
+            $check_auth_client = $this->teacher_auth_model->check_auth_client();
+            if (!$check_auth_client) {
+                json_output(401, array('status' => 401, 'message' => 'Unauthorized. Please check Client-Service and Auth-Key headers.'));
+                return;
+            }
+
+            // For attendance summary, we only require client authentication
+            // This allows administrative access to attendance data without user-specific tokens
+
+            // Load required models
+            $this->load->model('staffattendancemodel');
+            $this->load->model('leaverequest_model');
+
+            // Get request parameters
+            $params = json_decode(file_get_contents('php://input'), true);
+
+            // Validate JSON input
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                json_output(400, array(
+                    'status' => 400,
+                    'message' => 'Invalid JSON format in request body.'
+                ));
+                return;
+            }
+
+            // Extract parameters with defaults
+            $staff_id = isset($params['staff_id']) ? (int)$params['staff_id'] : null;
+            $from_date = isset($params['from_date']) ? trim($params['from_date']) : null;
+            $to_date = isset($params['to_date']) ? trim($params['to_date']) : null;
+
+            // Validate staff_id if provided
+            if ($staff_id !== null && $staff_id <= 0) {
+                json_output(400, array(
+                    'status' => 400,
+                    'message' => 'Invalid staff_id. Must be a positive integer.'
+                ));
+                return;
+            }
+
+            // Validate date formats if provided
+            if ($from_date && !$this->isValidDate($from_date)) {
+                json_output(400, array(
+                    'status' => 400,
+                    'message' => 'Invalid from_date format. Use YYYY-MM-DD format.'
+                ));
+                return;
+            }
+
+            if ($to_date && !$this->isValidDate($to_date)) {
+                json_output(400, array(
+                    'status' => 400,
+                    'message' => 'Invalid to_date format. Use YYYY-MM-DD format.'
+                ));
+                return;
+            }
+
+            // Check date range validity
+            if ($from_date && $to_date && strtotime($from_date) > strtotime($to_date)) {
+                json_output(400, array(
+                    'status' => 400,
+                    'message' => 'from_date cannot be greater than to_date.'
+                ));
+                return;
+            }
+
+            // Get attendance summary data
+            $attendance_data = $this->staffattendancemodel->getAttendanceSummary($staff_id, $from_date, $to_date);
+
+            // Check for errors in the model response
+            if (isset($attendance_data['error'])) {
+                json_output(400, array(
+                    'status' => 400,
+                    'message' => $attendance_data['error']
+                ));
+                return;
+            }
+
+            // Prepare successful response
+            $response = array(
+                'status' => 1,
+                'message' => 'Attendance summary retrieved successfully.',
+                'data' => $attendance_data,
+                'request_info' => array(
+                    'staff_id' => $staff_id,
+                    'from_date' => $from_date ?: date('Y-01-01'),
+                    'to_date' => $to_date ?: date('Y-12-31'),
+                    'generated_at' => date('Y-m-d H:i:s')
+                )
+            );
+
+            json_output(200, $response);
+
+        } catch (Exception $e) {
+            // Log the error for debugging
+            log_message('error', 'Staff Attendance Summary API Error: ' . $e->getMessage());
+
+            json_output(500, array(
+                'status' => 500,
+                'message' => 'Internal server error: ' . $e->getMessage()
+            ));
+        } catch (Error $e) {
+            // Log PHP errors
+            log_message('error', 'Staff Attendance Summary PHP Error: ' . $e->getMessage());
+
+            json_output(500, array(
+                'status' => 500,
+                'message' => 'PHP Error: ' . $e->getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Validate date format (YYYY-MM-DD)
+     */
+    private function isValidDate($date)
+    {
+        if (empty($date)) {
+            return false;
+        }
+        $d = date_create_from_format('Y-m-d', $date);
+        return $d && date_format($d, 'Y-m-d') === $date;
     }
 }

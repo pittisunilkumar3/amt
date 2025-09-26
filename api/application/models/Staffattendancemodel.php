@@ -4,6 +4,10 @@ class Staffattendancemodel extends MY_Model {
 
     public function __construct() {
         parent::__construct();
+
+        // Load required models
+        $this->load->model('setting_model');
+
         $this->current_session = $this->setting_model->getCurrentSession();
         $this->current_date = $this->setting_model->getDateYmd();
     }
@@ -143,6 +147,243 @@ class Staffattendancemodel extends MY_Model {
             return ($this->db->affected_rows() != 1) ? false : true;
         }
         return false;
+    }
+
+    /**
+     * Get comprehensive attendance summary for staff members
+     * @param int|null $staff_id - Specific staff ID or null for all staff
+     * @param string $from_date - Start date (Y-m-d format)
+     * @param string $to_date - End date (Y-m-d format)
+     * @return array - Comprehensive attendance data with statistics and dates
+     */
+    public function getAttendanceSummary($staff_id = null, $from_date = null, $to_date = null) {
+        // Set default date range if not provided (current year)
+        if (empty($from_date)) {
+            $from_date = date('Y-01-01');
+        }
+        if (empty($to_date)) {
+            $to_date = date('Y-12-31');
+        }
+
+        // Validate date format
+        if (!$this->isValidDate($from_date) || !$this->isValidDate($to_date)) {
+            return array('error' => 'Invalid date format. Use Y-m-d format.');
+        }
+
+        // Ensure from_date is not greater than to_date
+        if (strtotime($from_date) > strtotime($to_date)) {
+            return array('error' => 'From date cannot be greater than to date.');
+        }
+
+        $result = array();
+
+        if ($staff_id) {
+            // Get data for specific staff member
+            $staff_data = $this->getStaffAttendanceData($staff_id, $from_date, $to_date);
+            if ($staff_data) {
+                $result = array(
+                    'staff_id' => $staff_id,
+                    'staff_info' => $staff_data['staff_info'],
+                    'attendance_summary' => $staff_data['attendance_summary'],
+                    'attendance_dates' => $staff_data['attendance_dates'],
+                    'leave_summary' => $staff_data['leave_summary'],
+                    'date_range' => array(
+                        'from_date' => $from_date,
+                        'to_date' => $to_date
+                    )
+                );
+            } else {
+                $result = array('error' => 'Staff member not found or no data available.');
+            }
+        } else {
+            // Get data for all active staff members
+            $all_staff = $this->getAllStaffAttendanceData($from_date, $to_date);
+            $result = array(
+                'staff_attendance_data' => $all_staff,
+                'total_staff' => count($all_staff),
+                'date_range' => array(
+                    'from_date' => $from_date,
+                    'to_date' => $to_date
+                )
+            );
+        }
+
+        return $result;
+    }
+
+    /**
+     * Get attendance data for a specific staff member
+     */
+    private function getStaffAttendanceData($staff_id, $from_date, $to_date) {
+        // Get staff basic information
+        $this->db->select('staff.id, staff.name, staff.surname, staff.employee_id, staff.email, staff.contact_no,
+                          staff_designation.designation, department.department_name, roles.name as role_name');
+        $this->db->from('staff');
+        $this->db->join('staff_designation', 'staff_designation.id = staff.designation', 'left');
+        $this->db->join('department', 'department.id = staff.department', 'left');
+        $this->db->join('staff_roles', 'staff_roles.staff_id = staff.id', 'left');
+        $this->db->join('roles', 'roles.id = staff_roles.role_id', 'left');
+        $this->db->where('staff.id', $staff_id);
+        $this->db->where('staff.is_active', 1);
+        $staff_info = $this->db->get()->row_array();
+
+        if (!$staff_info) {
+            return null;
+        }
+
+        // Get attendance types
+        $attendance_types = $this->getStaffAttendanceType();
+
+        // Initialize attendance summary
+        $attendance_summary = array();
+        $attendance_dates = array();
+
+        foreach ($attendance_types as $type) {
+            $attendance_summary[$type['type']] = array(
+                'count' => 0,
+                'dates' => array()
+            );
+        }
+
+        // Get attendance records within date range
+        $this->db->select('staff_attendance.date, staff_attendance.remark, staff_attendance.created_at,
+                          staff_attendance_type.type, staff_attendance_type.key_value');
+        $this->db->from('staff_attendance');
+        $this->db->join('staff_attendance_type', 'staff_attendance_type.id = staff_attendance.staff_attendance_type_id');
+        $this->db->where('staff_attendance.staff_id', $staff_id);
+        $this->db->where('staff_attendance.date >=', $from_date);
+        $this->db->where('staff_attendance.date <=', $to_date);
+        $this->db->order_by('staff_attendance.date', 'DESC');
+        $attendance_records = $this->db->get()->result_array();
+
+        // Process attendance records
+        foreach ($attendance_records as $record) {
+            $type = $record['type'];
+            if (isset($attendance_summary[$type])) {
+                $attendance_summary[$type]['count']++;
+                $attendance_summary[$type]['dates'][] = array(
+                    'date' => $record['date'],
+                    'remark' => $record['remark'],
+                    'recorded_at' => $record['created_at']
+                );
+            }
+
+            $attendance_dates[] = array(
+                'date' => $record['date'],
+                'type' => $type,
+                'key_value' => $record['key_value'],
+                'remark' => $record['remark'],
+                'recorded_at' => $record['created_at']
+            );
+        }
+
+        // Get leave data
+        $leave_summary = $this->getStaffLeaveData($staff_id, $from_date, $to_date);
+
+        return array(
+            'staff_info' => $staff_info,
+            'attendance_summary' => $attendance_summary,
+            'attendance_dates' => $attendance_dates,
+            'leave_summary' => $leave_summary
+        );
+    }
+
+    /**
+     * Get attendance data for all active staff members
+     */
+    private function getAllStaffAttendanceData($from_date, $to_date) {
+        // Get all active staff
+        $this->db->select('staff.id');
+        $this->db->from('staff');
+        $this->db->where('staff.is_active', 1);
+        $staff_list = $this->db->get()->result_array();
+
+        $all_staff_data = array();
+
+        foreach ($staff_list as $staff) {
+            $staff_data = $this->getStaffAttendanceData($staff['id'], $from_date, $to_date);
+            if ($staff_data) {
+                $all_staff_data[] = array(
+                    'staff_id' => $staff['id'],
+                    'staff_info' => $staff_data['staff_info'],
+                    'attendance_summary' => $staff_data['attendance_summary'],
+                    'attendance_dates' => $staff_data['attendance_dates'],
+                    'leave_summary' => $staff_data['leave_summary']
+                );
+            }
+        }
+
+        return $all_staff_data;
+    }
+
+    /**
+     * Get staff leave data within date range
+     */
+    private function getStaffLeaveData($staff_id, $from_date, $to_date) {
+        $this->db->select('staff_leave_request.*, leave_types.type as leave_type_name');
+        $this->db->from('staff_leave_request');
+        $this->db->join('leave_types', 'leave_types.id = staff_leave_request.leave_type_id');
+        $this->db->where('staff_leave_request.staff_id', $staff_id);
+        $this->db->where('staff_leave_request.status', 'approve');
+        $this->db->where('staff_leave_request.leave_from >=', $from_date);
+        $this->db->where('staff_leave_request.leave_to <=', $to_date);
+        $this->db->order_by('staff_leave_request.leave_from', 'DESC');
+        $leave_records = $this->db->get()->result_array();
+
+        $leave_summary = array();
+        $leave_dates = array();
+
+        foreach ($leave_records as $leave) {
+            $leave_type = $leave['leave_type_name'];
+
+            if (!isset($leave_summary[$leave_type])) {
+                $leave_summary[$leave_type] = array(
+                    'count' => 0,
+                    'total_days' => 0,
+                    'requests' => array()
+                );
+            }
+
+            $leave_summary[$leave_type]['count']++;
+            $leave_summary[$leave_type]['total_days'] += $leave['leave_days'];
+            $leave_summary[$leave_type]['requests'][] = array(
+                'leave_from' => $leave['leave_from'],
+                'leave_to' => $leave['leave_to'],
+                'leave_days' => $leave['leave_days'],
+                'employee_remark' => $leave['employee_remark'],
+                'admin_remark' => $leave['admin_remark'],
+                'applied_date' => $leave['date']
+            );
+
+            // Generate individual leave dates
+            $current_date = strtotime($leave['leave_from']);
+            $end_date = strtotime($leave['leave_to']);
+
+            while ($current_date <= $end_date) {
+                $leave_dates[] = array(
+                    'date' => date('Y-m-d', $current_date),
+                    'leave_type' => $leave_type,
+                    'remark' => $leave['employee_remark']
+                );
+                $current_date = strtotime('+1 day', $current_date);
+            }
+        }
+
+        return array(
+            'leave_summary' => $leave_summary,
+            'leave_dates' => $leave_dates
+        );
+    }
+
+    /**
+     * Validate date format
+     */
+    private function isValidDate($date) {
+        if (empty($date)) {
+            return false;
+        }
+        $d = date_create_from_format('Y-m-d', $date);
+        return $d && date_format($d, 'Y-m-d') === $date;
     }
 
 
