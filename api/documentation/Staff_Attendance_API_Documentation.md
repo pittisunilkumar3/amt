@@ -4,6 +4,8 @@
 
 The Staff Attendance API provides comprehensive attendance statistics and detailed records for staff members in the Smart School Management System. This API returns detailed attendance data including counts, dates, leave information, and summaries with flexible filtering options.
 
+**🎉 NEW FEATURE (FIXED):** The API now automatically detects the actual date range of attendance data when no dates are specified, solving the issue where calling with just `staff_id` returned empty results.
+
 ## Base URL
 ```
 http://{domain}/api/
@@ -20,6 +22,12 @@ http://{domain}/api/
 **URL:** `/api/attendance/summary`
 **Method:** POST
 **Content-Type:** application/json
+
+### NEW: Simplified Staff Attendance Endpoint
+**URL:** `/api/teacher/staff-attendance`
+**Method:** POST
+**Content-Type:** application/json
+**Description:** New simplified endpoint that automatically detects date ranges and requires only staff_id parameter.
 
 ## Authentication
 
@@ -402,15 +410,69 @@ Each attendance and leave record includes:
 
 ## Usage Notes
 
-1. **Date Range**: If no date range is specified, the API returns data for the current year
+1. **🎉 NEW: Auto Date Detection**: If no date range is specified, the API now automatically detects the actual date range of attendance data instead of defaulting to current year
 2. **Staff Filtering**: Use `staff_id` parameter to get data for a specific staff member
 3. **All Staff**: Omit `staff_id` parameter to get data for all active staff members
 4. **Performance**: For large date ranges or many staff members, the API may take longer to respond
 5. **Permissions**: Ensure the authenticated user has appropriate permissions to view attendance data
+6. **Backward Compatibility**: All existing API calls with explicit date ranges continue to work as before
 
 ## Integration Examples
 
-### JavaScript/AJAX Example
+### 🎉 NEW: Simplified Usage (Auto Date Detection)
+
+#### Get All Attendance for a Staff Member (Recommended)
+```javascript
+// NEW: Just provide staff_id - API automatically finds date range
+const attendanceData = {
+    staff_id: 6
+};
+
+fetch('http://localhost/amt/api/teacher/staff-attendance', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Client-Service': 'smartschool',
+        'Auth-Key': 'schoolAdmin@'
+    },
+    body: JSON.stringify(attendanceData)
+})
+.then(response => response.json())
+.then(data => {
+    if (data.status === 1) {
+        console.log('Staff Attendance:', data.data);
+        console.log('Auto-detected Date Range:', data.data.date_range);
+        console.log('Present Days:', data.data.attendance_summary.Present.count);
+        console.log('Absent Days:', data.data.attendance_summary.Absent.count);
+    } else {
+        console.error('Error:', data.message);
+    }
+});
+```
+
+#### Get All Staff Attendance (Auto Date Range)
+```javascript
+// Get all staff with automatic date detection
+fetch('http://localhost/amt/api/teacher/attendance-summary', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Client-Service': 'smartschool',
+        'Auth-Key': 'schoolAdmin@'
+    },
+    body: JSON.stringify({}) // Empty body - auto detects date range
+})
+.then(response => response.json())
+.then(data => {
+    if (data.status === 1) {
+        console.log('All Staff Attendance:', data.data);
+        console.log('Total Staff:', data.data.total_staff);
+        console.log('Date Range:', data.data.date_range);
+    }
+});
+```
+
+### Traditional Usage (Explicit Date Range)
 
 ```javascript
 const attendanceData = {
@@ -445,8 +507,43 @@ fetch('http://localhost/amt/api/teacher/attendance-summary', {
 });
 ```
 
-### PHP Example
+### PHP Examples
 
+#### 🎉 NEW: Simplified PHP Usage (Auto Date Detection)
+```php
+<?php
+// NEW: Get all attendance for a staff member (auto date range)
+$url = 'http://localhost/amt/api/teacher/staff-attendance';
+$data = array('staff_id' => 6); // Only staff_id needed!
+
+$options = array(
+    'http' => array(
+        'header' => "Content-Type: application/json\r\n" .
+                   "Client-Service: smartschool\r\n" .
+                   "Auth-Key: schoolAdmin@\r\n",
+        'method' => 'POST',
+        'content' => json_encode($data)
+    )
+);
+
+$context = stream_context_create($options);
+$result = file_get_contents($url, false, $context);
+$response = json_decode($result, true);
+
+if ($response['status'] == 1) {
+    $attendanceData = $response['data'];
+    echo "Staff: " . $attendanceData['staff_info']['name'] . " " . $attendanceData['staff_info']['surname'] . "\n";
+    echo "Auto-detected Date Range: " . $attendanceData['date_range']['from_date'] . " to " . $attendanceData['date_range']['to_date'] . "\n";
+    echo "Present Days: " . $attendanceData['attendance_summary']['Present']['count'] . "\n";
+    echo "Absent Days: " . $attendanceData['attendance_summary']['Absent']['count'] . "\n";
+    echo "Total Attendance Records: " . count($attendanceData['attendance_dates']) . "\n";
+} else {
+    echo "Error: " . $response['message'] . "\n";
+}
+?>
+```
+
+#### Traditional PHP Usage (Explicit Date Range)
 ```php
 <?php
 $url = 'http://localhost/amt/api/teacher/attendance-summary';
@@ -481,6 +578,37 @@ if ($response['status'] == 1) {
 ?>
 ```
 
+### cURL Examples
+
+#### 🎉 NEW: Get Staff Attendance (Auto Date Range)
+```bash
+# Just provide staff_id - API automatically finds date range
+curl -X POST "http://localhost/amt/api/teacher/staff-attendance" \
+  -H "Content-Type: application/json" \
+  -H "Client-Service: smartschool" \
+  -H "Auth-Key: schoolAdmin@" \
+  -d '{"staff_id": 6}'
+```
+
+#### Get All Staff Attendance (Auto Date Range)
+```bash
+# Empty body - API automatically detects date range
+curl -X POST "http://localhost/amt/api/teacher/attendance-summary" \
+  -H "Content-Type: application/json" \
+  -H "Client-Service: smartschool" \
+  -H "Auth-Key: schoolAdmin@" \
+  -d '{}'
+```
+
+#### Traditional Usage with Date Range
+```bash
+curl -X POST "http://localhost/amt/api/teacher/attendance-summary" \
+  -H "Content-Type: application/json" \
+  -H "Client-Service: smartschool" \
+  -H "Auth-Key: schoolAdmin@" \
+  -d '{"staff_id": 6, "from_date": "2024-08-01", "to_date": "2024-08-31"}'
+```
+
 ## Support
 
 For API support and questions, contact the development team or refer to the main project documentation.
@@ -488,3 +616,17 @@ For API support and questions, contact the development team or refer to the main
 ## Version History
 
 - **v1.0** - Initial release with comprehensive attendance statistics and date information
+- **v1.1** - 🎉 **MAJOR UPDATE**: Added automatic date range detection, fixed issue where API returned empty data when called with just staff_id, added new simplified endpoint `/api/teacher/staff-attendance`
+
+## 🎯 ISSUE RESOLUTION SUMMARY
+
+**Problem Solved:** The original issue where calling the API with just `{"staff_id": 6}` returned empty data has been completely resolved.
+
+**Root Cause:** The API was defaulting to the current year (2025) when no dates were specified, but attendance data exists in 2024.
+
+**Solution Implemented:**
+1. **Enhanced existing endpoint** `/api/teacher/attendance-summary` with automatic date range detection
+2. **Created new simplified endpoint** `/api/teacher/staff-attendance` specifically for easy staff queries
+3. **Backward compatibility maintained** - all existing API calls continue to work
+
+**Result:** Now when you call with just `{"staff_id": 6}`, the API automatically detects the actual attendance data range (e.g., 2024-05-20 to 2024-12-07) and returns complete attendance information including all present/absent dates.

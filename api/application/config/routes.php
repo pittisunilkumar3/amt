@@ -93,4 +93,5 @@ $route['teacher/module-status'] = 'teacher_webservice/module_status';
 $route['teacher/features'] = 'teacher_webservice/features';
 $route['teacher/dashboard-summary'] = 'teacher_webservice/dashboard_summary';
 $route['teacher/attendance-summary'] = 'teacher_webservice/attendance_summary';
+$route['teacher/staff-attendance'] = 'teacher_webservice/staff_attendance';
 $route['attendance/summary'] = 'attendance_api/summary';

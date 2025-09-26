@@ -157,12 +157,16 @@ class Staffattendancemodel extends MY_Model {
      * @return array - Comprehensive attendance data with statistics and dates
      */
     public function getAttendanceSummary($staff_id = null, $from_date = null, $to_date = null) {
-        // Set default date range if not provided (current year)
-        if (empty($from_date)) {
-            $from_date = date('Y-01-01');
-        }
-        if (empty($to_date)) {
-            $to_date = date('Y-12-31');
+        // Set default date range if not provided - use actual data range instead of current year
+        if (empty($from_date) || empty($to_date)) {
+            $date_range = $this->getAttendanceDateRange($staff_id);
+
+            if (empty($from_date)) {
+                $from_date = $date_range['min_date'] ?: date('Y-01-01');
+            }
+            if (empty($to_date)) {
+                $to_date = $date_range['max_date'] ?: date('Y-12-31');
+            }
         }
 
         // Validate date format
@@ -372,6 +376,26 @@ class Staffattendancemodel extends MY_Model {
         return array(
             'leave_summary' => $leave_summary,
             'leave_dates' => $leave_dates
+        );
+    }
+
+    /**
+     * Get the actual date range of attendance data for a staff member or all staff
+     */
+    private function getAttendanceDateRange($staff_id = null) {
+        $this->db->select('MIN(date) as min_date, MAX(date) as max_date');
+        $this->db->from('staff_attendance');
+
+        if ($staff_id) {
+            $this->db->where('staff_id', $staff_id);
+        }
+
+        $query = $this->db->get();
+        $result = $query->row();
+
+        return array(
+            'min_date' => $result->min_date,
+            'max_date' => $result->max_date
         );
     }
 

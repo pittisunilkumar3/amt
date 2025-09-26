@@ -1116,6 +1116,95 @@ class Teacher_webservice extends CI_Controller
     }
 
     /**
+     * Get Staff Attendance - Simplified endpoint that automatically finds all attendance data
+     * POST /teacher/staff-attendance
+     *
+     * This endpoint automatically determines the date range based on available data
+     * and returns all attendance records for the specified staff member.
+     */
+    public function staff_attendance()
+    {
+        try {
+            $method = $this->input->server('REQUEST_METHOD');
+
+            if ($method != 'POST') {
+                json_output(400, array('status' => 400, 'message' => 'Bad request. Only POST method allowed.'));
+                return;
+            }
+
+            $check_auth_client = $this->teacher_auth_model->check_auth_client();
+            if (!$check_auth_client) {
+                json_output(401, array('status' => 401, 'message' => 'Unauthorized. Please check Client-Service and Auth-Key headers.'));
+                return;
+            }
+
+            // Load required models
+            $this->load->model('staffattendancemodel');
+
+            // Get request parameters
+            $params = json_decode(file_get_contents('php://input'), true);
+
+            // Validate JSON input
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                json_output(400, array(
+                    'status' => 400,
+                    'message' => 'Invalid JSON format in request body.'
+                ));
+                return;
+            }
+
+            // Extract staff_id (required for this endpoint)
+            $staff_id = isset($params['staff_id']) ? (int)$params['staff_id'] : null;
+
+            if (empty($staff_id)) {
+                json_output(400, array(
+                    'status' => 400,
+                    'message' => 'staff_id parameter is required.'
+                ));
+                return;
+            }
+
+            // Get attendance data without specifying dates (will auto-detect range)
+            $attendance_data = $this->staffattendancemodel->getAttendanceSummary($staff_id);
+
+            // Check for errors in the model response
+            if (isset($attendance_data['error'])) {
+                json_output(400, array(
+                    'status' => 400,
+                    'message' => $attendance_data['error']
+                ));
+                return;
+            }
+
+            // Prepare successful response
+            $response = array(
+                'status' => 1,
+                'message' => 'Staff attendance retrieved successfully.',
+                'data' => $attendance_data,
+                'note' => 'This endpoint automatically detects the date range based on available attendance data.',
+                'generated_at' => date('Y-m-d H:i:s')
+            );
+
+            json_output(200, $response);
+
+        } catch (Exception $e) {
+            log_message('error', 'Staff Attendance API Error: ' . $e->getMessage());
+
+            json_output(500, array(
+                'status' => 500,
+                'message' => 'Internal server error: ' . $e->getMessage()
+            ));
+        } catch (Error $e) {
+            log_message('error', 'Staff Attendance PHP Error: ' . $e->getMessage());
+
+            json_output(500, array(
+                'status' => 500,
+                'message' => 'PHP Error: ' . $e->getMessage()
+            ));
+        }
+    }
+
+    /**
      * Validate date format (YYYY-MM-DD)
      */
     private function isValidDate($date)
