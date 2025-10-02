@@ -51,7 +51,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
   |		my-controller/my-method	-> my_controller/my_method
  */
 $route['default_controller'] = 'welcome';
-$route['404_override'] = '';
+$route['404_override'] = 'teacher_webservice/not_found';
 $route['translate_uri_dashes'] = FALSE;
 
 // Test Routes
@@ -78,7 +78,10 @@ $route['teacher/qr-code/(:num)'] = 'teacher_auth/generate_qr_code/$1';
 $route['teacher/download-document/(:num)/(:any)'] = 'teacher_auth/download_document/$1/$2';
 
 // Teacher Webservice Routes
-$route['teacher/menu'] = 'teacher_webservice/menu';
+$route['teacher/menu']['POST'] = 'teacher_webservice/menu';
+$route['teacher/simple_menu']['POST'] = 'teacher_webservice/simple_menu';
+$route['teacher/test'] = 'teacher_webservice/test';
+$route['teacher/debug-menu'] = 'teacher_webservice/debug_menu';
 $route['teacher/permissions'] = 'teacher_webservice/permissions';
 $route['teacher/modules'] = 'teacher_webservice/modules';
 $route['teacher/check-permission'] = 'teacher_webservice/check_permission';

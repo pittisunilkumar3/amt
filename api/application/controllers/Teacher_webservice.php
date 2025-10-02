@@ -9,6 +9,14 @@ class Teacher_webservice extends CI_Controller
     {
         parent::__construct();
 
+        // Start output buffering if not already started
+        if (!ob_get_level()) {
+            ob_start();
+        }
+
+        // Set JSON content type early
+        $this->output->set_content_type('application/json');
+
         // Load essential models first
         $this->load->model('teacher_auth_model');
         $this->load->helper('json_output');
@@ -57,48 +65,302 @@ class Teacher_webservice extends CI_Controller
             log_message('error', 'Error setting timezone: ' . $e->getMessage());
             date_default_timezone_set('UTC');
         }
+
+        // Set custom error handling for JSON responses
+        set_error_handler(array($this, 'custom_error_handler'));
+        set_exception_handler(array($this, 'custom_exception_handler'));
+    }
+
+    /**
+     * Custom error handler for JSON responses
+     */
+    public function custom_error_handler($severity, $message, $file, $line)
+    {
+        if (!(error_reporting() & $severity)) {
+            return false;
+        }
+
+        $error_response = array(
+            'status' => 0,
+            'message' => 'PHP Error occurred',
+            'error' => array(
+                'type' => 'PHP Error',
+                'severity' => $severity,
+                'message' => $message,
+                'file' => basename($file),
+                'line' => $line
+            ),
+            'timestamp' => date('Y-m-d H:i:s')
+        );
+
+        // Log the error
+        log_message('error', "PHP Error: $message in $file on line $line");
+
+        // Only send JSON error for database or critical errors
+        if (stripos($message, 'database') !== false || 
+            stripos($message, 'fatal') !== false ||
+            stripos($message, 'call to') !== false) {
+            
+            if (ob_get_level()) ob_clean();
+            header('Content-Type: application/json');
+            echo json_encode($error_response);
+            exit;
+        }
+
+        return false;
+    }
+
+    /**
+     * Custom exception handler for JSON responses
+     */
+    public function custom_exception_handler($exception)
+    {
+        $error_response = array(
+            'status' => 0,
+            'message' => 'Exception occurred',
+            'error' => array(
+                'type' => get_class($exception),
+                'message' => $exception->getMessage(),
+                'file' => basename($exception->getFile()),
+                'line' => $exception->getLine()
+            ),
+            'timestamp' => date('Y-m-d H:i:s')
+        );
+
+        // Log the exception
+        log_message('error', "Exception: " . $exception->getMessage() . " in " . $exception->getFile() . " on line " . $exception->getLine());
+
+        if (ob_get_level()) ob_clean();
+        header('Content-Type: application/json');
+        http_response_code(500);
+        echo json_encode($error_response);
+        exit;
     }
 
     /**
      * Get Teacher Menu Items
-     * GET /teacher/menu
+     * POST /teacher/menu
+     * Body: {"staff_id": 123}
      */
     public function menu()
     {
-        $method = $this->input->server('REQUEST_METHOD');
+        try {
+            $method = $this->input->server('REQUEST_METHOD');
 
-        if ($method != 'GET') {
-            json_output(400, array('status' => 400, 'message' => 'Bad request.'));
-        } else {
-            $check_auth_client = $this->teacher_auth_model->check_auth_client();
-            if ($check_auth_client == true) {
-                $auth_check = $this->teacher_auth_model->auth();
-                if ($auth_check['status'] == 200) {
-                    $staff_id = $auth_check['staff_id'];
+            if ($method != 'POST') {
+                json_output(400, array(
+                    'status' => 0,
+                    'message' => 'Bad request. Only POST method allowed.',
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            // Get JSON input
+            $json_input = json_decode($this->input->raw_input_stream, true);
+            
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                json_output(400, array(
+                    'status' => 0,
+                    'message' => 'Invalid JSON format in request body',
+                    'error' => json_last_error_msg(),
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+            
+            if (empty($json_input) || !isset($json_input['staff_id'])) {
+                json_output(400, array(
+                    'status' => 0, 
+                    'message' => 'staff_id is required in request body',
+                    'example' => array('staff_id' => 123),
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            $staff_id = intval($json_input['staff_id']);
+
+            if ($staff_id <= 0) {
+                json_output(400, array(
+                    'status' => 0,
+                    'message' => 'staff_id must be a valid positive integer',
+                    'provided' => $json_input['staff_id'],
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            // Check database connection
+            if (!$this->db->conn_id) {
+                json_output(500, array(
+                    'status' => 0,
+                    'message' => 'Database connection failed',
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            // Get staff info directly from database (same logic as simple_menu)
+            $this->db->select('s.*, r.name as role_name, r.is_superadmin, r.id as role_id');
+            $this->db->from('staff s');
+            $this->db->join('staff_roles sr', 'sr.staff_id = s.id', 'left');
+            $this->db->join('roles r', 'r.id = sr.role_id', 'left');
+            $this->db->where('s.id', $staff_id);
+            $this->db->where('s.is_active', 1);
+            
+            $query = $this->db->get();
+            
+            if (!$query) {
+                json_output(500, array(
+                    'status' => 0,
+                    'message' => 'Database query failed',
+                    'error' => $this->db->error(),
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+            
+            $staff_info = $query->row();
+
+            if (!$staff_info) {
+                json_output(404, array(
+                    'status' => 0,
+                    'message' => 'Staff member not found or inactive',
+                    'staff_id' => $staff_id,
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            // Check if superadmin
+            $is_superadmin = ($staff_info->role_id == 7 || $staff_info->is_superadmin == 1);
+
+            // Get menus based on superadmin status
+            if ($is_superadmin) {
+                $this->db->select('*');
+                $this->db->from('sidebar_menus');
+                $this->db->where('is_active', 1);
+                $this->db->order_by('level');
+                $menu_query = $this->db->get();
+                
+                if (!$menu_query) {
+                    json_output(500, array(
+                        'status' => 0,
+                        'message' => 'Failed to fetch menus',
+                        'error' => $this->db->error(),
+                        'timestamp' => date('Y-m-d H:i:s')
+                    ));
+                    return;
+                }
+                
+                $menus = $menu_query->result_array();
+            } else {
+                // Get menus based on role permissions using correct permission flow
+                $this->db->select('sm.*');
+                $this->db->distinct();
+                $this->db->from('sidebar_menus sm');
+                $this->db->join('permission_category pc', 'sm.permission_group_id = pc.perm_group_id');
+                $this->db->join('roles_permissions rp', 'pc.id = rp.perm_cat_id');
+                $this->db->where('rp.role_id', $staff_info->role_id);
+                $this->db->where('rp.can_view', 1);
+                $this->db->where('sm.is_active', 1);
+                $this->db->order_by('sm.level');
+                $menu_query = $this->db->get();
+                
+                if (!$menu_query) {
+                    json_output(500, array(
+                        'status' => 0,
+                        'message' => 'Failed to fetch role-based menus',
+                        'error' => $this->db->error(),
+                        'timestamp' => date('Y-m-d H:i:s')
+                    ));
+                    return;
+                }
+                
+                $menus = $menu_query->result_array();
+            }
+
+            // Get submenus for each menu
+            foreach ($menus as &$menu) {
+                if ($is_superadmin) {
+                    $this->db->select('*');
+                    $this->db->from('sidebar_sub_menus');
+                    $this->db->where('sidebar_menu_id', $menu['id']);
+                    $this->db->where('is_active', 1);
+                    $this->db->order_by('level');
+                    $submenu_query = $this->db->get();
                     
-                    $menus = $this->teacher_permission_model->getTeacherMenus($staff_id);
-                    $role = $this->teacher_permission_model->getTeacherRole($staff_id);
-                    
-                    $response = array(
-                        'status' => 1,
-                        'message' => 'Menu items retrieved successfully.',
-                        'data' => array(
-                            'role' => array(
-                                'id' => $role ? $role->id : null,
-                                'name' => $role ? $role->name : 'Unknown',
-                                'slug' => $role ? $role->slug : null,
-                                'is_superadmin' => $role ? (bool)$role->is_superadmin : false
-                            ),
-                            'menus' => $menus,
-                            'total_menus' => count($menus)
-                        )
-                    );
-                    
-                    json_output(200, $response);
+                    if ($submenu_query) {
+                        $menu['submenus'] = $submenu_query->result_array();
+                    } else {
+                        $menu['submenus'] = array();
+                    }
                 } else {
-                    json_output(401, $auth_check);
+                    // Get submenus based on role permissions using correct permission flow
+                    $this->db->select('ssm.*');
+                    $this->db->distinct();
+                    $this->db->from('sidebar_sub_menus ssm');
+                    $this->db->join('permission_category pc', 'ssm.permission_group_id = pc.perm_group_id');
+                    $this->db->join('roles_permissions rp', 'pc.id = rp.perm_cat_id');
+                    $this->db->where('rp.role_id', $staff_info->role_id);
+                    $this->db->where('rp.can_view', 1);
+                    $this->db->where('ssm.sidebar_menu_id', $menu['id']);
+                    $this->db->where('ssm.is_active', 1);
+                    $this->db->order_by('ssm.level');
+                    $submenu_query = $this->db->get();
+                    
+                    if ($submenu_query) {
+                        $menu['submenus'] = $submenu_query->result_array();
+                    } else {
+                        $menu['submenus'] = array();
+                    }
                 }
             }
+
+            // Enhanced response (keeping original format for compatibility)
+            $response = array(
+                'status' => 1,
+                'message' => 'Menu items retrieved successfully.',
+                'data' => array(
+                    'staff_id' => $staff_id,
+                    'staff_info' => array(
+                        'id' => (int)$staff_info->id,
+                        'name' => $staff_info->name,
+                        'surname' => $staff_info->surname,
+                        'employee_id' => $staff_info->employee_id,
+                        'full_name' => trim($staff_info->name . ' ' . $staff_info->surname)
+                    ),
+                    'role' => array(
+                        'id' => $staff_info->role_id ? (int)$staff_info->role_id : null,
+                        'name' => $staff_info->role_name ? $staff_info->role_name : 'No Role Assigned',
+                        'slug' => null, // Keeping original format
+                        'is_superadmin' => $is_superadmin
+                    ),
+                    'menus' => $menus,
+                    'total_menus' => count($menus),
+                    'timestamp' => date('Y-m-d H:i:s')
+                )
+            );
+            
+            json_output(200, $response);
+            
+        } catch (Exception $e) {
+            $error_response = array(
+                'status' => 0,
+                'message' => 'Exception occurred while retrieving menu items',
+                'error' => array(
+                    'type' => get_class($e),
+                    'message' => $e->getMessage(),
+                    'file' => basename($e->getFile()),
+                    'line' => $e->getLine()
+                ),
+                'staff_id' => isset($staff_id) ? $staff_id : null,
+                'timestamp' => date('Y-m-d H:i:s')
+            );
+            
+            log_message('error', 'Menu Exception: ' . $e->getMessage());
+            json_output(500, $error_response);
         }
     }
 
@@ -968,6 +1230,262 @@ class Teacher_webservice extends CI_Controller
     }
 
     /**
+     * Simple test method - no dependencies
+     */
+    public function test()
+    {
+        try {
+            $response = array(
+                'status' => 1,
+                'message' => 'Teacher webservice test successful',
+                'timestamp' => date('Y-m-d H:i:s'),
+                'controller' => 'Teacher_webservice',
+                'method' => 'test',
+                'environment' => ENVIRONMENT,
+                'php_version' => PHP_VERSION,
+                'codeigniter_version' => CI_VERSION
+            );
+            
+            json_output(200, $response);
+        } catch (Exception $e) {
+            $error_response = array(
+                'status' => 0,
+                'message' => 'Test method failed',
+                'error' => array(
+                    'type' => get_class($e),
+                    'message' => $e->getMessage()
+                ),
+                'timestamp' => date('Y-m-d H:i:s')
+            );
+            
+            json_output(500, $error_response);
+        }
+    }
+
+    /**
+     * Simple menu test - minimal dependencies using actual database structure
+     */
+    public function simple_menu()
+    {
+        try {
+            $method = $this->input->server('REQUEST_METHOD');
+
+            if ($method != 'POST') {
+                json_output(400, array(
+                    'status' => 0,
+                    'message' => 'Bad request. Only POST method allowed.',
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            // Get JSON input
+            $json_input = json_decode($this->input->raw_input_stream, true);
+            
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                json_output(400, array(
+                    'status' => 0,
+                    'message' => 'Invalid JSON format in request body',
+                    'error' => json_last_error_msg(),
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+            
+            if (empty($json_input) || !isset($json_input['staff_id'])) {
+                json_output(400, array(
+                    'status' => 0, 
+                    'message' => 'staff_id is required in request body',
+                    'example' => array('staff_id' => 123),
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            $staff_id = intval($json_input['staff_id']);
+
+            if ($staff_id <= 0) {
+                json_output(400, array(
+                    'status' => 0,
+                    'message' => 'staff_id must be a valid positive integer',
+                    'provided' => $json_input['staff_id'],
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            // Check database connection
+            if (!$this->db->conn_id) {
+                json_output(500, array(
+                    'status' => 0,
+                    'message' => 'Database connection failed',
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            // Get staff info directly from database
+            $this->db->select('s.*, r.name as role_name, r.is_superadmin, r.id as role_id');
+            $this->db->from('staff s');
+            $this->db->join('staff_roles sr', 'sr.staff_id = s.id', 'left');
+            $this->db->join('roles r', 'r.id = sr.role_id', 'left');
+            $this->db->where('s.id', $staff_id);
+            $this->db->where('s.is_active', 1);
+            
+            $query = $this->db->get();
+            
+            if (!$query) {
+                json_output(500, array(
+                    'status' => 0,
+                    'message' => 'Database query failed',
+                    'error' => $this->db->error(),
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+            
+            $staff_info = $query->row();
+
+            if (!$staff_info) {
+                json_output(404, array(
+                    'status' => 0,
+                    'message' => 'Staff member not found or inactive',
+                    'staff_id' => $staff_id,
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            // Check if superadmin
+            $is_superadmin = ($staff_info->role_id == 7 || $staff_info->is_superadmin == 1);
+
+            // Get menus based on superadmin status
+            if ($is_superadmin) {
+                $this->db->select('*');
+                $this->db->from('sidebar_menus');
+                $this->db->where('is_active', 1);
+                $this->db->order_by('level');
+                $menu_query = $this->db->get();
+                
+                if (!$menu_query) {
+                    json_output(500, array(
+                        'status' => 0,
+                        'message' => 'Failed to fetch menus',
+                        'error' => $this->db->error(),
+                        'timestamp' => date('Y-m-d H:i:s')
+                    ));
+                    return;
+                }
+                
+                $menus = $menu_query->result_array();
+            } else {
+                // Get menus based on role permissions using correct permission flow
+                $this->db->select('sm.*');
+                $this->db->distinct();
+                $this->db->from('sidebar_menus sm');
+                $this->db->join('permission_category pc', 'sm.permission_group_id = pc.perm_group_id');
+                $this->db->join('roles_permissions rp', 'pc.id = rp.perm_cat_id');
+                $this->db->where('rp.role_id', $staff_info->role_id);
+                $this->db->where('rp.can_view', 1);
+                $this->db->where('sm.is_active', 1);
+                $this->db->order_by('sm.level');
+                $menu_query = $this->db->get();
+                
+                if (!$menu_query) {
+                    json_output(500, array(
+                        'status' => 0,
+                        'message' => 'Failed to fetch role-based menus',
+                        'error' => $this->db->error(),
+                        'timestamp' => date('Y-m-d H:i:s')
+                    ));
+                    return;
+                }
+                
+                $menus = $menu_query->result_array();
+            }
+
+            // Get submenus for each menu
+            foreach ($menus as &$menu) {
+                if ($is_superadmin) {
+                    $this->db->select('*');
+                    $this->db->from('sidebar_sub_menus');
+                    $this->db->where('sidebar_menu_id', $menu['id']);
+                    $this->db->where('is_active', 1);
+                    $this->db->order_by('level');
+                    $submenu_query = $this->db->get();
+                    
+                    if ($submenu_query) {
+                        $menu['submenus'] = $submenu_query->result_array();
+                    } else {
+                        $menu['submenus'] = array();
+                    }
+                } else {
+                    // Get submenus based on role permissions using correct permission flow
+                    $this->db->select('ssm.*');
+                    $this->db->distinct();
+                    $this->db->from('sidebar_sub_menus ssm');
+                    $this->db->join('permission_category pc', 'ssm.permission_group_id = pc.perm_group_id');
+                    $this->db->join('roles_permissions rp', 'pc.id = rp.perm_cat_id');
+                    $this->db->where('rp.role_id', $staff_info->role_id);
+                    $this->db->where('rp.can_view', 1);
+                    $this->db->where('ssm.sidebar_menu_id', $menu['id']);
+                    $this->db->where('ssm.is_active', 1);
+                    $this->db->order_by('ssm.level');
+                    $submenu_query = $this->db->get();
+                    
+                    if ($submenu_query) {
+                        $menu['submenus'] = $submenu_query->result_array();
+                    } else {
+                        $menu['submenus'] = array();
+                    }
+                }
+            }
+
+            $response = array(
+                'status' => 1,
+                'message' => 'Menu items retrieved successfully',
+                'data' => array(
+                    'staff_id' => $staff_id,
+                    'staff_info' => array(
+                        'id' => (int)$staff_info->id,
+                        'name' => $staff_info->name,
+                        'surname' => $staff_info->surname,
+                        'employee_id' => $staff_info->employee_id,
+                        'full_name' => trim($staff_info->name . ' ' . $staff_info->surname)
+                    ),
+                    'role' => array(
+                        'id' => $staff_info->role_id ? (int)$staff_info->role_id : null,
+                        'name' => $staff_info->role_name ? $staff_info->role_name : 'No Role Assigned',
+                        'is_superadmin' => $is_superadmin
+                    ),
+                    'menus' => $menus,
+                    'total_menus' => count($menus),
+                    'timestamp' => date('Y-m-d H:i:s')
+                )
+            );
+            
+            json_output(200, $response);
+            
+        } catch (Exception $e) {
+            $error_response = array(
+                'status' => 0,
+                'message' => 'Exception occurred while retrieving menu items',
+                'error' => array(
+                    'type' => get_class($e),
+                    'message' => $e->getMessage(),
+                    'file' => basename($e->getFile()),
+                    'line' => $e->getLine()
+                ),
+                'staff_id' => isset($staff_id) ? $staff_id : null,
+                'timestamp' => date('Y-m-d H:i:s')
+            );
+            
+            log_message('error', 'Simple Menu Exception: ' . $e->getMessage());
+            json_output(500, $error_response);
+        }
+    }
+
+    /**
      * Simple test method
      */
     public function debug_test()
@@ -1214,5 +1732,112 @@ class Teacher_webservice extends CI_Controller
         }
         $d = date_create_from_format('Y-m-d', $date);
         return $d && date_format($d, 'Y-m-d') === $date;
+    }
+
+    /**
+     * Debug Menu - Test menu retrieval without authentication
+     * GET /teacher/debug-menu?staff_id=1
+     */
+    public function debug_menu()
+    {
+        $method = $this->input->server('REQUEST_METHOD');
+
+        if ($method != 'GET') {
+            json_output(400, array('status' => 400, 'message' => 'Bad request.'));
+            return;
+        }
+
+        $staff_id = $this->input->get('staff_id');
+        if (empty($staff_id)) {
+            json_output(400, array(
+                'status' => 400,
+                'message' => 'staff_id parameter is required.'
+            ));
+            return;
+        }
+
+        try {
+            // Load the teacher permission model
+            $this->load->model('teacher_permission_model');
+            
+            // Get role information
+            $role = $this->teacher_permission_model->getTeacherRole($staff_id);
+            
+            // Get menus
+            $menus = $this->teacher_permission_model->getTeacherMenus($staff_id);
+            
+            // Get permissions
+            $permissions = $this->teacher_permission_model->getTeacherPermissions($staff_id);
+            
+            // Get staff info from database
+            $this->db->select('s.*, r.name as role_name, r.is_superadmin');
+            $this->db->from('staff s');
+            $this->db->join('staff_roles sr', 'sr.staff_id = s.id', 'left');
+            $this->db->join('roles r', 'r.id = sr.role_id', 'left');
+            $this->db->where('s.id', $staff_id);
+            $staff_info = $this->db->get()->row();
+            
+            $response = array(
+                'status' => 1,
+                'message' => 'Debug menu data retrieved successfully.',
+                'data' => array(
+                    'staff_id' => $staff_id,
+                    'staff_info' => $staff_info,
+                    'role' => $role,
+                    'menus' => $menus,
+                    'total_menus' => count($menus),
+                    'permissions' => $permissions,
+                    'debug_info' => array(
+                        'timestamp' => date('Y-m-d H:i:s'),
+                        'staff_exists' => !empty($staff_info),
+                        'role_found' => !empty($role),
+                        'menu_count' => count($menus),
+                        'permission_groups' => count($permissions)
+                    )
+                )
+            );
+            
+            json_output(200, $response);
+            
+        } catch (Exception $e) {
+            $error_response = array(
+                'status' => 0,
+                'message' => 'Error in debug menu retrieval',
+                'error' => $e->getMessage(),
+                'debug_info' => array(
+                    'staff_id' => $staff_id,
+                    'timestamp' => date('Y-m-d H:i:s'),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                )
+            );
+            json_output(500, $error_response);
+        }
+    }
+
+    /**
+     * Handle 404 errors with JSON response
+     */
+    public function not_found()
+    {
+        $response = array(
+            'status' => 0,
+            'message' => 'API endpoint not found',
+            'error' => array(
+                'type' => 'Not Found',
+                'code' => 404,
+                'uri' => $this->uri->uri_string(),
+                'method' => $this->input->server('REQUEST_METHOD')
+            ),
+            'available_endpoints' => array(
+                'POST /teacher/simple_menu' => 'Get menu items for staff',
+                'POST /teacher/menu' => 'Get menu items (original)',
+                'GET /teacher/test' => 'Test endpoint',
+                'GET /teacher/debug-menu' => 'Debug menu endpoint'
+            ),
+            'timestamp' => date('Y-m-d H:i:s')
+        );
+        
+        json_output(404, $response);
     }
 }

@@ -57,7 +57,10 @@
  *
  * NOTE: If you change these, also change the error_reporting() code below
  */
-	define('ENVIRONMENT', 'production');
+	define('ENVIRONMENT', 'development');
+	
+	// Start output buffering to prevent headers already sent errors
+	ob_start();
 	
 	if( ! ini_get('date.timezone') )
 	{
@@ -75,7 +78,7 @@
 switch (ENVIRONMENT)
 {
 	case 'development':
-		error_reporting(-1);
+		error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
 		ini_set('display_errors', 1);
 	break;
 

@@ -25,7 +25,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
   |
  */
 
-$config['base_url'] = 'https://school.cyberdetox.in/api/';
+$config['base_url'] = 'http://localhost/amt/api/';
 
 
 /*
