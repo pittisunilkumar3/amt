@@ -1,3 +1,49 @@
+/* ========================================
+   MODERN CSS VARIABLES FOR LEGACY SYSTEM
+   ======================================== */
+:root {
+  /* Premium Color Palette */
+  --primary-color: #6366F1;
+  --primary-hover: #4F46E5;
+  --primary-light: #EEF2FF;
+  --secondary-color: #14B8A6;
+  --secondary-hover: #0D9488;
+  --success-color: #10B981;
+  --danger-color: #EF4444;
+  --warning-color: #F59E0B;
+  --info-color: #3B82F6;
+
+  /* Neutral Colors */
+  --neutral-50: #F9FAFB;
+  --neutral-100: #F3F4F6;
+  --neutral-200: #E5E7EB;
+  --neutral-300: #D1D5DB;
+  --neutral-600: #4B5563;
+  --neutral-800: #1F2937;
+  --neutral-900: #111827;
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+  --gradient-success: linear-gradient(135deg, #10B981 0%, #059669 100%);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  --shadow-primary: 0 10px 40px -10px rgba(99, 102, 241, 0.4);
+
+  /* Border Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 @font-face {
     font-family:'Roboto';
     src: url('../fonts/roboto-regular-webfont.eot');
@@ -5337,3 +5383,181 @@ button.search.btn {
     .d-xs-none{display: none;}
 }
 .shadow-sm{box-shadow:0 .5rem 1rem rgba(0,0,0,.15);}
+
+/* ========================================
+   MODERN UI ENHANCEMENTS FOR LEGACY SYSTEM
+   ======================================== */
+
+/* Enhanced Button Styles */
+.btn-primary {
+    background: var(--gradient-primary) !important;
+    border: none !important;
+    box-shadow: var(--shadow-primary) !important;
+    transition: all var(--transition-base) !important;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 48px -12px rgba(99, 102, 241, 0.5) !important;
+}
+
+.btn-success {
+    background: var(--gradient-success) !important;
+    border: none !important;
+    box-shadow: 0 10px 40px -10px rgba(16, 185, 129, 0.4) !important;
+}
+
+.btn-success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 48px -12px rgba(16, 185, 129, 0.5) !important;
+}
+
+/* Enhanced Box/Card Styles */
+.box {
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--shadow-md) !important;
+    transition: all var(--transition-base) !important;
+    border: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+.box:hover {
+    box-shadow: var(--shadow-lg) !important;
+    transform: translateY(-2px);
+}
+
+.box-header {
+    background: linear-gradient(135deg, var(--neutral-50) 0%, var(--neutral-100) 100%) !important;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+}
+
+/* Enhanced Info Box */
+.info-box {
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--shadow-md) !important;
+    transition: all var(--transition-base) !important;
+}
+
+.info-box:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg) !important;
+}
+
+/* Enhanced Small Box */
+.small-box {
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--shadow-md) !important;
+    transition: all var(--transition-base) !important;
+}
+
+.small-box:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-xl) !important;
+}
+
+/* Modern Table Styles */
+.table {
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.table > thead > tr > th {
+    background: linear-gradient(135deg, var(--neutral-100) 0%, var(--neutral-200) 100%) !important;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+}
+
+.table > tbody > tr {
+    transition: all var(--transition-fast);
+}
+
+.table > tbody > tr:hover {
+    background: var(--neutral-50) !important;
+    transform: scale(1.01);
+}
+
+/* Enhanced Form Controls */
+.form-control:focus {
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1) !important;
+}
+
+/* Modern Sidebar (if using AdminLTE sidebar) */
+.main-sidebar {
+    background: linear-gradient(180deg, var(--neutral-900) 0%, var(--neutral-800) 100%) !important;
+    box-shadow: var(--shadow-2xl) !important;
+}
+
+.sidebar-menu > li > a {
+    transition: all var(--transition-base) !important;
+    border-radius: var(--radius-sm);
+    margin: 2px 8px;
+}
+
+.sidebar-menu > li > a:hover {
+    background: rgba(99, 102, 241, 0.15) !important;
+    transform: translateX(4px);
+}
+
+.sidebar-menu > li.active > a {
+    background: var(--gradient-primary) !important;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3) !important;
+}
+
+/* Premium Utility Classes */
+.glass-effect {
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.hover-lift {
+    transition: all var(--transition-base);
+}
+
+.hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.text-gradient-primary {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 700;
+}
+
+/* Smooth Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* Enhanced Modal */
+.modal-content {
+    border-radius: var(--radius-xl) !important;
+    box-shadow: var(--shadow-2xl) !important;
+    border: none !important;
+}
+
+.modal-header {
+    background: linear-gradient(135deg, var(--neutral-50) 0%, var(--neutral-100) 100%) !important;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0 !important;
+}
+
+/* ========================================
+   END MODERN UI ENHANCEMENTS
+   ======================================== */
