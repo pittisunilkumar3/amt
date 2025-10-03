@@ -24,7 +24,7 @@ class Teacher_webservice extends CI_Controller
         // Load other models with error handling
         try {
             $this->load->model(array(
-                'teacher_permission_model', 'staff_model', 'setting_model'
+                'teacher_permission_model', 'staff_model', 'setting_model', 'rolepermission_model'
             ));
         } catch (Exception $e) {
             log_message('error', 'Error loading models: ' . $e->getMessage());
@@ -236,66 +236,93 @@ class Teacher_webservice extends CI_Controller
             // Check if superadmin
             $is_superadmin = ($staff_info->role_id == 7 || $staff_info->is_superadmin == 1);
 
-            // Get menus based on superadmin status
-            if ($is_superadmin) {
-                $this->db->select('*');
-                $this->db->from('sidebar_menus');
-                $this->db->where('is_active', 1);
-                $this->db->order_by('level');
-                $menu_query = $this->db->get();
-                
-                if (!$menu_query) {
-                    json_output(500, array(
-                        'status' => 0,
-                        'message' => 'Failed to fetch menus',
-                        'error' => $this->db->error(),
-                        'timestamp' => date('Y-m-d H:i:s')
-                    ));
-                    return;
-                }
-                
-                $menus = $menu_query->result_array();
-            } else {
-                // Get menus based on role permissions using correct permission flow
-                $this->db->select('sm.*');
-                $this->db->distinct();
-                $this->db->from('sidebar_menus sm');
-                $this->db->join('permission_category pc', 'sm.permission_group_id = pc.perm_group_id');
-                $this->db->join('roles_permissions rp', 'pc.id = rp.perm_cat_id');
-                $this->db->where('rp.role_id', $staff_info->role_id);
-                $this->db->where('rp.can_view', 1);
-                $this->db->where('sm.is_active', 1);
-                $this->db->order_by('sm.level');
-                $menu_query = $this->db->get();
-                
-                if (!$menu_query) {
-                    json_output(500, array(
-                        'status' => 0,
-                        'message' => 'Failed to fetch role-based menus',
-                        'error' => $this->db->error(),
-                        'timestamp' => date('Y-m-d H:i:s')
-                    ));
-                    return;
-                }
-                
-                $menus = $menu_query->result_array();
+            // Get ALL menus (we'll filter by access_permissions)
+            $this->db->select('*');
+            $this->db->from('sidebar_menus');
+            $this->db->where('is_active', 1);
+            $this->db->where('sidebar_display', 1);
+            $this->db->order_by('level');
+            $menu_query = $this->db->get();
+
+            if (!$menu_query) {
+                json_output(500, array(
+                    'status' => 0,
+                    'message' => 'Failed to fetch menus',
+                    'error' => $this->db->error(),
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
             }
 
-            // Get submenus for each menu
-            // If user has access to parent menu, show ALL active submenus for that menu
-            // This is the standard behavior - parent menu permission grants access to all submenus
-            foreach ($menus as &$menu) {
-                $this->db->select('*');
-                $this->db->from('sidebar_sub_menus');
-                $this->db->where('sidebar_menu_id', $menu['id']);
-                $this->db->where('is_active', 1);
-                $this->db->order_by('level');
-                $submenu_query = $this->db->get();
-                
-                if ($submenu_query) {
-                    $menu['submenus'] = $submenu_query->result_array();
-                } else {
+            $all_menus = $menu_query->result_array();
+
+            // Get ALL submenus
+            $this->db->select('*');
+            $this->db->from('sidebar_sub_menus');
+            $this->db->where('is_active', 1);
+            $this->db->order_by('sidebar_menu_id, level');
+            $submenu_query = $this->db->get();
+            $all_submenus = $submenu_query ? $submenu_query->result_array() : array();
+
+            // Group submenus by menu_id
+            $submenus_by_menu = array();
+            foreach ($all_submenus as $submenu) {
+                $submenus_by_menu[$submenu['sidebar_menu_id']][] = $submenu;
+            }
+
+            // Filter menus and submenus using access_permissions (like admin dashboard)
+            $menus = array();
+            foreach ($all_menus as $menu) {
+                // Check menu permission using access_permissions field
+                $module_permission = $this->access_permission_sidebar_remove_pipe($menu['access_permissions']);
+                $module_access = false;
+
+                if ($is_superadmin) {
+                    $module_access = true;
+                } elseif (!empty($module_permission)) {
+                    foreach ($module_permission as $m_permission_value) {
+                        $cat_permission = $this->access_permission_remove_comma($m_permission_value);
+
+                        if (count($cat_permission) >= 2) {
+                            if ($this->hasPrivilege($staff_info->role_id, $staff_info->role_name, $cat_permission[0], $cat_permission[1])) {
+                                $module_access = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if ($module_access) {
+                    // Filter submenus for this menu
                     $menu['submenus'] = array();
+
+                    if (isset($submenus_by_menu[$menu['id']])) {
+                        foreach ($submenus_by_menu[$menu['id']] as $submenu) {
+                            $sidebar_permission = $this->access_permission_sidebar_remove_pipe($submenu['access_permissions']);
+                            $sidebar_access = false;
+
+                            if ($is_superadmin) {
+                                $sidebar_access = true;
+                            } elseif (!empty($sidebar_permission)) {
+                                foreach ($sidebar_permission as $sidebar_permission_value) {
+                                    $sidebar_cat_permission = $this->access_permission_remove_comma($sidebar_permission_value);
+
+                                    if (count($sidebar_cat_permission) >= 2) {
+                                        if ($this->hasPrivilege($staff_info->role_id, $staff_info->role_name, $sidebar_cat_permission[0], $sidebar_cat_permission[1])) {
+                                            $sidebar_access = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+
+                            if ($sidebar_access) {
+                                $menu['submenus'][] = $submenu;
+                            }
+                        }
+                    }
+
+                    $menus[] = $menu;
                 }
             }
 
@@ -1340,66 +1367,93 @@ class Teacher_webservice extends CI_Controller
             // Check if superadmin
             $is_superadmin = ($staff_info->role_id == 7 || $staff_info->is_superadmin == 1);
 
-            // Get menus based on superadmin status
-            if ($is_superadmin) {
-                $this->db->select('*');
-                $this->db->from('sidebar_menus');
-                $this->db->where('is_active', 1);
-                $this->db->order_by('level');
-                $menu_query = $this->db->get();
-                
-                if (!$menu_query) {
-                    json_output(500, array(
-                        'status' => 0,
-                        'message' => 'Failed to fetch menus',
-                        'error' => $this->db->error(),
-                        'timestamp' => date('Y-m-d H:i:s')
-                    ));
-                    return;
-                }
-                
-                $menus = $menu_query->result_array();
-            } else {
-                // Get menus based on role permissions using correct permission flow
-                $this->db->select('sm.*');
-                $this->db->distinct();
-                $this->db->from('sidebar_menus sm');
-                $this->db->join('permission_category pc', 'sm.permission_group_id = pc.perm_group_id');
-                $this->db->join('roles_permissions rp', 'pc.id = rp.perm_cat_id');
-                $this->db->where('rp.role_id', $staff_info->role_id);
-                $this->db->where('rp.can_view', 1);
-                $this->db->where('sm.is_active', 1);
-                $this->db->order_by('sm.level');
-                $menu_query = $this->db->get();
-                
-                if (!$menu_query) {
-                    json_output(500, array(
-                        'status' => 0,
-                        'message' => 'Failed to fetch role-based menus',
-                        'error' => $this->db->error(),
-                        'timestamp' => date('Y-m-d H:i:s')
-                    ));
-                    return;
-                }
-                
-                $menus = $menu_query->result_array();
+            // Get ALL menus (we'll filter by access_permissions)
+            $this->db->select('*');
+            $this->db->from('sidebar_menus');
+            $this->db->where('is_active', 1);
+            $this->db->where('sidebar_display', 1);
+            $this->db->order_by('level');
+            $menu_query = $this->db->get();
+
+            if (!$menu_query) {
+                json_output(500, array(
+                    'status' => 0,
+                    'message' => 'Failed to fetch menus',
+                    'error' => $this->db->error(),
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
             }
 
-            // Get submenus for each menu
-            // If user has access to parent menu, show ALL active submenus for that menu
-            // This is the standard behavior - parent menu permission grants access to all submenus
-            foreach ($menus as &$menu) {
-                $this->db->select('*');
-                $this->db->from('sidebar_sub_menus');
-                $this->db->where('sidebar_menu_id', $menu['id']);
-                $this->db->where('is_active', 1);
-                $this->db->order_by('level');
-                $submenu_query = $this->db->get();
-                
-                if ($submenu_query) {
-                    $menu['submenus'] = $submenu_query->result_array();
-                } else {
+            $all_menus = $menu_query->result_array();
+
+            // Get ALL submenus
+            $this->db->select('*');
+            $this->db->from('sidebar_sub_menus');
+            $this->db->where('is_active', 1);
+            $this->db->order_by('sidebar_menu_id, level');
+            $submenu_query = $this->db->get();
+            $all_submenus = $submenu_query ? $submenu_query->result_array() : array();
+
+            // Group submenus by menu_id
+            $submenus_by_menu = array();
+            foreach ($all_submenus as $submenu) {
+                $submenus_by_menu[$submenu['sidebar_menu_id']][] = $submenu;
+            }
+
+            // Filter menus and submenus using access_permissions (like admin dashboard)
+            $menus = array();
+            foreach ($all_menus as $menu) {
+                // Check menu permission using access_permissions field
+                $module_permission = $this->access_permission_sidebar_remove_pipe($menu['access_permissions']);
+                $module_access = false;
+
+                if ($is_superadmin) {
+                    $module_access = true;
+                } elseif (!empty($module_permission)) {
+                    foreach ($module_permission as $m_permission_value) {
+                        $cat_permission = $this->access_permission_remove_comma($m_permission_value);
+
+                        if (count($cat_permission) >= 2) {
+                            if ($this->hasPrivilege($staff_info->role_id, $staff_info->role_name, $cat_permission[0], $cat_permission[1])) {
+                                $module_access = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if ($module_access) {
+                    // Filter submenus for this menu
                     $menu['submenus'] = array();
+
+                    if (isset($submenus_by_menu[$menu['id']])) {
+                        foreach ($submenus_by_menu[$menu['id']] as $submenu) {
+                            $sidebar_permission = $this->access_permission_sidebar_remove_pipe($submenu['access_permissions']);
+                            $sidebar_access = false;
+
+                            if ($is_superadmin) {
+                                $sidebar_access = true;
+                            } elseif (!empty($sidebar_permission)) {
+                                foreach ($sidebar_permission as $sidebar_permission_value) {
+                                    $sidebar_cat_permission = $this->access_permission_remove_comma($sidebar_permission_value);
+
+                                    if (count($sidebar_cat_permission) >= 2) {
+                                        if ($this->hasPrivilege($staff_info->role_id, $staff_info->role_name, $sidebar_cat_permission[0], $sidebar_cat_permission[1])) {
+                                            $sidebar_access = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+
+                            if ($sidebar_access) {
+                                $menu['submenus'][] = $submenu;
+                            }
+                        }
+                    }
+
+                    $menus[] = $menu;
                 }
             }
 
@@ -1778,6 +1832,75 @@ class Teacher_webservice extends CI_Controller
     }
 
     /**
+     * Parse access_permissions field (replicate menu_helper.php logic)
+     * Removes pipe signs and parentheses
+     */
+    private function access_permission_sidebar_remove_pipe($access_permissions)
+    {
+        if (empty($access_permissions)) {
+            return array();
+        }
+        // remove pipe sign ||
+        $module_permission = array_map('trim', explode('||', preg_replace('/\(\'|\'|\)/', '', $access_permissions)));
+        return $module_permission;
+    }
+
+    /**
+     * Parse comma-separated permission values
+     */
+    private function access_permission_remove_comma($m_permission_value)
+    {
+        if (empty($m_permission_value)) {
+            return array();
+        }
+        // remove comma
+        $module_permission_seprated = array_map('trim', explode(',', preg_replace('/\s+/', '', $m_permission_value)));
+        return $module_permission_seprated;
+    }
+
+    /**
+     * Check if staff has privilege (replicate RBAC logic)
+     */
+    private function hasPrivilege($role_id, $role_name, $category, $permission)
+    {
+        // Super Admin has all privileges
+        if ($role_name == 'Super Admin') {
+            return true;
+        }
+
+        // Check if rolepermission_model is loaded
+        if (!isset($this->rolepermission_model)) {
+            // Try to load it
+            try {
+                $this->load->model('rolepermission_model');
+            } catch (Exception $e) {
+                log_message('error', 'Failed to load rolepermission_model: ' . $e->getMessage());
+                return false;
+            }
+        }
+
+        // Verify model is loaded
+        if (!isset($this->rolepermission_model) || !is_object($this->rolepermission_model)) {
+            log_message('error', 'rolepermission_model is not available');
+            return false;
+        }
+
+        try {
+            // Get permission from database
+            $role_perm = $this->rolepermission_model->getPermissionByRoleandCategory($role_id, trim($category));
+
+            if ($role_perm && isset($role_perm[$permission])) {
+                return ($role_perm[$permission] == 1);
+            }
+        } catch (Exception $e) {
+            log_message('error', 'Error checking privilege: ' . $e->getMessage());
+            return false;
+        }
+
+        return false;
+    }
+
+    /**
      * Handle 404 errors with JSON response
      */
     public function not_found()
@@ -1799,7 +1922,7 @@ class Teacher_webservice extends CI_Controller
             ),
             'timestamp' => date('Y-m-d H:i:s')
         );
-        
+
         json_output(404, $response);
     }
 }

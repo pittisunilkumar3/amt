@@ -53,3 +53,18 @@ ERROR - 2025-10-03 12:44:18 --> Error loading models: Unable to locate the model
 ERROR - 2025-10-03 12:45:26 --> Error loading models: Unable to locate the model you have specified: Role_model
 ERROR - 2025-10-03 12:45:51 --> Error loading models: Unable to locate the model you have specified: Role_model
 ERROR - 2025-10-03 12:56:40 --> Error loading models: Unable to locate the model you have specified: Role_model
+ERROR - 2025-10-03 15:48:28 --> Error loading models: Unable to locate the model you have specified: Role_model
+ERROR - 2025-10-03 15:49:21 --> Error loading models: Unable to locate the model you have specified: Role_model
+ERROR - 2025-10-03 16:04:46 --> Error loading models: Unable to locate the model you have specified: Role_model
+ERROR - 2025-10-03 19:34:46 --> PHP Error: Undefined property: Teacher_webservice::$rolepermission_model in C:\xampp\htdocs\amt\api\application\controllers\Teacher_webservice.php on line 1872
+ERROR - 2025-10-03 19:34:46 --> Exception: Call to a member function getPermissionByRoleandCategory() on null in C:\xampp\htdocs\amt\api\application\controllers\Teacher_webservice.php on line 1872
+ERROR - 2025-10-03 16:04:59 --> Error loading models: Unable to locate the model you have specified: Role_model
+ERROR - 2025-10-03 19:34:59 --> PHP Error: Undefined property: Teacher_webservice::$rolepermission_model in C:\xampp\htdocs\amt\api\application\controllers\Teacher_webservice.php on line 1872
+ERROR - 2025-10-03 19:34:59 --> Exception: Call to a member function getPermissionByRoleandCategory() on null in C:\xampp\htdocs\amt\api\application\controllers\Teacher_webservice.php on line 1872
+ERROR - 2025-10-03 16:10:02 --> Error loading models: Unable to locate the model you have specified: Role_model
+ERROR - 2025-10-03 16:10:02 --> Error loading models: Unable to locate the model you have specified: Role_model
+ERROR - 2025-10-03 16:12:38 --> Error loading models: Unable to locate the model you have specified: Role_model
+ERROR - 2025-10-03 16:14:09 --> Error loading models: Unable to locate the model you have specified: Role_model
+ERROR - 2025-10-03 16:14:22 --> Error loading models: Unable to locate the model you have specified: Role_model
+ERROR - 2025-10-03 16:16:42 --> Error loading models: Unable to locate the model you have specified: Role_model
+ERROR - 2025-10-03 16:18:13 --> Error loading models: Unable to locate the model you have specified: Role_model
