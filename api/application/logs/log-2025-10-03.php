@@ -40,3 +40,16 @@ JOIN `roles_permissions` `rp` ON `sm`.`permission_group_id` = `rp`.`perm_group_i
 WHERE `rp`.`role_id` = '2'
 AND `sm`.`is_active` = 1
 ORDER BY `sm`.`level`
+ERROR - 2025-10-03 11:23:56 --> Error loading models: Unable to locate the model you have specified: Role_model
+ERROR - 2025-10-03 11:24:21 --> Error loading models: Unable to locate the model you have specified: Role_model
+ERROR - 2025-10-03 12:31:37 --> Error loading models: Unable to locate the model you have specified: Role_model
+ERROR - 2025-10-03 12:32:05 --> Error loading models: Unable to locate the model you have specified: Role_model
+ERROR - 2025-10-03 12:32:27 --> Error loading models: Unable to locate the model you have specified: Role_model
+ERROR - 2025-10-03 12:42:07 --> Error loading models: Unable to locate the model you have specified: Role_model
+ERROR - 2025-10-03 12:42:07 --> Error loading models: Unable to locate the model you have specified: Role_model
+ERROR - 2025-10-03 12:42:07 --> Error loading models: Unable to locate the model you have specified: Role_model
+ERROR - 2025-10-03 12:42:40 --> Error loading models: Unable to locate the model you have specified: Role_model
+ERROR - 2025-10-03 12:44:18 --> Error loading models: Unable to locate the model you have specified: Role_model
+ERROR - 2025-10-03 12:45:26 --> Error loading models: Unable to locate the model you have specified: Role_model
+ERROR - 2025-10-03 12:45:51 --> Error loading models: Unable to locate the model you have specified: Role_model
+ERROR - 2025-10-03 12:56:40 --> Error loading models: Unable to locate the model you have specified: Role_model

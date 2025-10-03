@@ -157,7 +157,7 @@ class Teacher_webservice extends CI_Controller
             }
 
             // Get JSON input
-            $json_input = json_decode($this->input->raw_input_stream, true);
+                $json_input = json_decode($this->input->raw_input_stream, true);
             
             if (json_last_error() !== JSON_ERROR_NONE) {
                 json_output(400, array(
@@ -282,39 +282,20 @@ class Teacher_webservice extends CI_Controller
             }
 
             // Get submenus for each menu
+            // If user has access to parent menu, show ALL active submenus for that menu
+            // This is the standard behavior - parent menu permission grants access to all submenus
             foreach ($menus as &$menu) {
-                if ($is_superadmin) {
-                    $this->db->select('*');
-                    $this->db->from('sidebar_sub_menus');
-                    $this->db->where('sidebar_menu_id', $menu['id']);
-                    $this->db->where('is_active', 1);
-                    $this->db->order_by('level');
-                    $submenu_query = $this->db->get();
-                    
-                    if ($submenu_query) {
-                        $menu['submenus'] = $submenu_query->result_array();
-                    } else {
-                        $menu['submenus'] = array();
-                    }
+                $this->db->select('*');
+                $this->db->from('sidebar_sub_menus');
+                $this->db->where('sidebar_menu_id', $menu['id']);
+                $this->db->where('is_active', 1);
+                $this->db->order_by('level');
+                $submenu_query = $this->db->get();
+                
+                if ($submenu_query) {
+                    $menu['submenus'] = $submenu_query->result_array();
                 } else {
-                    // Get submenus based on role permissions using correct permission flow
-                    $this->db->select('ssm.*');
-                    $this->db->distinct();
-                    $this->db->from('sidebar_sub_menus ssm');
-                    $this->db->join('permission_category pc', 'ssm.permission_group_id = pc.perm_group_id');
-                    $this->db->join('roles_permissions rp', 'pc.id = rp.perm_cat_id');
-                    $this->db->where('rp.role_id', $staff_info->role_id);
-                    $this->db->where('rp.can_view', 1);
-                    $this->db->where('ssm.sidebar_menu_id', $menu['id']);
-                    $this->db->where('ssm.is_active', 1);
-                    $this->db->order_by('ssm.level');
-                    $submenu_query = $this->db->get();
-                    
-                    if ($submenu_query) {
-                        $menu['submenus'] = $submenu_query->result_array();
-                    } else {
-                        $menu['submenus'] = array();
-                    }
+                    $menu['submenus'] = array();
                 }
             }
 
@@ -1405,39 +1386,20 @@ class Teacher_webservice extends CI_Controller
             }
 
             // Get submenus for each menu
+            // If user has access to parent menu, show ALL active submenus for that menu
+            // This is the standard behavior - parent menu permission grants access to all submenus
             foreach ($menus as &$menu) {
-                if ($is_superadmin) {
-                    $this->db->select('*');
-                    $this->db->from('sidebar_sub_menus');
-                    $this->db->where('sidebar_menu_id', $menu['id']);
-                    $this->db->where('is_active', 1);
-                    $this->db->order_by('level');
-                    $submenu_query = $this->db->get();
-                    
-                    if ($submenu_query) {
-                        $menu['submenus'] = $submenu_query->result_array();
-                    } else {
-                        $menu['submenus'] = array();
-                    }
+                $this->db->select('*');
+                $this->db->from('sidebar_sub_menus');
+                $this->db->where('sidebar_menu_id', $menu['id']);
+                $this->db->where('is_active', 1);
+                $this->db->order_by('level');
+                $submenu_query = $this->db->get();
+                
+                if ($submenu_query) {
+                    $menu['submenus'] = $submenu_query->result_array();
                 } else {
-                    // Get submenus based on role permissions using correct permission flow
-                    $this->db->select('ssm.*');
-                    $this->db->distinct();
-                    $this->db->from('sidebar_sub_menus ssm');
-                    $this->db->join('permission_category pc', 'ssm.permission_group_id = pc.perm_group_id');
-                    $this->db->join('roles_permissions rp', 'pc.id = rp.perm_cat_id');
-                    $this->db->where('rp.role_id', $staff_info->role_id);
-                    $this->db->where('rp.can_view', 1);
-                    $this->db->where('ssm.sidebar_menu_id', $menu['id']);
-                    $this->db->where('ssm.is_active', 1);
-                    $this->db->order_by('ssm.level');
-                    $submenu_query = $this->db->get();
-                    
-                    if ($submenu_query) {
-                        $menu['submenus'] = $submenu_query->result_array();
-                    } else {
-                        $menu['submenus'] = array();
-                    }
+                    $menu['submenus'] = array();
                 }
             }
 
