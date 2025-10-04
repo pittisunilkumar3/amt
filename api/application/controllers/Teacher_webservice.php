@@ -2456,6 +2456,867 @@ class Teacher_webservice extends CI_Controller
     /**
      * Handle 404 errors with JSON response
      */
+
+    /**
+     * Get classes with their associated sections
+     * POST /teacher/classes-with-sections
+     *
+     * Request body (optional):
+     * {
+     *   "session_id": 21  // Optional: filter by session
+     * }
+     *
+     * Returns: Hierarchical structure of classes with sections
+     */
+    public function classes_with_sections()
+    {
+        try {
+            // Get JSON input
+            $json_input = json_decode(file_get_contents('php://input'), true);
+
+            // Check for JSON decode errors
+            if (json_last_error() !== JSON_ERROR_NONE && file_get_contents('php://input') !== '') {
+                json_output(400, array(
+                    'status' => 0,
+                    'message' => 'Invalid JSON format in request body',
+                    'error' => array(
+                        'type' => 'JSON Parse Error',
+                        'details' => json_last_error_msg()
+                    ),
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            // Extract optional session_id filter
+            $session_id = isset($json_input['session_id']) && !empty($json_input['session_id']) ? intval($json_input['session_id']) : null;
+
+            // Extract optional include_inactive filter (default: false)
+            $include_inactive = isset($json_input['include_inactive']) && $json_input['include_inactive'] === true;
+
+            // Query to get classes
+            $this->db->select('id, class as class_name, is_active');
+            $this->db->from('classes');
+
+            // Only filter by is_active if include_inactive is false
+            if (!$include_inactive) {
+                // Since all classes have is_active='no', we'll return all classes
+                // Comment out the is_active filter to return all classes
+                // $this->db->where('is_active', 'yes');
+            }
+
+            $this->db->order_by('class', 'ASC');
+
+            $classes_query = $this->db->get();
+
+            if (!$classes_query) {
+                json_output(500, array(
+                    'status' => 0,
+                    'message' => 'Failed to retrieve classes',
+                    'error' => array(
+                        'type' => 'Database Error',
+                        'details' => $this->db->error()
+                    ),
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            $classes = $classes_query->result();
+
+            // Build hierarchical structure
+            $result = array();
+
+            foreach ($classes as $class) {
+                // Query to get sections for this class
+                $this->db->select('s.id, s.section as section_name, cs.is_active');
+                $this->db->from('class_sections cs');
+                $this->db->join('sections s', 's.id = cs.section_id', 'inner');
+                $this->db->where('cs.class_id', $class->id);
+
+                // Only filter by is_active if include_inactive is false
+                if (!$include_inactive) {
+                    // Comment out is_active filters to return all sections
+                    // $this->db->where('cs.is_active', 'yes');
+                    // $this->db->where('s.is_active', 'yes');
+                }
+
+                $this->db->order_by('s.section', 'ASC');
+
+                $sections_query = $this->db->get();
+
+                $sections = array();
+                if ($sections_query && $sections_query->num_rows() > 0) {
+                    foreach ($sections_query->result() as $section) {
+                        $sections[] = array(
+                            'section_id' => intval($section->id),
+                            'section_name' => $section->section_name,
+                            'is_active' => $section->is_active
+                        );
+                    }
+                }
+
+                // Add class with its sections to result
+                $result[] = array(
+                    'class_id' => intval($class->id),
+                    'class_name' => $class->class_name,
+                    'is_active' => $class->is_active,
+                    'sections_count' => count($sections),
+                    'sections' => $sections
+                );
+            }
+
+            // Return success response
+            json_output(200, array(
+                'status' => 1,
+                'message' => 'Classes with sections retrieved successfully',
+                'filters_applied' => array(
+                    'session_id' => $session_id
+                ),
+                'total_classes' => count($result),
+                'data' => $result,
+                'timestamp' => date('Y-m-d H:i:s')
+            ));
+
+        } catch (Exception $e) {
+            json_output(500, array(
+                'status' => 0,
+                'message' => 'An error occurred while retrieving classes with sections',
+                'error' => array(
+                    'type' => 'Exception',
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ),
+                'timestamp' => date('Y-m-d H:i:s')
+            ));
+        }
+    }
+
+    /**
+     * Get students by class, section, and session
+     * POST /teacher/students
+     *
+     * Request body:
+     * {
+     *   "class_id": 5,      // Optional - filter by class
+     *   "section_id": 3,    // Optional - filter by section
+     *   "session_id": 2     // Optional - filter by session
+     * }
+     *
+     * If parameters are null or not provided, returns all active students
+     */
+    public function students()
+    {
+        try {
+            $method = $this->input->server('REQUEST_METHOD');
+
+            if ($method != 'POST') {
+                json_output(400, array(
+                    'status' => 0,
+                    'message' => 'Bad request. Only POST method allowed.',
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            // Get JSON input
+            $json_input = json_decode($this->input->raw_input_stream, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                json_output(400, array(
+                    'status' => 0,
+                    'message' => 'Invalid JSON format in request body',
+                    'error' => json_last_error_msg(),
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            // Extract filter parameters (all optional)
+            $class_id = isset($json_input['class_id']) && !empty($json_input['class_id']) ? intval($json_input['class_id']) : null;
+            $section_id = isset($json_input['section_id']) && !empty($json_input['section_id']) ? intval($json_input['section_id']) : null;
+            $session_id = isset($json_input['session_id']) && !empty($json_input['session_id']) ? intval($json_input['session_id']) : null;
+
+            // Check database connection
+            if (!$this->db->conn_id) {
+                json_output(500, array(
+                    'status' => 0,
+                    'message' => 'Database connection failed',
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            // Build query with joins
+            $this->db->select('s.id as student_id,
+                s.admission_no,
+                s.roll_no,
+                s.firstname,
+                s.middlename,
+                s.lastname,
+                s.dob,
+                s.gender,
+                s.email,
+                s.mobileno,
+                s.image,
+                s.blood_group,
+                s.father_name,
+                s.father_phone,
+                s.mother_name,
+                s.mother_phone,
+                s.guardian_name,
+                s.guardian_phone,
+                s.guardian_relation,
+                s.current_address,
+                s.permanent_address,
+                s.category_id,
+                s.is_active,
+                ss.id as student_session_id,
+                ss.session_id,
+                ss.class_id,
+                ss.section_id,
+                c.class as class_name,
+                sec.section as section_name,
+                ses.session as session_name');
+
+            $this->db->from('students s');
+            $this->db->join('student_session ss', 'ss.student_id = s.id', 'left');
+            $this->db->join('classes c', 'c.id = ss.class_id', 'left');
+            $this->db->join('sections sec', 'sec.id = ss.section_id', 'left');
+            $this->db->join('sessions ses', 'ses.id = ss.session_id', 'left');
+
+            // Apply filters if provided
+            if ($class_id !== null) {
+                $this->db->where('ss.class_id', $class_id);
+            }
+
+            if ($section_id !== null) {
+                $this->db->where('ss.section_id', $section_id);
+            }
+
+            if ($session_id !== null) {
+                $this->db->where('ss.session_id', $session_id);
+            }
+
+            // Only get active students
+            $this->db->where('s.is_active', 'yes');
+            $this->db->order_by('s.firstname', 'ASC');
+
+            $query = $this->db->get();
+
+            if (!$query) {
+                json_output(500, array(
+                    'status' => 0,
+                    'message' => 'Database query failed',
+                    'error' => $this->db->error(),
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            $students = $query->result_array();
+
+            // Format student data
+            $formatted_students = array();
+            $base_url = base_url();
+            $timestamp = '?' . time();
+
+            foreach ($students as $student) {
+                // Build full name
+                $full_name = trim($student['firstname'] . ' ' . $student['middlename'] . ' ' . $student['lastname']);
+
+                // Profile image URL
+                $profile_image = '';
+                if (!empty($student['image'])) {
+                    $profile_image = $base_url . 'uploads/student_images/' . $student['image'] . $timestamp;
+                } else {
+                    // Default image based on gender
+                    if ($student['gender'] == 'Male') {
+                        $profile_image = $base_url . 'uploads/student_images/default_male.jpg' . $timestamp;
+                    } else {
+                        $profile_image = $base_url . 'uploads/student_images/default_female.jpg' . $timestamp;
+                    }
+                }
+
+                $formatted_students[] = array(
+                    'student_id' => (int)$student['student_id'],
+                    'student_session_id' => (int)$student['student_session_id'],
+                    'admission_no' => $student['admission_no'],
+                    'roll_no' => $student['roll_no'],
+                    'full_name' => $full_name,
+                    'firstname' => $student['firstname'],
+                    'middlename' => $student['middlename'],
+                    'lastname' => $student['lastname'],
+                    'dob' => $student['dob'],
+                    'gender' => $student['gender'],
+                    'email' => $student['email'],
+                    'mobileno' => $student['mobileno'],
+                    'blood_group' => $student['blood_group'],
+                    'profile_image' => $profile_image,
+                    'class_info' => array(
+                        'class_id' => (int)$student['class_id'],
+                        'class_name' => $student['class_name'],
+                        'section_id' => (int)$student['section_id'],
+                        'section_name' => $student['section_name'],
+                        'session_id' => (int)$student['session_id'],
+                        'session_name' => $student['session_name']
+                    ),
+                    'guardian_info' => array(
+                        'father_name' => $student['father_name'],
+                        'father_phone' => $student['father_phone'],
+                        'mother_name' => $student['mother_name'],
+                        'mother_phone' => $student['mother_phone'],
+                        'guardian_name' => $student['guardian_name'],
+                        'guardian_phone' => $student['guardian_phone'],
+                        'guardian_relation' => $student['guardian_relation']
+                    ),
+                    'address_info' => array(
+                        'current_address' => $student['current_address'],
+                        'permanent_address' => $student['permanent_address']
+                    ),
+                    'category_id' => $student['category_id'],
+                    'is_active' => $student['is_active']
+                );
+            }
+
+            // Build response
+            $response = array(
+                'status' => 1,
+                'message' => 'Students retrieved successfully',
+                'filters_applied' => array(
+                    'class_id' => $class_id,
+                    'section_id' => $section_id,
+                    'session_id' => $session_id
+                ),
+                'total_students' => count($formatted_students),
+                'data' => $formatted_students,
+                'timestamp' => date('Y-m-d H:i:s')
+            );
+
+            json_output(200, $response);
+
+        } catch (Exception $e) {
+            log_message('error', 'Students API error: ' . $e->getMessage());
+            json_output(500, array(
+                'status' => 0,
+                'message' => 'Internal server error',
+                'error' => $e->getMessage(),
+                'timestamp' => date('Y-m-d H:i:s')
+            ));
+        }
+    }
+
+    /**
+     * Create student category
+     * POST /teacher/student-category/create
+     *
+     * Request body:
+     * {
+     *   "category_name": "Category Name",
+     *   "is_active": "yes"  // Optional, defaults to "no"
+     * }
+     *
+     * Returns: Created category details
+     */
+    public function student_category_create()
+    {
+        try {
+            // Get JSON input
+            $json_input = json_decode(file_get_contents('php://input'), true);
+
+            // Check for JSON decode errors
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                json_output(400, array(
+                    'status' => 0,
+                    'message' => 'Invalid JSON format in request body',
+                    'error' => array(
+                        'type' => 'JSON Parse Error',
+                        'details' => json_last_error_msg()
+                    ),
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            // Validate category_name
+            if (!isset($json_input['category_name']) || empty(trim($json_input['category_name']))) {
+                json_output(400, array(
+                    'status' => 0,
+                    'message' => 'category_name is required',
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            $category_name = trim($json_input['category_name']);
+            $is_active = isset($json_input['is_active']) ? $json_input['is_active'] : 'no';
+
+            // Validate is_active value
+            if (!in_array($is_active, array('yes', 'no'))) {
+                $is_active = 'no';
+            }
+
+            // Check if category already exists
+            $this->db->where('category', $category_name);
+            $existing = $this->db->get('categories');
+
+            if ($existing && $existing->num_rows() > 0) {
+                json_output(409, array(
+                    'status' => 0,
+                    'message' => 'Category with this name already exists',
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            // Insert new category
+            $data = array(
+                'category' => $category_name,
+                'is_active' => $is_active,
+                'created_at' => date('Y-m-d H:i:s')
+            );
+
+            $this->db->insert('categories', $data);
+
+            if ($this->db->affected_rows() > 0) {
+                $insert_id = $this->db->insert_id();
+
+                json_output(201, array(
+                    'status' => 1,
+                    'message' => 'Student category created successfully',
+                    'data' => array(
+                        'category_id' => $insert_id,
+                        'category_name' => $category_name,
+                        'is_active' => $is_active,
+                        'created_at' => date('Y-m-d H:i:s')
+                    ),
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+            } else {
+                json_output(500, array(
+                    'status' => 0,
+                    'message' => 'Failed to create student category',
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+            }
+
+        } catch (Exception $e) {
+            json_output(500, array(
+                'status' => 0,
+                'message' => 'An error occurred while creating student category',
+                'error' => array(
+                    'type' => 'Exception',
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ),
+                'timestamp' => date('Y-m-d H:i:s')
+            ));
+        }
+    }
+
+    /**
+     * Update student category
+     * POST /teacher/student-category/update
+     *
+     * Request body:
+     * {
+     *   "category_id": 5,
+     *   "category_name": "Updated Name",  // Optional
+     *   "is_active": "yes"                // Optional
+     * }
+     *
+     * Returns: Updated category details
+     */
+    public function student_category_update()
+    {
+        try {
+            // Get JSON input
+            $json_input = json_decode(file_get_contents('php://input'), true);
+
+            // Check for JSON decode errors
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                json_output(400, array(
+                    'status' => 0,
+                    'message' => 'Invalid JSON format in request body',
+                    'error' => array(
+                        'type' => 'JSON Parse Error',
+                        'details' => json_last_error_msg()
+                    ),
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            // Validate category_id
+            if (!isset($json_input['category_id']) || empty($json_input['category_id'])) {
+                json_output(400, array(
+                    'status' => 0,
+                    'message' => 'category_id is required',
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            $category_id = intval($json_input['category_id']);
+
+            // Check if category exists
+            $this->db->where('id', $category_id);
+            $existing = $this->db->get('categories');
+
+            if (!$existing || $existing->num_rows() == 0) {
+                json_output(404, array(
+                    'status' => 0,
+                    'message' => 'Student category not found',
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            // Build update data
+            $update_data = array();
+
+            if (isset($json_input['category_name']) && !empty(trim($json_input['category_name']))) {
+                $category_name = trim($json_input['category_name']);
+
+                // Check if new name already exists (excluding current category)
+                $this->db->where('category', $category_name);
+                $this->db->where('id !=', $category_id);
+                $duplicate = $this->db->get('categories');
+
+                if ($duplicate && $duplicate->num_rows() > 0) {
+                    json_output(409, array(
+                        'status' => 0,
+                        'message' => 'Category with this name already exists',
+                        'timestamp' => date('Y-m-d H:i:s')
+                    ));
+                    return;
+                }
+
+                $update_data['category'] = $category_name;
+            }
+
+            if (isset($json_input['is_active'])) {
+                $is_active = $json_input['is_active'];
+                if (in_array($is_active, array('yes', 'no'))) {
+                    $update_data['is_active'] = $is_active;
+                }
+            }
+
+            if (empty($update_data)) {
+                json_output(400, array(
+                    'status' => 0,
+                    'message' => 'No valid fields to update',
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            $update_data['updated_at'] = date('Y-m-d');
+
+            // Update category
+            $this->db->where('id', $category_id);
+            $this->db->update('categories', $update_data);
+
+            if ($this->db->affected_rows() >= 0) {
+                // Get updated category
+                $this->db->where('id', $category_id);
+                $query = $this->db->get('categories');
+                $row = $query->row();
+
+                json_output(200, array(
+                    'status' => 1,
+                    'message' => 'Student category updated successfully',
+                    'data' => array(
+                        'category_id' => intval($row->id),
+                        'category_name' => $row->category,
+                        'is_active' => $row->is_active,
+                        'created_at' => $row->created_at,
+                        'updated_at' => $row->updated_at
+                    ),
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+            } else {
+                json_output(500, array(
+                    'status' => 0,
+                    'message' => 'Failed to update student category',
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+            }
+
+        } catch (Exception $e) {
+            json_output(500, array(
+                'status' => 0,
+                'message' => 'An error occurred while updating student category',
+                'error' => array(
+                    'type' => 'Exception',
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ),
+                'timestamp' => date('Y-m-d H:i:s')
+            ));
+        }
+    }
+
+    /**
+     * Delete student category
+     * POST /teacher/student-category/delete
+     *
+     * Request body:
+     * {
+     *   "category_id": 5
+     * }
+     *
+     * Returns: Success message
+     */
+    public function student_category_delete()
+    {
+        try {
+            // Get JSON input
+            $json_input = json_decode(file_get_contents('php://input'), true);
+
+            // Check for JSON decode errors
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                json_output(400, array(
+                    'status' => 0,
+                    'message' => 'Invalid JSON format in request body',
+                    'error' => array(
+                        'type' => 'JSON Parse Error',
+                        'details' => json_last_error_msg()
+                    ),
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            // Validate category_id
+            if (!isset($json_input['category_id']) || empty($json_input['category_id'])) {
+                json_output(400, array(
+                    'status' => 0,
+                    'message' => 'category_id is required',
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            $category_id = intval($json_input['category_id']);
+
+            // Check if category exists
+            $this->db->where('id', $category_id);
+            $existing = $this->db->get('categories');
+
+            if (!$existing || $existing->num_rows() == 0) {
+                json_output(404, array(
+                    'status' => 0,
+                    'message' => 'Student category not found',
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            // Check if category is being used by any students
+            $this->db->where('category_id', $category_id);
+            $students_using = $this->db->get('students');
+
+            if ($students_using && $students_using->num_rows() > 0) {
+                json_output(409, array(
+                    'status' => 0,
+                    'message' => 'Cannot delete category. It is being used by ' . $students_using->num_rows() . ' student(s)',
+                    'students_count' => $students_using->num_rows(),
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            // Delete category
+            $this->db->where('id', $category_id);
+            $this->db->delete('categories');
+
+            if ($this->db->affected_rows() > 0) {
+                json_output(200, array(
+                    'status' => 1,
+                    'message' => 'Student category deleted successfully',
+                    'category_id' => $category_id,
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+            } else {
+                json_output(500, array(
+                    'status' => 0,
+                    'message' => 'Failed to delete student category',
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+            }
+
+        } catch (Exception $e) {
+            json_output(500, array(
+                'status' => 0,
+                'message' => 'An error occurred while deleting student category',
+                'error' => array(
+                    'type' => 'Exception',
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ),
+                'timestamp' => date('Y-m-d H:i:s')
+            ));
+        }
+    }
+
+    /**
+     * Get all student categories
+     * POST /teacher/student-categories
+     *
+     * Returns: List of all student categories
+     */
+    public function student_categories()
+    {
+        try {
+            // Query to get all categories
+            $this->db->select('id, category as category_name, is_active, created_at, updated_at');
+            $this->db->from('categories');
+            $this->db->order_by('category', 'ASC');
+
+            $query = $this->db->get();
+
+            if (!$query) {
+                json_output(500, array(
+                    'status' => 0,
+                    'message' => 'Failed to retrieve student categories',
+                    'error' => array(
+                        'type' => 'Database Error',
+                        'details' => $this->db->error()
+                    ),
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            $categories = array();
+            foreach ($query->result() as $row) {
+                $categories[] = array(
+                    'category_id' => intval($row->id),
+                    'category_name' => $row->category_name,
+                    'is_active' => $row->is_active,
+                    'created_at' => $row->created_at,
+                    'updated_at' => $row->updated_at
+                );
+            }
+
+            json_output(200, array(
+                'status' => 1,
+                'message' => 'Student categories retrieved successfully',
+                'total_categories' => count($categories),
+                'data' => $categories,
+                'timestamp' => date('Y-m-d H:i:s')
+            ));
+
+        } catch (Exception $e) {
+            json_output(500, array(
+                'status' => 0,
+                'message' => 'An error occurred while retrieving student categories',
+                'error' => array(
+                    'type' => 'Exception',
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ),
+                'timestamp' => date('Y-m-d H:i:s')
+            ));
+        }
+    }
+
+    /**
+     * Get single student category
+     * POST /teacher/student-category/get
+     *
+     * Request body:
+     * {
+     *   "category_id": 5
+     * }
+     *
+     * Returns: Single category details
+     */
+    public function student_category_get()
+    {
+        try {
+            // Get JSON input
+            $json_input = json_decode(file_get_contents('php://input'), true);
+
+            // Check for JSON decode errors
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                json_output(400, array(
+                    'status' => 0,
+                    'message' => 'Invalid JSON format in request body',
+                    'error' => array(
+                        'type' => 'JSON Parse Error',
+                        'details' => json_last_error_msg()
+                    ),
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            // Validate category_id
+            if (!isset($json_input['category_id']) || empty($json_input['category_id'])) {
+                json_output(400, array(
+                    'status' => 0,
+                    'message' => 'category_id is required',
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            $category_id = intval($json_input['category_id']);
+
+            // Query to get category
+            $this->db->select('id, category as category_name, is_active, created_at, updated_at');
+            $this->db->from('categories');
+            $this->db->where('id', $category_id);
+
+            $query = $this->db->get();
+
+            if (!$query || $query->num_rows() == 0) {
+                json_output(404, array(
+                    'status' => 0,
+                    'message' => 'Student category not found',
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            $row = $query->row();
+            $category = array(
+                'category_id' => intval($row->id),
+                'category_name' => $row->category_name,
+                'is_active' => $row->is_active,
+                'created_at' => $row->created_at,
+                'updated_at' => $row->updated_at
+            );
+
+            json_output(200, array(
+                'status' => 1,
+                'message' => 'Student category retrieved successfully',
+                'data' => $category,
+                'timestamp' => date('Y-m-d H:i:s')
+            ));
+
+        } catch (Exception $e) {
+            json_output(500, array(
+                'status' => 0,
+                'message' => 'An error occurred while retrieving student category',
+                'error' => array(
+                    'type' => 'Exception',
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ),
+                'timestamp' => date('Y-m-d H:i:s')
+            ));
+        }
+    }
+
     public function not_found()
     {
         $response = array(
@@ -2471,6 +3332,13 @@ class Teacher_webservice extends CI_Controller
                 'POST /teacher/simple_menu' => 'Get menu items for staff',
                 'POST /teacher/menu' => 'Get menu items (original)',
                 'POST /teacher/profile' => 'Get comprehensive staff profile',
+                'POST /teacher/students' => 'Get students by class/section/session',
+                'POST /teacher/classes-with-sections' => 'Get classes with sections',
+                'POST /teacher/student-categories' => 'Get all student categories',
+                'POST /teacher/student-category/get' => 'Get single student category',
+                'POST /teacher/student-category/create' => 'Create student category',
+                'POST /teacher/student-category/update' => 'Update student category',
+                'POST /teacher/student-category/delete' => 'Delete student category',
                 'GET /teacher/test' => 'Test endpoint',
                 'GET /teacher/debug-menu' => 'Debug menu endpoint'
             ),

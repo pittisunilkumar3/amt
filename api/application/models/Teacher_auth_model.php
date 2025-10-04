@@ -1099,13 +1099,14 @@ class Teacher_auth_model extends CI_Model
 
         if (!empty($staff_info->employee_id)) {
             // Check if QR code file exists
-            $qr_file = './uploads/staff_id_card/qrcode/' . $staff_info->employee_id . '.png';
+            // Use FCPATH to get the correct base path (goes up from api/ directory)
+            $qr_file = FCPATH . '../uploads/staff_id_card/qrcode/' . $staff_info->employee_id . '.png';
             if (file_exists($qr_file)) {
                 $qr_code_path = $base_url . 'uploads/staff_id_card/qrcode/' . $staff_info->employee_id . '.png' . $timestamp;
             }
 
             // Check if barcode file exists
-            $barcode_file = './uploads/staff_id_card/barcodes/' . $staff_info->employee_id . '.png';
+            $barcode_file = FCPATH . '../uploads/staff_id_card/barcodes/' . $staff_info->employee_id . '.png';
             if (file_exists($barcode_file)) {
                 $barcode_path = $base_url . 'uploads/staff_id_card/barcodes/' . $staff_info->employee_id . '.png' . $timestamp;
             }

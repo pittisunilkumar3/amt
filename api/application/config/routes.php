@@ -80,6 +80,13 @@ $route['teacher/download-document/(:num)/(:any)'] = 'teacher_auth/download_docum
 // Teacher Webservice Routes
 $route['teacher/menu']['POST'] = 'teacher_webservice/menu';
 $route['teacher/simple_menu']['POST'] = 'teacher_webservice/simple_menu';
+$route['teacher/students']['POST'] = 'teacher_webservice/students';
+$route['teacher/classes-with-sections']['POST'] = 'teacher_webservice/classes_with_sections';
+$route['teacher/student-categories']['POST'] = 'teacher_webservice/student_categories';
+$route['teacher/student-category/get']['POST'] = 'teacher_webservice/student_category_get';
+$route['teacher/student-category/create']['POST'] = 'teacher_webservice/student_category_create';
+$route['teacher/student-category/update']['POST'] = 'teacher_webservice/student_category_update';
+$route['teacher/student-category/delete']['POST'] = 'teacher_webservice/student_category_delete';
 $route['teacher/test'] = 'teacher_webservice/test';
 $route['teacher/debug-menu'] = 'teacher_webservice/debug_menu';
 $route['teacher/permissions'] = 'teacher_webservice/permissions';
