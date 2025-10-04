@@ -512,8 +512,8 @@ class Teacher_auth_model extends CI_Model
             $rating_data = array('average_rating' => 0, 'total_reviews' => 0, 'can_view_rating' => false, 'reviews' => array());
         }
 
-        // Generate QR code data
-        $qr_data = $this->generateQRCodeData($staff_profile);
+        // Get file paths with timestamps (v1.2 structure)
+        $file_paths = $this->getStaffFilePaths($staff_profile);
 
         // Prepare comprehensive profile response
         $profile_data = array(
@@ -531,10 +531,9 @@ class Teacher_auth_model extends CI_Model
             'payroll_details' => $payroll_data,
             'timeline' => $timeline_data,
             'leave_records' => $leave_data,
-            'attendance_records' => $attendance_data,
+            'attendance_information' => $attendance_data,  // Changed from attendance_records to attendance_information
             'ratings_reviews' => $rating_data,
-            'qr_code' => $qr_data,
-            'profile_image' => $this->getProfileImageURL($staff_profile->image, $staff_profile->gender),
+            'file_paths' => $file_paths,  // v1.2 structure with timestamps
             'school_settings' => $this->formatSchoolSettings($school_settings)
         );
 
@@ -634,44 +633,167 @@ class Teacher_auth_model extends CI_Model
     }
 
     /**
-     * Get attendance data for staff
+     * Get attendance data for staff (v1.2 Enhanced Structure)
      */
     private function getAttendanceData($staff_id)
     {
-        // Get attendance types directly from database
-        $this->db->select('*');
+        // Get attendance types with color coding
+        $this->db->select('id, type, key_value');
         $this->db->from('staff_attendance_type');
         $this->db->where('is_active', 'yes');
         $this->db->order_by('id');
-        $attendance_types = $this->db->get()->result_array();
+        $attendance_types_raw = $this->db->get()->result_array();
 
-        // Get current year attendance count
-        $current_year = date('Y');
-        $attendance_count = array();
+        // Define color mapping for attendance types
+        $color_map = array(
+            'P' => '#4CAF50',  // Green for Present
+            'L' => '#FF9800',  // Orange for Late
+            'A' => '#F44336',  // Red for Absent
+            'H' => '#2196F3',  // Blue for Half Day
+            'F' => '#9C27B0',  // Purple for Holiday
+        );
 
-        foreach ($attendance_types as $att_type) {
-            $this->db->select('count(*) as count');
-            $this->db->from('staff_attendance');
-            $this->db->where('staff_id', $staff_id);
-            $this->db->where('YEAR(date)', $current_year);
-            $this->db->where('staff_attendance_type_id', $att_type['id']);
-            $count_result = $this->db->get()->row_array();
+        // Format attendance types with colors
+        $attendance_types = array();
+        foreach ($attendance_types_raw as $type) {
+            // Clean key_value - remove HTML tags if present
+            $key_value_raw = $type['key_value'];
+            $key_value_clean = strip_tags($key_value_raw);
+            $key_value_clean = trim($key_value_clean);
+            $key = strtoupper($key_value_clean);
 
-            $attendance_count[$att_type['type']] = $count_result['count'] ?? 0;
+            $attendance_types[] = array(
+                'id' => (int)$type['id'],
+                'type' => $type['type'],
+                'key_value' => $key_value_clean,  // Use cleaned key_value
+                'color' => isset($color_map[$key]) ? $color_map[$key] : '#9E9E9E'
+            );
         }
 
-        // Get recent attendance records (last 30 days)
-        $this->db->select('staff_attendance.*, staff_attendance_type.type as att_type, staff_attendance_type.key_value');
-        $this->db->from('staff_attendance');
-        $this->db->join('staff_attendance_type', 'staff_attendance_type.id = staff_attendance.staff_attendance_type_id', 'left');
-        $this->db->where('staff_attendance.staff_id', $staff_id);
-        $this->db->where('staff_attendance.date >=', date('Y-m-d', strtotime('-30 days')));
-        $this->db->order_by('staff_attendance.date', 'DESC');
-        $recent_attendance = $this->db->get()->result_array();
+        // Get all attendance records ordered by date DESC (most recent first)
+        $this->db->select('sa.*, sat.type as attendance_type, sat.key_value');
+        $this->db->from('staff_attendance sa');
+        $this->db->join('staff_attendance_type sat', 'sat.id = sa.staff_attendance_type_id', 'left');
+        $this->db->where('sa.staff_id', $staff_id);
+        $this->db->order_by('sa.date', 'DESC');
+        $attendance_records = $this->db->get()->result_array();
 
+        // Initialize counters
+        $present_count = 0;
+        $late_count = 0;
+        $absent_count = 0;
+        $half_day_count = 0;
+        $holiday_count = 0;
+
+        // Group records by month and year
+        $monthly_data = array();
+
+        foreach ($attendance_records as $record) {
+            $date = $record['date'];
+
+            // Clean key_value - remove HTML tags if present
+            $key_value_raw = $record['key_value'];
+            // Strip HTML tags and get just the letter
+            $key_value_clean = strip_tags($key_value_raw);
+            $key_value_clean = trim($key_value_clean);
+            $key_value = strtoupper($key_value_clean);
+
+            // Extract month and year
+            $date_obj = new DateTime($date);
+            $month = $date_obj->format('F');  // Full month name
+            $year = $date_obj->format('Y');
+            $day_name = $date_obj->format('l');  // Full day name (Monday, Tuesday, etc.)
+            $month_year_key = $year . '-' . $date_obj->format('m');
+
+            // Initialize month array if not exists
+            if (!isset($monthly_data[$month_year_key])) {
+                $monthly_data[$month_year_key] = array(
+                    'month' => $month,
+                    'year' => $year,
+                    'month_number' => (int)$date_obj->format('m'),
+                    'days' => array(),
+                    'month_summary' => array(
+                        'present' => 0,
+                        'absent' => 0,
+                        'late' => 0,
+                        'half_day' => 0,
+                        'holiday' => 0
+                    )
+                );
+            }
+
+            // Determine status label
+            $status = 'unknown';
+            if ($key_value == 'P') {
+                $status = 'present';
+                $present_count++;
+                $monthly_data[$month_year_key]['month_summary']['present']++;
+            } elseif ($key_value == 'L') {
+                $status = 'late';
+                $late_count++;
+                $monthly_data[$month_year_key]['month_summary']['late']++;
+            } elseif ($key_value == 'A') {
+                $status = 'absent';
+                $absent_count++;
+                $monthly_data[$month_year_key]['month_summary']['absent']++;
+            } elseif ($key_value == 'H') {
+                $status = 'half_day';
+                $half_day_count++;
+                $monthly_data[$month_year_key]['month_summary']['half_day']++;
+            } elseif ($key_value == 'F') {
+                $status = 'holiday';
+                $holiday_count++;
+                $monthly_data[$month_year_key]['month_summary']['holiday']++;
+            }
+
+            // Add day record with cleaned key_value
+            $monthly_data[$month_year_key]['days'][] = array(
+                'date' => $date,
+                'day_name' => $day_name,
+                'status' => $status,
+                'status_key' => $key_value,  // Use cleaned key_value
+                'remark' => $record['remark'] ? $record['remark'] : ''
+            );
+        }
+
+        // Convert monthly data to indexed array and sort by year-month DESC
+        $monthly_breakdown = array_values($monthly_data);
+
+        // Sort by year and month (most recent first)
+        usort($monthly_breakdown, function($a, $b) {
+            if ($a['year'] != $b['year']) {
+                return $b['year'] - $a['year'];
+            }
+            return $b['month_number'] - $a['month_number'];
+        });
+
+        // Remove month_number from final output (it was only for sorting)
+        foreach ($monthly_breakdown as &$month_data) {
+            unset($month_data['month_number']);
+        }
+
+        // Calculate total records
+        $total_records = count($attendance_records);
+
+        // Calculate attendance percentage (present + half_day considered as attendance)
+        $attendance_percentage = 0;
+        if ($total_records > 0) {
+            $attended = $present_count + ($half_day_count * 0.5);
+            $attendance_percentage = round(($attended / $total_records) * 100, 2);
+        }
+
+        // Build final response (v1.2 structure)
         return array(
-            'attendance_summary' => $attendance_count,
-            'recent_attendance' => $recent_attendance,
+            'summary' => array(
+                'total_present' => $present_count,
+                'total_absent' => $absent_count,
+                'total_late' => $late_count,
+                'total_half_day' => $half_day_count,
+                'total_holiday' => $holiday_count,
+                'total_records' => $total_records,
+                'attendance_percentage' => $attendance_percentage
+            ),
+            'monthly_breakdown' => $monthly_breakdown,
             'attendance_types' => $attendance_types
         );
     }
@@ -947,6 +1069,90 @@ class Teacher_auth_model extends CI_Model
             $default_image = ($gender == 'Male') ? 'default_male.jpg' : 'default_female.jpg';
             return base_url() . 'uploads/staff_images/' . $default_image;
         }
+    }
+
+    /**
+     * Get staff file paths with timestamps (v1.2 structure)
+     */
+    private function getStaffFilePaths($staff_info)
+    {
+        $base_url = base_url();
+
+        // Get timestamp for cache busting
+        $timestamp = '?' . time();
+
+        // Profile image path with timestamp
+        $profile_image = '';
+        if (!empty($staff_info->image)) {
+            $profile_image = $base_url . 'uploads/staff_images/' . $staff_info->image . $timestamp;
+        } else {
+            if ($staff_info->gender == 'Male') {
+                $profile_image = $base_url . 'uploads/staff_images/default_male.jpg' . $timestamp;
+            } else {
+                $profile_image = $base_url . 'uploads/staff_images/default_female.jpg' . $timestamp;
+            }
+        }
+
+        // QR code and barcode paths with timestamp
+        $qr_code_path = '';
+        $barcode_path = '';
+
+        if (!empty($staff_info->employee_id)) {
+            // Check if QR code file exists
+            $qr_file = './uploads/staff_id_card/qrcode/' . $staff_info->employee_id . '.png';
+            if (file_exists($qr_file)) {
+                $qr_code_path = $base_url . 'uploads/staff_id_card/qrcode/' . $staff_info->employee_id . '.png' . $timestamp;
+            }
+
+            // Check if barcode file exists
+            $barcode_file = './uploads/staff_id_card/barcodes/' . $staff_info->employee_id . '.png';
+            if (file_exists($barcode_file)) {
+                $barcode_path = $base_url . 'uploads/staff_id_card/barcodes/' . $staff_info->employee_id . '.png' . $timestamp;
+            }
+        }
+
+        // Document paths
+        $documents = array();
+
+        if (!empty($staff_info->resume)) {
+            $documents['resume'] = array(
+                'filename' => $staff_info->resume,
+                'path' => $base_url . 'uploads/staff_documents/' . $staff_info->id . '/' . $staff_info->resume,
+                'type' => 'resume'
+            );
+        }
+
+        if (!empty($staff_info->joining_letter)) {
+            $documents['joining_letter'] = array(
+                'filename' => $staff_info->joining_letter,
+                'path' => $base_url . 'uploads/staff_documents/' . $staff_info->id . '/' . $staff_info->joining_letter,
+                'type' => 'joining_letter'
+            );
+        }
+
+        if (!empty($staff_info->resignation_letter)) {
+            $documents['resignation_letter'] = array(
+                'filename' => $staff_info->resignation_letter,
+                'path' => $base_url . 'uploads/staff_documents/' . $staff_info->id . '/' . $staff_info->resignation_letter,
+                'type' => 'resignation_letter'
+            );
+        }
+
+        if (!empty($staff_info->other_document_file)) {
+            $documents['other_document'] = array(
+                'filename' => $staff_info->other_document_file,
+                'name' => $staff_info->other_document_name,
+                'path' => $base_url . 'uploads/staff_documents/' . $staff_info->id . '/' . $staff_info->other_document_file,
+                'type' => 'other_document'
+            );
+        }
+
+        return array(
+            'profile_image' => $profile_image,
+            'qr_code' => $qr_code_path,
+            'barcode' => $barcode_path,
+            'documents' => $documents
+        );
     }
 
     /**

@@ -1901,6 +1901,559 @@ class Teacher_webservice extends CI_Controller
     }
 
     /**
+     * Get Comprehensive Staff Profile
+     * POST /teacher/profile
+     * Body: {"staff_id": 2}
+     *
+     * Returns complete staff profile including:
+     * - Personal information
+     * - Payroll records
+     * - Leave records
+     * - Attendance summary
+     * - File paths (documents, QR code, profile image)
+     */
+    public function profile()
+    {
+        try {
+            $method = $this->input->server('REQUEST_METHOD');
+
+            if ($method != 'POST') {
+                json_output(400, array(
+                    'status' => 0,
+                    'message' => 'Bad request. Only POST method allowed.',
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            // Get JSON input
+            $json_input = json_decode($this->input->raw_input_stream, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                json_output(400, array(
+                    'status' => 0,
+                    'message' => 'Invalid JSON format in request body',
+                    'error' => json_last_error_msg(),
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            if (empty($json_input) || !isset($json_input['staff_id'])) {
+                json_output(400, array(
+                    'status' => 0,
+                    'message' => 'staff_id is required in request body',
+                    'example' => array('staff_id' => 2),
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            $staff_id = intval($json_input['staff_id']);
+
+            if ($staff_id <= 0) {
+                json_output(400, array(
+                    'status' => 0,
+                    'message' => 'staff_id must be a valid positive integer',
+                    'provided' => $json_input['staff_id'],
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            // Check database connection
+            if (!$this->db->conn_id) {
+                json_output(500, array(
+                    'status' => 0,
+                    'message' => 'Database connection failed',
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            // Load required models
+            $this->load->model('staffattendancemodel');
+            $this->load->model('leaverequest_model');
+
+            // Get staff personal information with all joins
+            $this->db->select('s.*,
+                sd.designation as designation_name,
+                d.department_name,
+                r.name as role_name,
+                r.id as role_id,
+                r.is_superadmin');
+            $this->db->from('staff s');
+            $this->db->join('staff_designation sd', 'sd.id = s.designation', 'left');
+            $this->db->join('department d', 'd.id = s.department', 'left');
+            $this->db->join('staff_roles sr', 'sr.staff_id = s.id', 'left');
+            $this->db->join('roles r', 'r.id = sr.role_id', 'left');
+            $this->db->where('s.id', $staff_id);
+
+            $query = $this->db->get();
+
+            if (!$query) {
+                json_output(500, array(
+                    'status' => 0,
+                    'message' => 'Database query failed',
+                    'error' => $this->db->error(),
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            $staff_info = $query->row();
+
+            if (!$staff_info) {
+                json_output(404, array(
+                    'status' => 0,
+                    'message' => 'Staff member not found',
+                    'staff_id' => $staff_id,
+                    'timestamp' => date('Y-m-d H:i:s')
+                ));
+                return;
+            }
+
+            // Build personal information
+            $personal_info = array(
+                'id' => (int)$staff_info->id,
+                'employee_id' => $staff_info->employee_id,
+                'name' => $staff_info->name,
+                'surname' => $staff_info->surname,
+                'full_name' => trim($staff_info->name . ' ' . $staff_info->surname),
+                'designation' => $staff_info->designation_name,
+                'department' => $staff_info->department_name,
+                'phone' => $staff_info->contact_no,
+                'email' => $staff_info->email,
+                'emergency_contact' => $staff_info->emergency_contact_no,
+                'qualification' => $staff_info->qualification,
+                'work_experience' => $staff_info->work_exp,
+                'date_of_joining' => $staff_info->date_of_joining,
+                'date_of_birth' => $staff_info->dob,
+                'marital_status' => $staff_info->marital_status,
+                'gender' => $staff_info->gender,
+                'father_name' => $staff_info->father_name,
+                'mother_name' => $staff_info->mother_name,
+                'local_address' => $staff_info->local_address,
+                'permanent_address' => $staff_info->permanent_address,
+                'note' => $staff_info->note,
+                'is_active' => (int)$staff_info->is_active,
+                'role' => array(
+                    'id' => $staff_info->role_id ? (int)$staff_info->role_id : null,
+                    'name' => $staff_info->role_name ? $staff_info->role_name : 'No Role Assigned',
+                    'is_superadmin' => $staff_info->is_superadmin ? (bool)$staff_info->is_superadmin : false
+                ),
+                'bank_details' => array(
+                    'account_title' => $staff_info->account_title,
+                    'bank_account_no' => $staff_info->bank_account_no,
+                    'bank_name' => $staff_info->bank_name,
+                    'ifsc_code' => $staff_info->ifsc_code,
+                    'bank_branch' => $staff_info->bank_branch
+                ),
+                'employment_details' => array(
+                    'epf_no' => $staff_info->epf_no,
+                    'basic_salary' => $staff_info->basic_salary ? (float)$staff_info->basic_salary : null,
+                    'contract_type' => $staff_info->contract_type,
+                    'payscale' => $staff_info->payscale,
+                    'shift' => $staff_info->shift,
+                    'location' => $staff_info->location,
+                    'date_of_leaving' => $staff_info->date_of_leaving
+                ),
+                'social_media' => array(
+                    'facebook' => $staff_info->facebook,
+                    'twitter' => $staff_info->twitter,
+                    'linkedin' => $staff_info->linkedin,
+                    'instagram' => $staff_info->instagram
+                )
+            );
+
+            // Get payroll information
+            $this->db->select('*');
+            $this->db->from('staff_payslip');
+            $this->db->where('staff_id', $staff_id);
+            $this->db->order_by('year DESC, month DESC');
+            $payroll_records = $this->db->get()->result_array();
+
+            // Format payroll records
+            $payroll_info = array(
+                'records' => array(),
+                'summary' => array(
+                    'total_records' => count($payroll_records),
+                    'total_net_salary' => 0,
+                    'total_allowances' => 0,
+                    'total_deductions' => 0,
+                    'total_tax' => 0
+                )
+            );
+
+            foreach ($payroll_records as $payroll) {
+                $payroll_info['records'][] = array(
+                    'id' => (int)$payroll['id'],
+                    'month' => $payroll['month'],
+                    'year' => $payroll['year'],
+                    'basic_salary' => (float)$payroll['basic'],
+                    'total_allowance' => (float)$payroll['total_allowance'],
+                    'total_deduction' => (float)$payroll['total_deduction'],
+                    'leave_deduction' => (int)$payroll['leave_deduction'],
+                    'tax' => $payroll['tax'],
+                    'net_salary' => (float)$payroll['net_salary'],
+                    'status' => $payroll['status'],
+                    'payment_mode' => $payroll['payment_mode'],
+                    'payment_date' => $payroll['payment_date'],
+                    'remark' => $payroll['remark'],
+                    'created_at' => $payroll['created_at']
+                );
+
+                // Calculate summary
+                if ($payroll['status'] == 'paid') {
+                    $payroll_info['summary']['total_net_salary'] += (float)$payroll['net_salary'];
+                    $payroll_info['summary']['total_allowances'] += (float)$payroll['total_allowance'];
+                    $payroll_info['summary']['total_deductions'] += (float)$payroll['total_deduction'];
+                    $payroll_info['summary']['total_tax'] += (float)$payroll['tax'];
+                }
+            }
+
+            // Get leave information
+            $this->db->select('slr.*, lt.type as leave_type_name, s.name as applied_by_name, s.surname as applied_by_surname, s.employee_id as applied_by_employee_id');
+            $this->db->from('staff_leave_request slr');
+            $this->db->join('leave_types lt', 'lt.id = slr.leave_type_id', 'left');
+            $this->db->join('staff s', 's.id = slr.applied_by', 'left');
+            $this->db->where('slr.staff_id', $staff_id);
+            $this->db->order_by('slr.created_at DESC');
+            $leave_records = $this->db->get()->result_array();
+
+            // Format leave records
+            $leave_info = array(
+                'records' => array(),
+                'summary' => array(
+                    'total_requests' => count($leave_records),
+                    'approved_count' => 0,
+                    'pending_count' => 0,
+                    'disapproved_count' => 0,
+                    'total_leave_days' => 0,
+                    'approved_leave_days' => 0
+                )
+            );
+
+            foreach ($leave_records as $leave) {
+                $applied_by_full = '';
+                if (!empty($leave['applied_by_name'])) {
+                    $applied_by_full = trim($leave['applied_by_name'] . ' ' . $leave['applied_by_surname']);
+                    if (!empty($leave['applied_by_employee_id'])) {
+                        $applied_by_full .= ' (' . $leave['applied_by_employee_id'] . ')';
+                    }
+                }
+
+                $leave_info['records'][] = array(
+                    'id' => (int)$leave['id'],
+                    'leave_type' => $leave['leave_type_name'],
+                    'leave_type_id' => (int)$leave['leave_type_id'],
+                    'leave_from' => $leave['leave_from'],
+                    'leave_to' => $leave['leave_to'],
+                    'leave_days' => (int)$leave['leave_days'],
+                    'employee_remark' => $leave['employee_remark'],
+                    'admin_remark' => $leave['admin_remark'],
+                    'status' => $leave['status'],
+                    'applied_by' => $applied_by_full,
+                    'applied_by_id' => $leave['applied_by'] ? (int)$leave['applied_by'] : null,
+                    'document_file' => $leave['document_file'],
+                    'apply_date' => $leave['date'],
+                    'created_at' => $leave['created_at']
+                );
+
+                // Calculate summary
+                $leave_info['summary']['total_leave_days'] += (int)$leave['leave_days'];
+
+                if ($leave['status'] == 'approve' || $leave['status'] == 'approved') {
+                    $leave_info['summary']['approved_count']++;
+                    $leave_info['summary']['approved_leave_days'] += (int)$leave['leave_days'];
+                } elseif ($leave['status'] == 'pending') {
+                    $leave_info['summary']['pending_count']++;
+                } elseif ($leave['status'] == 'disapprove' || $leave['status'] == 'disapproved') {
+                    $leave_info['summary']['disapproved_count']++;
+                }
+            }
+
+            // Get attendance information
+            $attendance_info = $this->getStaffAttendanceInfo($staff_id);
+
+            // Get file paths
+            $file_paths = $this->getStaffFilePaths($staff_info, $staff_id);
+
+            // Build final response
+            $response = array(
+                'status' => 1,
+                'message' => 'Staff profile retrieved successfully',
+                'data' => array(
+                    'personal_information' => $personal_info,
+                    'payroll_information' => $payroll_info,
+                    'leave_information' => $leave_info,
+                    'attendance_information' => $attendance_info,
+                    'file_paths' => $file_paths
+                ),
+                'timestamp' => date('Y-m-d H:i:s')
+            );
+
+            json_output(200, $response);
+
+        } catch (Exception $e) {
+            $error_response = array(
+                'status' => 0,
+                'message' => 'Exception occurred while retrieving staff profile',
+                'error' => array(
+                    'type' => get_class($e),
+                    'message' => $e->getMessage(),
+                    'file' => basename($e->getFile()),
+                    'line' => $e->getLine()
+                ),
+                'staff_id' => isset($staff_id) ? $staff_id : null,
+                'timestamp' => date('Y-m-d H:i:s')
+            );
+
+            log_message('error', 'Staff Profile Exception: ' . $e->getMessage());
+            json_output(500, $error_response);
+        }
+    }
+
+    /**
+     * Helper method to get staff attendance information with detailed monthly breakdown
+     */
+    private function getStaffAttendanceInfo($staff_id)
+    {
+        // Get attendance types with color coding
+        $this->db->select('id, type, key_value');
+        $this->db->from('staff_attendance_type');
+        $this->db->where('is_active', 1);
+        $this->db->order_by('id');
+        $attendance_types_raw = $this->db->get()->result_array();
+
+        // Define color mapping for attendance types
+        $color_map = array(
+            'P' => '#4CAF50',  // Green for Present
+            'L' => '#FF9800',  // Orange for Late
+            'A' => '#F44336',  // Red for Absent
+            'H' => '#2196F3',  // Blue for Half Day
+            'F' => '#9C27B0',  // Purple for Holiday
+        );
+
+        // Format attendance types with colors
+        $attendance_types = array();
+        foreach ($attendance_types_raw as $type) {
+            $key = strtoupper($type['key_value']);
+            $attendance_types[] = array(
+                'id' => (int)$type['id'],
+                'type' => $type['type'],
+                'key_value' => $type['key_value'],
+                'color' => isset($color_map[$key]) ? $color_map[$key] : '#9E9E9E'
+            );
+        }
+
+        // Get all attendance records ordered by date DESC (most recent first)
+        $this->db->select('sa.*, sat.type as attendance_type, sat.key_value');
+        $this->db->from('staff_attendance sa');
+        $this->db->join('staff_attendance_type sat', 'sat.id = sa.staff_attendance_type_id', 'left');
+        $this->db->where('sa.staff_id', $staff_id);
+        $this->db->order_by('sa.date', 'DESC');
+        $attendance_records = $this->db->get()->result_array();
+
+        // Initialize counters
+        $present_count = 0;
+        $late_count = 0;
+        $absent_count = 0;
+        $half_day_count = 0;
+        $holiday_count = 0;
+
+        // Group records by month and year
+        $monthly_data = array();
+
+        foreach ($attendance_records as $record) {
+            $date = $record['date'];
+            $key_value = strtoupper($record['key_value']);
+
+            // Extract month and year
+            $date_obj = new DateTime($date);
+            $month = $date_obj->format('F');  // Full month name
+            $year = $date_obj->format('Y');
+            $day_name = $date_obj->format('l');  // Full day name (Monday, Tuesday, etc.)
+            $month_year_key = $year . '-' . $date_obj->format('m');
+
+            // Initialize month array if not exists
+            if (!isset($monthly_data[$month_year_key])) {
+                $monthly_data[$month_year_key] = array(
+                    'month' => $month,
+                    'year' => $year,
+                    'month_number' => (int)$date_obj->format('m'),
+                    'days' => array(),
+                    'month_summary' => array(
+                        'present' => 0,
+                        'absent' => 0,
+                        'late' => 0,
+                        'half_day' => 0,
+                        'holiday' => 0
+                    )
+                );
+            }
+
+            // Determine status label
+            $status = 'unknown';
+            if ($key_value == 'P') {
+                $status = 'present';
+                $present_count++;
+                $monthly_data[$month_year_key]['month_summary']['present']++;
+            } elseif ($key_value == 'L') {
+                $status = 'late';
+                $late_count++;
+                $monthly_data[$month_year_key]['month_summary']['late']++;
+            } elseif ($key_value == 'A') {
+                $status = 'absent';
+                $absent_count++;
+                $monthly_data[$month_year_key]['month_summary']['absent']++;
+            } elseif ($key_value == 'H') {
+                $status = 'half_day';
+                $half_day_count++;
+                $monthly_data[$month_year_key]['month_summary']['half_day']++;
+            } elseif ($key_value == 'F') {
+                $status = 'holiday';
+                $holiday_count++;
+                $monthly_data[$month_year_key]['month_summary']['holiday']++;
+            }
+
+            // Add day record
+            $monthly_data[$month_year_key]['days'][] = array(
+                'date' => $date,
+                'day_name' => $day_name,
+                'status' => $status,
+                'status_key' => $record['key_value'],
+                'remark' => $record['remark'] ? $record['remark'] : ''
+            );
+        }
+
+        // Convert monthly data to indexed array and sort by year-month DESC
+        $monthly_breakdown = array_values($monthly_data);
+
+        // Sort by year and month (most recent first)
+        usort($monthly_breakdown, function($a, $b) {
+            if ($a['year'] != $b['year']) {
+                return $b['year'] - $a['year'];
+            }
+            return $b['month_number'] - $a['month_number'];
+        });
+
+        // Remove month_number from final output (it was only for sorting)
+        foreach ($monthly_breakdown as &$month_data) {
+            unset($month_data['month_number']);
+        }
+
+        // Calculate total records
+        $total_records = count($attendance_records);
+
+        // Calculate attendance percentage (present + half_day considered as attendance)
+        $attendance_percentage = 0;
+        if ($total_records > 0) {
+            $attended = $present_count + ($half_day_count * 0.5);
+            $attendance_percentage = round(($attended / $total_records) * 100, 2);
+        }
+
+        // Build final response
+        return array(
+            'summary' => array(
+                'total_present' => $present_count,
+                'total_absent' => $absent_count,
+                'total_late' => $late_count,
+                'total_half_day' => $half_day_count,
+                'total_holiday' => $holiday_count,
+                'total_records' => $total_records,
+                'attendance_percentage' => $attendance_percentage
+            ),
+            'monthly_breakdown' => $monthly_breakdown,
+            'attendance_types' => $attendance_types
+        );
+    }
+
+    /**
+     * Helper method to get staff file paths
+     */
+    private function getStaffFilePaths($staff_info, $staff_id)
+    {
+        $base_url = base_url();
+
+        // Get timestamp for cache busting (similar to img_time() helper)
+        $timestamp = '?' . time();
+
+        // Profile image path with timestamp
+        $profile_image = '';
+        if (!empty($staff_info->image)) {
+            $profile_image = $base_url . 'uploads/staff_images/' . $staff_info->image . $timestamp;
+        } else {
+            if ($staff_info->gender == 'Male') {
+                $profile_image = $base_url . 'uploads/staff_images/default_male.jpg' . $timestamp;
+            } else {
+                $profile_image = $base_url . 'uploads/staff_images/default_female.jpg' . $timestamp;
+            }
+        }
+
+        // QR code and barcode paths with timestamp
+        $qr_code_path = '';
+        $barcode_path = '';
+
+        if (!empty($staff_info->employee_id)) {
+            // Check if QR code file exists
+            $qr_file = './uploads/staff_id_card/qrcode/' . $staff_info->employee_id . '.png';
+            if (file_exists($qr_file)) {
+                $qr_code_path = $base_url . 'uploads/staff_id_card/qrcode/' . $staff_info->employee_id . '.png' . $timestamp;
+            }
+
+            // Check if barcode file exists
+            $barcode_file = './uploads/staff_id_card/barcodes/' . $staff_info->employee_id . '.png';
+            if (file_exists($barcode_file)) {
+                $barcode_path = $base_url . 'uploads/staff_id_card/barcodes/' . $staff_info->employee_id . '.png' . $timestamp;
+            }
+        }
+
+        // Document paths
+        $documents = array();
+
+        if (!empty($staff_info->resume)) {
+            $documents['resume'] = array(
+                'filename' => $staff_info->resume,
+                'path' => $base_url . 'uploads/staff_documents/' . $staff_id . '/' . $staff_info->resume,
+                'type' => 'resume'
+            );
+        }
+
+        if (!empty($staff_info->joining_letter)) {
+            $documents['joining_letter'] = array(
+                'filename' => $staff_info->joining_letter,
+                'path' => $base_url . 'uploads/staff_documents/' . $staff_id . '/' . $staff_info->joining_letter,
+                'type' => 'joining_letter'
+            );
+        }
+
+        if (!empty($staff_info->resignation_letter)) {
+            $documents['resignation_letter'] = array(
+                'filename' => $staff_info->resignation_letter,
+                'path' => $base_url . 'uploads/staff_documents/' . $staff_id . '/' . $staff_info->resignation_letter,
+                'type' => 'resignation_letter'
+            );
+        }
+
+        if (!empty($staff_info->other_document_file)) {
+            $documents['other_document'] = array(
+                'filename' => $staff_info->other_document_file,
+                'name' => $staff_info->other_document_name,
+                'path' => $base_url . 'uploads/staff_documents/' . $staff_id . '/' . $staff_info->other_document_file,
+                'type' => 'other_document'
+            );
+        }
+
+        return array(
+            'profile_image' => $profile_image,
+            'qr_code' => $qr_code_path,
+            'barcode' => $barcode_path,
+            'documents' => $documents
+        );
+    }
+
+    /**
      * Handle 404 errors with JSON response
      */
     public function not_found()
@@ -1917,6 +2470,7 @@ class Teacher_webservice extends CI_Controller
             'available_endpoints' => array(
                 'POST /teacher/simple_menu' => 'Get menu items for staff',
                 'POST /teacher/menu' => 'Get menu items (original)',
+                'POST /teacher/profile' => 'Get comprehensive staff profile',
                 'GET /teacher/test' => 'Test endpoint',
                 'GET /teacher/debug-menu' => 'Debug menu endpoint'
             ),

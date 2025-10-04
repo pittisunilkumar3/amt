@@ -68,3 +68,4 @@ ERROR - 2025-10-03 16:14:09 --> Error loading models: Unable to locate the model
 ERROR - 2025-10-03 16:14:22 --> Error loading models: Unable to locate the model you have specified: Role_model
 ERROR - 2025-10-03 16:16:42 --> Error loading models: Unable to locate the model you have specified: Role_model
 ERROR - 2025-10-03 16:18:13 --> Error loading models: Unable to locate the model you have specified: Role_model
+ERROR - 2025-10-03 18:35:11 --> Error loading models: Unable to locate the model you have specified: Role_model

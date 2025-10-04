@@ -173,3 +173,82 @@ ERROR - 2025-10-03 19:45:12 --> Could not find the language line "custom"
 ERROR - 2025-10-03 19:45:12 --> Could not find the language line "custom"
 ERROR - 2025-10-03 16:15:12 --> Could not find the language line "thanks_for_contacting_us"
 ERROR - 2025-10-03 16:15:12 --> Could not find the language line "thank_you_for_your_complain"
+ERROR - 2025-10-03 22:06:23 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\libraries\Customlib.php 26
+ERROR - 2025-10-03 22:06:23 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\libraries\Customlib.php 26
+ERROR - 2025-10-03 22:06:23 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\libraries\Customlib.php 26
+ERROR - 2025-10-03 22:06:23 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\libraries\Customlib.php 26
+ERROR - 2025-10-03 22:06:23 --> Severity: Warning --> Undefined variable $is_captcha C:\xampp\htdocs\amt\application\views\admin\login.php 83
+ERROR - 2025-10-03 22:06:32 --> Could not find the language line "not_generated"
+ERROR - 2025-10-03 22:06:33 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-10-03 22:06:33 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-10-03 18:36:34 --> Could not find the language line "thanks_for_contacting_us"
+ERROR - 2025-10-03 18:36:34 --> Could not find the language line "thank_you_for_your_complain"
+ERROR - 2025-10-03 22:06:54 --> Could not find the language line "not_generated"
+ERROR - 2025-10-03 22:06:55 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-10-03 22:06:55 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-10-03 18:36:57 --> Could not find the language line "thanks_for_contacting_us"
+ERROR - 2025-10-03 18:36:57 --> Could not find the language line "thank_you_for_your_complain"
+ERROR - 2025-10-03 22:07:20 --> Could not find the language line "not_generated"
+ERROR - 2025-10-03 22:07:20 --> Severity: Warning --> Undefined array key "2024-02-29" C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:07:20 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:07:20 --> Severity: Warning --> Undefined array key "2024-02-30" C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:07:20 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:07:20 --> Severity: Warning --> Undefined array key "2024-02-31" C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:07:20 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:07:20 --> Severity: Warning --> Undefined array key "2024-04-31" C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:07:20 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:07:20 --> Severity: Warning --> Undefined array key "2024-06-31" C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:07:20 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:07:20 --> Severity: Warning --> Undefined array key "2024-09-31" C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:07:20 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:07:20 --> Severity: Warning --> Undefined array key "2024-11-31" C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:07:20 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:07:32 --> Could not find the language line "not_generated"
+ERROR - 2025-10-03 22:07:32 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-10-03 22:07:32 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-10-03 18:37:33 --> Could not find the language line "thanks_for_contacting_us"
+ERROR - 2025-10-03 18:37:33 --> Could not find the language line "thank_you_for_your_complain"
+ERROR - 2025-10-03 22:07:47 --> Could not find the language line "not_generated"
+ERROR - 2025-10-03 22:07:47 --> Severity: Warning --> move_uploaded_file(/www/wwwroot/amaravathijuniorcollege.com/./uploads/staff_documents/6/1759509467-159132228868dffbdb62b77!DT-Role-Based Issues Report-240925-101536.pdf): Failed to open stream: No such file or directory C:\xampp\htdocs\amt\application\libraries\Media_storage.php 27
+ERROR - 2025-10-03 22:07:47 --> Severity: Warning --> move_uploaded_file(): Unable to move &quot;C:\xampp\tmp\php2853.tmp&quot; to &quot;/www/wwwroot/amaravathijuniorcollege.com/./uploads/staff_documents/6/1759509467-159132228868dffbdb62b77!DT-Role-Based Issues Report-240925-101536.pdf&quot; C:\xampp\htdocs\amt\application\libraries\Media_storage.php 27
+ERROR - 2025-10-03 22:07:48 --> Could not find the language line "not_generated"
+ERROR - 2025-10-03 22:07:48 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-10-03 22:07:48 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-10-03 18:37:48 --> Could not find the language line "thanks_for_contacting_us"
+ERROR - 2025-10-03 18:37:48 --> Could not find the language line "thank_you_for_your_complain"
+ERROR - 2025-10-03 22:07:52 --> Could not find the language line "not_generated"
+ERROR - 2025-10-03 22:07:52 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-10-03 22:07:52 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-10-03 18:37:53 --> Could not find the language line "thanks_for_contacting_us"
+ERROR - 2025-10-03 18:37:53 --> Could not find the language line "thank_you_for_your_complain"
+ERROR - 2025-10-03 22:08:00 --> Could not find the language line "not_generated"
+ERROR - 2025-10-03 22:08:01 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-10-03 22:08:01 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-10-03 18:38:02 --> Could not find the language line "thanks_for_contacting_us"
+ERROR - 2025-10-03 18:38:02 --> Could not find the language line "thank_you_for_your_complain"
+ERROR - 2025-10-03 22:08:14 --> Could not find the language line "not_generated"
+ERROR - 2025-10-03 22:08:15 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\top_sidemenu.php 71
+ERROR - 2025-10-03 22:08:15 --> Severity: Warning --> Undefined array key 1 C:\xampp\htdocs\amt\application\views\layout\sidebar.php 70
+ERROR - 2025-10-03 18:38:15 --> Could not find the language line "thanks_for_contacting_us"
+ERROR - 2025-10-03 18:38:15 --> Could not find the language line "thank_you_for_your_complain"
+ERROR - 2025-10-03 22:08:29 --> Could not find the language line "not_generated"
+ERROR - 2025-10-03 22:08:29 --> Severity: Warning --> Undefined array key "2024-02-29" C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:08:29 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:08:29 --> Severity: Warning --> Undefined array key "2024-02-30" C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:08:29 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:08:29 --> Severity: Warning --> Undefined array key "2024-02-31" C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:08:29 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:08:29 --> Severity: Warning --> Undefined array key "2024-04-31" C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:08:29 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:08:29 --> Severity: Warning --> Undefined array key "2024-06-31" C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:08:29 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:08:29 --> Severity: Warning --> Undefined array key "2024-09-31" C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:08:29 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:08:29 --> Severity: Warning --> Undefined array key "2024-11-31" C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 22:08:29 --> Severity: Warning --> Trying to access array offset on value of type null C:\xampp\htdocs\amt\application\views\admin\staff\ajaxattendance.php 32
+ERROR - 2025-10-03 18:51:11 --> Could not find the language line "thanks_for_contacting_us"
+ERROR - 2025-10-03 18:51:11 --> Could not find the language line "thank_you_for_your_complain"
+ERROR - 2025-10-03 18:51:11 --> Could not find the language line "thanks_for_contacting_us"
+ERROR - 2025-10-03 18:51:11 --> Could not find the language line "thank_you_for_your_complain"
+ERROR - 2025-10-03 18:51:11 --> Could not find the language line "thanks_for_contacting_us"
+ERROR - 2025-10-03 18:51:11 --> Could not find the language line "thank_you_for_your_complain"
