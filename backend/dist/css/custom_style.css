@@ -1,9 +1,1287 @@
-.box_dashboard{
-	display: block;
-    font-size: 15px;
-    margin-top: 38px;
-    white-space: nowrap;
-    margin-left: 19px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+/* ========================================
+   UNIVERSAL PREMIUM CSS OVERRIDES
+   Loaded LAST - Overrides all theme styles
+   Apple-Level Design System
+   ======================================== */
+
+/* CSS Variables for Consistency */
+:root {
+	--primary-600: #6366F1;
+	--primary-700: #4F46E5;
+	--primary-800: #4338CA;
+	--secondary-600: #14B8A6;
+	--secondary-700: #0D9488;
+	--success-600: #10B981;
+	--success-700: #059669;
+	--danger-600: #EF4444;
+	--danger-700: #DC2626;
+	--warning-600: #F59E0B;
+	--warning-700: #D97706;
+	--info-600: #3B82F6;
+	--info-700: #2563EB;
+	--neutral-50: #F9FAFB;
+	--neutral-100: #F3F4F6;
+	--neutral-200: #E5E7EB;
+	--neutral-300: #D1D5DB;
+	--neutral-400: #9CA3AF;
+	--neutral-600: #4B5563;
+	--neutral-700: #374151;
+	--neutral-800: #1F2937;
+	--neutral-900: #111827;
+	--gradient-primary: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+	--gradient-secondary: linear-gradient(135deg, #14B8A6 0%, #0D9488 100%);
+	--gradient-success: linear-gradient(135deg, #10B981 0%, #059669 100%);
+	--gradient-danger: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+	--gradient-warning: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+	--gradient-info: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+	--shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+	--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+	--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+	--shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+	--shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+	--shadow-primary: 0 10px 40px -10px rgba(99, 102, 241, 0.4);
+	--shadow-secondary: 0 10px 40px -10px rgba(20, 184, 166, 0.4);
+	--shadow-success: 0 10px 40px -10px rgba(16, 185, 129, 0.4);
+	--shadow-danger: 0 10px 40px -10px rgba(239, 68, 68, 0.4);
+	--transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+	--transition-base: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+	--transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+	--radius-sm: 6px;
+	--radius-md: 8px;
+	--radius-lg: 12px;
+	--radius-xl: 16px;
+	--radius-2xl: 24px;
 }
+
+/* Typography Enhancement */
+body {
+	-webkit-font-smoothing: antialiased !important;
+	-moz-osx-font-smoothing: grayscale !important;
+	text-rendering: optimizeLegibility !important;
+}
+
+/* ========================================
+   1. BUTTONS - Premium Gradient Styling
+   ======================================== */
+
+.btn {
+	border-radius: var(--radius-lg) !important;
+	font-weight: 600 !important;
+	transition: all var(--transition-base) !important;
+	border: none !important;
+	padding: 0.75rem 1.5rem !important;
+}
+
+.btn:hover {
+	transform: translateY(-2px) !important;
+}
+
+.btn:active {
+	transform: translateY(0) !important;
+}
+
+/* Primary Button - Indigo Gradient */
+.btn-primary,
+.btn-info {
+	background: var(--gradient-primary) !important;
+	color: #ffffff !important;
+	box-shadow: var(--shadow-primary) !important;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-info:hover,
+.btn-info:focus {
+	background: var(--gradient-primary) !important;
+	box-shadow: 0 12px 48px -12px rgba(99, 102, 241, 0.5) !important;
+	color: #ffffff !important;
+}
+
+/* Success Button - Green Gradient */
+.btn-success {
+	background: var(--gradient-success) !important;
+	color: #ffffff !important;
+	box-shadow: var(--shadow-success) !important;
+}
+
+.btn-success:hover,
+.btn-success:focus {
+	background: var(--gradient-success) !important;
+	box-shadow: 0 12px 48px -12px rgba(16, 185, 129, 0.5) !important;
+	color: #ffffff !important;
+}
+
+/* Danger Button - Red Gradient */
+.btn-danger {
+	background: var(--gradient-danger) !important;
+	color: #ffffff !important;
+	box-shadow: var(--shadow-danger) !important;
+}
+
+.btn-danger:hover,
+.btn-danger:focus {
+	background: var(--gradient-danger) !important;
+	box-shadow: 0 12px 48px -12px rgba(239, 68, 68, 0.5) !important;
+	color: #ffffff !important;
+}
+
+/* Warning Button - Orange Gradient */
+.btn-warning {
+	background: var(--gradient-warning) !important;
+	color: #ffffff !important;
+	box-shadow: 0 10px 40px -10px rgba(245, 158, 11, 0.4) !important;
+}
+
+.btn-warning:hover,
+.btn-warning:focus {
+	background: var(--gradient-warning) !important;
+	box-shadow: 0 12px 48px -12px rgba(245, 158, 11, 0.5) !important;
+	color: #ffffff !important;
+}
+
+/* Default/Secondary Button */
+.btn-default {
+	background: var(--neutral-100) !important;
+	color: var(--neutral-700) !important;
+	box-shadow: var(--shadow-sm) !important;
+}
+
+.btn-default:hover,
+.btn-default:focus {
+	background: var(--neutral-200) !important;
+	color: var(--neutral-800) !important;
+}
+
+/* ========================================
+   2. CARDS & BOXES - Modern Container Styling
+   ======================================== */
+
+.box,
+.card,
+.panel {
+	border-radius: var(--radius-lg) !important;
+	box-shadow: var(--shadow-md) !important;
+	border: 1px solid rgba(0, 0, 0, 0.05) !important;
+	transition: all var(--transition-base) !important;
+	overflow: hidden !important;
+}
+
+.box:hover,
+.card:hover {
+	box-shadow: var(--shadow-lg) !important;
+	transform: translateY(-2px) !important;
+}
+
+/* Box Header - Gradient Background */
+.box-header,
+.card-header,
+.panel-heading {
+	background: linear-gradient(135deg, var(--neutral-50) 0%, var(--neutral-100) 100%) !important;
+	border-bottom: 2px solid var(--neutral-200) !important;
+	font-weight: 700 !important;
+	padding: 1.25rem 1.5rem !important;
+}
+
+.box-title,
+.card-title {
+	font-size: 1.25rem !important;
+	font-weight: 700 !important;
+	color: var(--neutral-800) !important;
+}
+
+/* Info Box - Dashboard Widgets */
+.info-box {
+	border-radius: var(--radius-lg) !important;
+	box-shadow: var(--shadow-md) !important;
+	transition: all var(--transition-base) !important;
+	border: none !important;
+}
+
+.info-box:hover {
+	transform: translateY(-4px) !important;
+	box-shadow: var(--shadow-xl) !important;
+}
+
+/* Small Box - Dashboard Stats */
+.small-box {
+	border-radius: var(--radius-lg) !important;
+	box-shadow: var(--shadow-md) !important;
+	transition: all var(--transition-base) !important;
+}
+
+.small-box:hover {
+	transform: translateY(-4px) !important;
+	box-shadow: var(--shadow-xl) !important;
+}
+
+.small-box > .inner {
+	padding: 1.5rem !important;
+}
+
+.small-box .icon {
+	opacity: 0.2 !important;
+}
+
+/* Box Dashboard */
+.box_dashboard {
+	display: block;
+	font-size: 15px;
+	margin-top: 38px;
+	white-space: nowrap;
+	margin-left: 19px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* ========================================
+   3. FORM INPUTS - Enhanced Focus States
+   ======================================== */
+
+.form-control,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+input[type="url"],
+select,
+textarea {
+	border: 2px solid var(--neutral-200) !important;
+	border-radius: var(--radius-md) !important;
+	transition: all var(--transition-base) !important;
+	padding: 0.75rem 1rem !important;
+}
+
+.form-control:focus,
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+input[type="tel"]:focus,
+input[type="url"]:focus,
+select:focus,
+textarea:focus {
+	border-color: var(--primary-600) !important;
+	box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1) !important;
+	outline: none !important;
+	transform: translateY(-1px) !important;
+}
+
+.form-control:hover,
+input:hover,
+select:hover,
+textarea:hover {
+	border-color: var(--neutral-400) !important;
+}
+
+/* Form Labels */
+.form-label,
+label {
+	font-weight: 600 !important;
+	color: var(--neutral-700) !important;
+	margin-bottom: 0.5rem !important;
+}
+
+/* Input Groups */
+.input-group-addon {
+	background: var(--neutral-100) !important;
+	border: 2px solid var(--neutral-200) !important;
+	border-radius: var(--radius-md) !important;
+}
+
+/* Validation States */
+.has-error .form-control,
+.has-error input {
+	border-color: var(--danger-600) !important;
+	background: rgba(239, 68, 68, 0.05) !important;
+}
+
+.has-error .form-control:focus,
+.has-error input:focus {
+	box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1) !important;
+}
+
+.has-success .form-control,
+.has-success input {
+	border-color: var(--success-600) !important;
+	background: rgba(16, 185, 129, 0.05) !important;
+}
+
+.has-success .form-control:focus,
+.has-success input:focus {
+	box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1) !important;
+}
+
+/* ========================================
+   4. TABLES - Modern Data Display
+   ======================================== */
+
+.table {
+	border-radius: var(--radius-lg) !important;
+	overflow: hidden !important;
+}
+
+.table > thead > tr > th {
+	background: linear-gradient(135deg, var(--neutral-100) 0%, var(--neutral-200) 100%) !important;
+	font-weight: 700 !important;
+	text-transform: uppercase !important;
+	font-size: 0.75rem !important;
+	letter-spacing: 0.05em !important;
+	color: var(--neutral-700) !important;
+	border-bottom: 2px solid var(--neutral-300) !important;
+	padding: 1rem 1.5rem !important;
+}
+
+.table > tbody > tr {
+	transition: all var(--transition-fast) !important;
+	border-bottom: 1px solid var(--neutral-100) !important;
+}
+
+.table > tbody > tr:hover {
+	background: var(--neutral-50) !important;
+	transform: scale(1.005) !important;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+}
+
+.table > tbody > tr > td {
+	padding: 1rem 1.5rem !important;
+	vertical-align: middle !important;
+}
+
+/* DataTables Styling */
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+	border-radius: var(--radius-md) !important;
+	transition: all var(--transition-fast) !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+	background: var(--primary-600) !important;
+	color: white !important;
+	border-color: var(--primary-600) !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+	background: var(--gradient-primary) !important;
+	color: white !important;
+	border: none !important;
+}
+
+/* ========================================
+   5. SIDEBAR/NAVIGATION - Dark Premium Design
+   ======================================== */
+
+.main-sidebar,
+.sidebar {
+	background: linear-gradient(180deg, var(--neutral-900) 0%, var(--neutral-800) 100%) !important;
+	box-shadow: var(--shadow-2xl) !important;
+}
+
+/* CRITICAL FIX: Sidebar Text Color - White text on dark background */
+.sidebar-menu > li > a {
+	color: #ffffff !important;
+	transition: all var(--transition-base) !important;
+	border-radius: var(--radius-md) !important;
+	margin: 2px 8px !important;
+	position: relative !important;
+}
+
+/* Sidebar Icons - White color with proper display */
+.sidebar-menu > li > a > i {
+	color: #ffffff !important;
+	margin-right: 10px !important;
+	width: 20px !important;
+	text-align: center !important;
+	display: inline-block !important;
+	font-size: 16px !important;
+}
+
+.sidebar-menu > li > a > .fa,
+.sidebar-menu > li > a > .glyphicon,
+.sidebar-menu > li > a > .ion {
+	color: #ffffff !important;
+	margin-right: 10px !important;
+	width: 20px !important;
+	text-align: center !important;
+	display: inline-block !important;
+}
+
+.sidebar-menu > li > a::before {
+	content: '';
+	position: absolute;
+	left: 0;
+	top: 0;
+	height: 100%;
+	width: 4px;
+	background: var(--gradient-primary);
+	border-radius: 0 4px 4px 0;
+	transform: scaleY(0);
+	transition: transform var(--transition-base);
+}
+
+.sidebar-menu > li > a:hover {
+	background: rgba(99, 102, 241, 0.15) !important;
+	transform: translateX(4px) !important;
+	color: #ffffff !important;
+}
+
+.sidebar-menu > li > a:hover::before {
+	transform: scaleY(1);
+}
+
+.sidebar-menu > li.active > a,
+.sidebar-menu > li > a.active {
+	background: var(--gradient-primary) !important;
+	box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3) !important;
+	font-weight: 600 !important;
+	color: #ffffff !important;
+}
+
+.sidebar-menu > li.active > a::before,
+.sidebar-menu > li > a.active::before {
+	transform: scaleY(1);
+}
+
+/* Sidebar User Panel */
+.user-panel {
+	border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.user-panel > .info {
+	color: #ffffff !important;
+}
+
+.user-panel > .info > p,
+.user-panel > .info > a {
+	color: #ffffff !important;
+}
+
+/* Treeview Menu - Submenu Items */
+.treeview-menu {
+	background: rgba(0, 0, 0, 0.2) !important;
+	padding: 0.5rem 0 !important;
+}
+
+.treeview-menu > li {
+	background: transparent !important;
+}
+
+.treeview-menu > li > a {
+	color: rgba(255, 255, 255, 0.85) !important;
+	transition: all var(--transition-fast) !important;
+	background: transparent !important;
+	padding: 8px 5px 8px 25px !important;
+}
+
+.treeview-menu > li > a > i {
+	color: rgba(255, 255, 255, 0.7) !important;
+	margin-right: 8px !important;
+}
+
+.treeview-menu > li > a:hover {
+	background: rgba(99, 102, 241, 0.2) !important;
+	transform: translateX(4px) !important;
+	color: #ffffff !important;
+}
+
+.treeview-menu > li > a:hover > i {
+	color: #ffffff !important;
+}
+
+.treeview-menu > li.active > a,
+.treeview-menu > li > a.active {
+	color: #ffffff !important;
+	font-weight: 600 !important;
+	background: rgba(99, 102, 241, 0.3) !important;
+}
+
+.treeview-menu > li.active > a > i,
+.treeview-menu > li > a.active > i {
+	color: #ffffff !important;
+}
+
+/* Sidebar Header */
+.sidebar-menu > li.header {
+	color: rgba(255, 255, 255, 0.6) !important;
+	background: rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Sidebar Search Form */
+.sidebar-form input {
+	background: rgba(255, 255, 255, 0.1) !important;
+	border: 1px solid rgba(255, 255, 255, 0.2) !important;
+	color: #ffffff !important;
+}
+
+.sidebar-form input::placeholder {
+	color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* ========================================
+   6. MODALS - Premium Dialog Styling
+   ======================================== */
+
+.modal-backdrop {
+	backdrop-filter: blur(4px) !important;
+	-webkit-backdrop-filter: blur(4px) !important;
+}
+
+.modal-content {
+	border-radius: var(--radius-xl) !important;
+	border: none !important;
+	box-shadow: var(--shadow-2xl) !important;
+	overflow: hidden !important;
+}
+
+.modal-header {
+	background: linear-gradient(135deg, var(--neutral-50) 0%, var(--neutral-100) 100%) !important;
+	border-bottom: 2px solid var(--neutral-200) !important;
+	padding: 1.5rem !important;
+}
+
+.modal-title {
+	font-size: 1.5rem !important;
+	font-weight: 700 !important;
+	color: var(--neutral-800) !important;
+}
+
+.modal-body {
+	padding: 1.5rem !important;
+}
+
+.modal-footer {
+	background: var(--neutral-50) !important;
+	border-top: 1px solid var(--neutral-200) !important;
+	padding: 1.25rem 1.5rem !important;
+}
+
+.close {
+	opacity: 0.7 !important;
+	transition: all var(--transition-base) !important;
+}
+
+.close:hover {
+	opacity: 1 !important;
+	transform: rotate(90deg) !important;
+}
+
+/* ========================================
+   7. ALERTS & NOTIFICATIONS - Modern Feedback
+   ======================================== */
+
+.alert {
+	border-radius: var(--radius-lg) !important;
+	border: none !important;
+	box-shadow: var(--shadow-md) !important;
+	padding: 1rem 1.25rem !important;
+	border-left: 4px solid !important;
+}
+
+.alert-success {
+	background: linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%) !important;
+	border-left-color: var(--success-600) !important;
+	color: #065F46 !important;
+}
+
+.alert-danger,
+.alert-error {
+	background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%) !important;
+	border-left-color: var(--danger-600) !important;
+	color: #991B1B !important;
+}
+
+.alert-warning {
+	background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%) !important;
+	border-left-color: var(--warning-600) !important;
+	color: #92400E !important;
+}
+
+.alert-info {
+	background: linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%) !important;
+	border-left-color: var(--info-600) !important;
+	color: #1E40AF !important;
+}
+
+/* ========================================
+   8. BADGES & LABELS - Modern Pill Design
+   ======================================== */
+
+.badge,
+.label {
+	padding: 0.375rem 0.75rem !important;
+	border-radius: 9999px !important;
+	font-size: 0.75rem !important;
+	font-weight: 600 !important;
+	letter-spacing: 0.025em !important;
+}
+
+.badge-primary,
+.label-primary {
+	background: var(--gradient-primary) !important;
+	color: white !important;
+}
+
+.badge-success,
+.label-success {
+	background: var(--gradient-success) !important;
+	color: white !important;
+}
+
+.badge-danger,
+.label-danger {
+	background: var(--gradient-danger) !important;
+	color: white !important;
+}
+
+.badge-warning,
+.label-warning {
+	background: var(--gradient-warning) !important;
+	color: white !important;
+}
+
+.badge-info,
+.label-info {
+	background: var(--gradient-info) !important;
+	color: white !important;
+}
+
+/* ========================================
+   9. BREADCRUMBS & NAVIGATION
+   ======================================== */
+
+.breadcrumb {
+	background: transparent !important;
+	padding: 0.75rem 0 !important;
+}
+
+.breadcrumb > li + li:before {
+	color: var(--neutral-400) !important;
+}
+
+.breadcrumb > .active {
+	color: var(--primary-600) !important;
+	font-weight: 600 !important;
+}
+
+/* ========================================
+   10. PAGINATION - Modern Page Navigation
+   ======================================== */
+
+.pagination > li > a,
+.pagination > li > span {
+	border-radius: var(--radius-md) !important;
+	margin: 0 2px !important;
+	transition: all var(--transition-fast) !important;
+	border: 1px solid var(--neutral-200) !important;
+}
+
+.pagination > li > a:hover {
+	background: var(--primary-600) !important;
+	border-color: var(--primary-600) !important;
+	color: white !important;
+}
+
+.pagination > .active > a,
+.pagination > .active > span {
+	background: var(--gradient-primary) !important;
+	border: none !important;
+	box-shadow: var(--shadow-primary) !important;
+}
+
+/* ========================================
+   11. TABS - Modern Tab Navigation
+   ======================================== */
+
+.nav-tabs {
+	border-bottom: 2px solid var(--neutral-200) !important;
+}
+
+.nav-tabs > li > a {
+	border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
+	transition: all var(--transition-fast) !important;
+	font-weight: 500 !important;
+}
+
+.nav-tabs > li > a:hover {
+	background: var(--neutral-50) !important;
+	border-color: var(--neutral-200) !important;
+}
+
+.nav-tabs > li.active > a {
+	background: white !important;
+	border-bottom-color: white !important;
+	color: var(--primary-600) !important;
+	font-weight: 600 !important;
+}
+
+/* ========================================
+   12. PROGRESS BARS - Modern Progress Indicators
+   ======================================== */
+
+.progress {
+	height: 1.5rem !important;
+	border-radius: var(--radius-lg) !important;
+	background: var(--neutral-100) !important;
+	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+.progress-bar {
+	background: var(--gradient-primary) !important;
+	box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3) !important;
+	transition: width 0.6s ease !important;
+}
+
+.progress-bar-success {
+	background: var(--gradient-success) !important;
+}
+
+.progress-bar-danger {
+	background: var(--gradient-danger) !important;
+}
+
+.progress-bar-warning {
+	background: var(--gradient-warning) !important;
+}
+
+.progress-bar-info {
+	background: var(--gradient-info) !important;
+}
+
+/* ========================================
+   13. DROPDOWNS - Modern Dropdown Menus
+   ======================================== */
+
+.dropdown-menu {
+	border-radius: var(--radius-lg) !important;
+	box-shadow: var(--shadow-xl) !important;
+	border: 1px solid var(--neutral-200) !important;
+	padding: 0.5rem !important;
+}
+
+.dropdown-menu > li > a {
+	border-radius: var(--radius-md) !important;
+	transition: all var(--transition-fast) !important;
+	padding: 0.5rem 1rem !important;
+}
+
+.dropdown-menu > li > a:hover {
+	background: var(--primary-600) !important;
+	color: white !important;
+}
+
+/* ========================================
+   14. CONTENT HEADER - Page Title Area
+   ======================================== */
+
+.content-header {
+	padding: 1.5rem 1.5rem !important;
+	background: linear-gradient(135deg, var(--neutral-50) 0%, white 100%) !important;
+	border-bottom: 1px solid var(--neutral-200) !important;
+}
+
+.content-header > h1 {
+	font-weight: 700 !important;
+	color: var(--neutral-900) !important;
+	font-size: 1.875rem !important;
+}
+
+/* ========================================
+   15. UTILITY CLASSES - Helper Styles
+   ======================================== */
+
+/* Hover Lift Effect */
+.hover-lift {
+	transition: all var(--transition-base) !important;
+}
+
+.hover-lift:hover {
+	transform: translateY(-4px) !important;
+	box-shadow: var(--shadow-lg) !important;
+}
+
+/* Glassmorphism Effect */
+.glass-effect {
+	background: rgba(255, 255, 255, 0.25) !important;
+	backdrop-filter: blur(10px) !important;
+	-webkit-backdrop-filter: blur(10px) !important;
+	border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Text Gradient */
+.text-gradient-primary {
+	background: var(--gradient-primary) !important;
+	-webkit-background-clip: text !important;
+	-webkit-text-fill-color: transparent !important;
+	background-clip: text !important;
+	font-weight: 700 !important;
+}
+
+/* Premium Shadow */
+.shadow-premium {
+	box-shadow: var(--shadow-primary) !important;
+}
+
+/* Smooth Transitions */
+.transition-all {
+	transition: all var(--transition-base) !important;
+}
+
+/* ========================================
+   16. RESPONSIVE ADJUSTMENTS
+   ======================================== */
+
+@media (max-width: 768px) {
+	.form.login {
+		width: 90% !important;
+		padding: 2rem !important;
+	}
+
+	.btn {
+		padding: 0.625rem 1.25rem !important;
+	}
+
+	.box,
+	.card {
+		margin-bottom: 1rem !important;
+	}
+
+	.table > thead > tr > th,
+	.table > tbody > tr > td {
+		padding: 0.75rem 1rem !important;
+	}
+}
+
+/* ========================================
+   END UNIVERSAL PREMIUM CSS OVERRIDES
+   ======================================== */
+
+/* ========================================
+   17. DASHBOARD ENHANCEMENTS - Premium Widgets
+   ======================================== */
+
+/* Content Wrapper - Light Background */
+.content-wrapper {
+	background: linear-gradient(135deg, #F9FAFB 0%, #FFFFFF 100%) !important;
+	min-height: 100vh !important;
+}
+
+/* Dashboard Progress Widgets */
+.topprograssstart {
+	background: #ffffff !important;
+	border-radius: var(--radius-lg) !important;
+	padding: 1.5rem !important;
+	box-shadow: var(--shadow-md) !important;
+	transition: all var(--transition-base) !important;
+	border: 1px solid rgba(0, 0, 0, 0.05) !important;
+	margin-bottom: 1.5rem !important;
+}
+
+.topprograssstart:hover {
+	box-shadow: var(--shadow-lg) !important;
+	transform: translateY(-2px) !important;
+}
+
+.topprograssstart p {
+	font-weight: 600 !important;
+	color: var(--neutral-700) !important;
+	margin-bottom: 0.75rem !important;
+}
+
+.topprograssstart h5 {
+	font-weight: 700 !important;
+	color: var(--neutral-800) !important;
+	margin-bottom: 1rem !important;
+}
+
+.pro-border {
+	border-bottom: 2px solid var(--primary-600) !important;
+	padding-bottom: 0.5rem !important;
+}
+
+/* Progress Minibar - Modern Style */
+.progress-minibar {
+	height: 8px !important;
+	border-radius: 9999px !important;
+	background: var(--neutral-100) !important;
+	overflow: hidden !important;
+	box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+}
+
+.progress-minibar .progress-bar {
+	height: 100% !important;
+	border-radius: 9999px !important;
+	transition: width 0.6s ease !important;
+	background: var(--gradient-primary) !important;
+	box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3) !important;
+}
+
+.progress-minibar .progress-bar-red {
+	background: var(--gradient-danger) !important;
+	box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3) !important;
+}
+
+.progress-minibar .progress-bar-green {
+	background: var(--gradient-success) !important;
+	box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3) !important;
+}
+
+.progress-minibar .progress-bar-yellow {
+	background: var(--gradient-warning) !important;
+	box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3) !important;
+}
+
+.progress-minibar .progress-bar-aqua {
+	background: var(--gradient-info) !important;
+	box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* Info Box Icon Backgrounds - Gradient Colors */
+.info-box-icon.bg-green {
+	background: var(--gradient-success) !important;
+	color: #ffffff !important;
+}
+
+.info-box-icon.bg-yellow {
+	background: var(--gradient-warning) !important;
+	color: #ffffff !important;
+}
+
+.info-box-icon.bg-red {
+	background: var(--gradient-danger) !important;
+	color: #ffffff !important;
+}
+
+.info-box-icon.bg-aqua {
+	background: var(--gradient-info) !important;
+	color: #ffffff !important;
+}
+
+.info-box-icon.bg-blue {
+	background: var(--gradient-primary) !important;
+	color: #ffffff !important;
+}
+
+/* Small Box - Dashboard Stats */
+.small-box.bg-green {
+	background: var(--gradient-success) !important;
+	color: #ffffff !important;
+}
+
+.small-box.bg-yellow {
+	background: var(--gradient-warning) !important;
+	color: #ffffff !important;
+}
+
+.small-box.bg-red {
+	background: var(--gradient-danger) !important;
+	color: #ffffff !important;
+}
+
+.small-box.bg-aqua {
+	background: var(--gradient-info) !important;
+	color: #ffffff !important;
+}
+
+.small-box.bg-blue {
+	background: var(--gradient-primary) !important;
+	color: #ffffff !important;
+}
+
+.small-box h3,
+.small-box p {
+	color: #ffffff !important;
+}
+
+.small-box .icon {
+	color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Dashboard Icons */
+.ftlayer {
+	margin-right: 0.5rem !important;
+	opacity: 0.8 !important;
+}
+
+/* Chart Containers - Ensure Visibility */
+#barChart,
+#lineChart,
+#pieChart,
+#doughnutChart,
+#incomeChart,
+#expenseChart {
+	max-height: 400px !important;
+	height: 300px !important;
+	width: 100% !important;
+	display: block !important;
+	visibility: visible !important;
+}
+
+canvas {
+	display: block !important;
+	visibility: visible !important;
+}
+
+.chart {
+	position: relative !important;
+	height: 300px !important;
+	width: 100% !important;
+}
+
+.chart canvas {
+	max-height: 400px !important;
+	height: 300px !important;
+}
+
+/* Calendar Widget */
+#calendar {
+	border-radius: var(--radius-lg) !important;
+}
+
+.fc-toolbar {
+	background: linear-gradient(135deg, var(--neutral-50) 0%, var(--neutral-100) 100%) !important;
+	padding: 1rem !important;
+	border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+}
+
+.fc-button {
+	background: var(--gradient-primary) !important;
+	border: none !important;
+	border-radius: var(--radius-md) !important;
+	color: #ffffff !important;
+	transition: all var(--transition-fast) !important;
+}
+
+.fc-button:hover {
+	transform: translateY(-1px) !important;
+	box-shadow: var(--shadow-primary) !important;
+}
+
+/* ========================================
+   18. USER DASHBOARD & PROFILE ENHANCEMENTS
+   ======================================== */
+
+/* User Profile Card */
+.box-profile {
+	text-align: center !important;
+	padding: 2rem !important;
+}
+
+.profile-user-img {
+	border: 4px solid var(--primary-600) !important;
+	box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3) !important;
+	transition: all var(--transition-base) !important;
+}
+
+.profile-user-img:hover {
+	transform: scale(1.05) !important;
+	box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4) !important;
+}
+
+.profile-username {
+	font-weight: 700 !important;
+	color: var(--neutral-800) !important;
+	margin-top: 1rem !important;
+}
+
+/* User Progress List */
+.user-progress {
+	list-style: none !important;
+	padding: 0 !important;
+	margin: 0 !important;
+}
+
+.user-progress li {
+	padding: 1rem !important;
+	border-bottom: 1px solid var(--neutral-100) !important;
+	transition: all var(--transition-fast) !important;
+	display: flex !important;
+	align-items: center !important;
+	gap: 1rem !important;
+}
+
+.user-progress li:hover {
+	background: var(--neutral-50) !important;
+	transform: translateX(4px) !important;
+}
+
+.user-progress li:last-child {
+	border-bottom: none !important;
+}
+
+/* Direct Chat Messages */
+.direct-chat-messages {
+	max-height: 400px !important;
+	overflow-y: auto !important;
+}
+
+.direct-chat-messages::-webkit-scrollbar {
+	width: 6px !important;
+}
+
+.direct-chat-messages::-webkit-scrollbar-track {
+	background: var(--neutral-100) !important;
+	border-radius: 3px !important;
+}
+
+.direct-chat-messages::-webkit-scrollbar-thumb {
+	background: var(--primary-600) !important;
+	border-radius: 3px !important;
+}
+
+.direct-chat-messages::-webkit-scrollbar-thumb:hover {
+	background: var(--primary-700) !important;
+}
+
+/* ========================================
+   19. FINANCIAL SUMMARY CARDS
+   ======================================== */
+
+/* Financial Summary - Enhanced Styling */
+.hover-expand-effect {
+	transition: all var(--transition-base) !important;
+	cursor: pointer !important;
+}
+
+.hover-expand-effect:hover {
+	transform: translateY(-4px) scale(1.02) !important;
+	box-shadow: var(--shadow-xl) !important;
+}
+
+/* Date Filter Section */
+.date-filter-section {
+	background: linear-gradient(135deg, var(--neutral-50) 0%, var(--neutral-100) 100%) !important;
+	padding: 1.5rem !important;
+	border-radius: var(--radius-lg) !important;
+	margin-bottom: 1.5rem !important;
+	border: 2px solid var(--neutral-200) !important;
+	box-shadow: var(--shadow-sm) !important;
+}
+
+.filter-controls {
+	display: flex !important;
+	align-items: center !important;
+	gap: 1rem !important;
+	flex-wrap: wrap !important;
+}
+
+.filter-group label {
+	font-weight: 600 !important;
+	color: var(--neutral-700) !important;
+}
+
+.btn-apply-filter {
+	background: var(--gradient-primary) !important;
+	color: #ffffff !important;
+	border: none !important;
+	padding: 0.625rem 1.5rem !important;
+	border-radius: var(--radius-md) !important;
+	font-weight: 600 !important;
+	transition: all var(--transition-base) !important;
+	box-shadow: var(--shadow-primary) !important;
+}
+
+.btn-apply-filter:hover {
+	transform: translateY(-2px) !important;
+	box-shadow: 0 12px 48px -12px rgba(99, 102, 241, 0.5) !important;
+}
+
+/* ========================================
+   20. ADDITIONAL DASHBOARD COMPONENTS
+   ======================================== */
+
+/* Session Info */
+.sessionul {
+	list-style: none !important;
+	padding: 0 !important;
+	margin: 0 !important;
+}
+
+.sessionul li {
+	padding: 0.75rem 1rem !important;
+	background: var(--neutral-50) !important;
+	border-radius: var(--radius-md) !important;
+	margin-bottom: 0.5rem !important;
+	transition: all var(--transition-fast) !important;
+}
+
+.sessionul li:hover {
+	background: var(--neutral-100) !important;
+	transform: translateX(4px) !important;
+}
+
+.sessionul li a {
+	color: var(--neutral-700) !important;
+	font-weight: 600 !important;
+	display: flex !important;
+	justify-content: space-between !important;
+	align-items: center !important;
+}
+
+/* Fixed Menu */
+.fixedmenu {
+	position: sticky !important;
+	top: 0 !important;
+	z-index: 100 !important;
+	background: #ffffff !important;
+	box-shadow: var(--shadow-md) !important;
+}
+
+/* Vertical Top Spacing */
+.verttop,
+.verttop38 {
+	padding-top: 1rem !important;
+}
+
+/* Column Widths */
+.col80 {
+	width: 80% !important;
+}
+
+.col20 {
+	width: 20% !important;
+}
+
+@media (max-width: 991px) {
+	.col80,
+	.col20 {
+		width: 100% !important;
+	}
+}
+
+/* ========================================
+   21. ENHANCED HOVER EFFECTS & ANIMATIONS
+   ======================================== */
+
+/* Clickable Cards */
+.info-box a,
+.small-box a {
+	text-decoration: none !important;
+	color: inherit !important;
+	display: block !important;
+}
+
+/* Image Hover Effects */
+.img-circle {
+	transition: all var(--transition-base) !important;
+}
+
+.img-circle:hover {
+	transform: scale(1.05) rotate(5deg) !important;
+	box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Link Hover Effects */
+a {
+	transition: all var(--transition-fast) !important;
+}
+
+a:hover {
+	text-decoration: none !important;
+}
+
+/* Box Shadow on Hover for All Boxes */
+.box:hover,
+.panel:hover {
+	box-shadow: var(--shadow-lg) !important;
+}
+
+/* END DASHBOARD ENHANCEMENTS */
