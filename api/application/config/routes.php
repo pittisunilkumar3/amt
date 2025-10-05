@@ -105,3 +105,109 @@ $route['teacher/dashboard-summary'] = 'teacher_webservice/dashboard_summary';
 $route['teacher/attendance-summary'] = 'teacher_webservice/attendance_summary';
 $route['teacher/staff-attendance'] = 'teacher_webservice/staff_attendance';
 $route['attendance/summary'] = 'attendance_api/summary';
+
+// Fee Group API Routes
+$route['fee-groups/list']['POST'] = 'fee_group_api/list';
+$route['fee-groups/get']['POST'] = 'fee_group_api/get';
+$route['fee-groups/create']['POST'] = 'fee_group_api/create';
+$route['fee-groups/update']['POST'] = 'fee_group_api/update';
+$route['fee-groups/delete']['POST'] = 'fee_group_api/delete';
+
+// Fee Type API Routes
+$route['fee-types/list']['POST'] = 'fee_type_api/list';
+$route['fee-types/get']['POST'] = 'fee_type_api/get';
+$route['fee-types/create']['POST'] = 'fee_type_api/create';
+$route['fee-types/update']['POST'] = 'fee_type_api/update';
+$route['fee-types/delete']['POST'] = 'fee_type_api/delete';
+
+// Fee Master API Routes
+$route['fee-masters/list']['POST'] = 'fee_master_api/list';
+$route['fee-masters/get']['POST'] = 'fee_master_api/get';
+$route['fee-masters/create']['POST'] = 'fee_master_api/create';
+$route['fee-masters/update']['POST'] = 'fee_master_api/update';
+$route['fee-masters/delete']['POST'] = 'fee_master_api/delete';
+
+// Student Fee Search API Routes
+$route['student-fee-search/by-class']['POST'] = 'student_fee_search_api/by_class';
+$route['student-fee-search/by-keyword']['POST'] = 'student_fee_search_api/by_keyword';
+$route['student-fee-search/by-category']['POST'] = 'student_fee_search_api/by_category';
+$route['student-fee-search/classes']['POST'] = 'student_fee_search_api/classes';
+$route['student-fee-search/sections']['POST'] = 'student_fee_search_api/sections';
+$route['student-fee-search/fee-categories']['POST'] = 'student_fee_search_api/fee_categories';
+$route['student-fee-search/student-fees']['POST'] = 'student_fee_search_api/student_fees';
+
+// Student Fee Payment Search API Routes
+$route['student-fee-payment-search/by-payment-id']['POST'] = 'student_fee_payment_search_api/by_payment_id';
+$route['student-fee-payment-search/by-invoice-id']['POST'] = 'student_fee_payment_search_api/by_invoice_id';
+$route['student-fee-payment-search/transport-fee']['POST'] = 'student_fee_payment_search_api/transport_fee';
+$route['student-fee-payment-search/receipt']['POST'] = 'student_fee_payment_search_api/receipt';
+$route['student-fee-payment-search/validate-payment-id']['POST'] = 'student_fee_payment_search_api/validate_payment_id';
+
+// Online Admission API Routes
+$route['online-admission/list']['POST'] = 'online_admission_api/list';
+$route['online-admission/get/(:num)']['POST'] = 'online_admission_api/get/$1';
+$route['online-admission/filter']['POST'] = 'online_admission_api/filter';
+
+// Disable Reason API Routes
+$route['disable-reason/list']['POST'] = 'disable_reason_api/list';
+$route['disable-reason/get/(:num)']['POST'] = 'disable_reason_api/get/$1';
+$route['disable-reason/create']['POST'] = 'disable_reason_api/create';
+$route['disable-reason/update/(:num)']['POST'] = 'disable_reason_api/update/$1';
+$route['disable-reason/delete/(:num)']['POST'] = 'disable_reason_api/delete/$1';
+
+// Bulk Delete API Routes
+$route['bulk-delete/students']['POST'] = 'bulk_delete_api/students';
+$route['bulk-delete/validate']['POST'] = 'bulk_delete_api/validate';
+
+// Student House API Routes
+$route['student-house/list']['POST'] = 'student_house_api/list';
+$route['student-house/get/(:num)']['POST'] = 'student_house_api/get/$1';
+$route['student-house/create']['POST'] = 'student_house_api/create';
+$route['student-house/update/(:num)']['POST'] = 'student_house_api/update/$1';
+$route['student-house/delete/(:num)']['POST'] = 'student_house_api/delete/$1';
+
+// Classes API Routes
+$route['classes/list']['POST'] = 'classes_api/list';
+$route['classes/get/(:num)']['POST'] = 'classes_api/get/$1';
+$route['classes/create']['POST'] = 'classes_api/create';
+$route['classes/update/(:num)']['POST'] = 'classes_api/update/$1';
+$route['classes/delete/(:num)']['POST'] = 'classes_api/delete/$1';
+
+// Sections API Routes
+$route['sections/list']['POST'] = 'sections_api/list';
+$route['sections/get/(:num)']['POST'] = 'sections_api/get/$1';
+$route['sections/create']['POST'] = 'sections_api/create';
+$route['sections/update/(:num)']['POST'] = 'sections_api/update/$1';
+$route['sections/delete/(:num)']['POST'] = 'sections_api/delete/$1';
+
+// Department API Routes
+$route['department/list']['POST'] = 'department_api/list';
+$route['department/get/(:num)']['POST'] = 'department_api/get/$1';
+$route['department/create']['POST'] = 'department_api/create';
+$route['department/update/(:num)']['POST'] = 'department_api/update/$1';
+$route['department/delete/(:num)']['POST'] = 'department_api/delete/$1';
+
+// Designation API Routes
+$route['designation/list']['POST'] = 'designation_api/list';
+$route['designation/get/(:num)']['POST'] = 'designation_api/get/$1';
+$route['designation/create']['POST'] = 'designation_api/create';
+$route['designation/update/(:num)']['POST'] = 'designation_api/update/$1';
+$route['designation/delete/(:num)']['POST'] = 'designation_api/delete/$1';
+
+// Income Search API Routes
+$route['income-search/search']['POST'] = 'income_search_api/search';
+$route['income-search/income-heads']['POST'] = 'income_search_api/income_heads';
+
+// Income API Routes
+$route['income/list']['POST'] = 'income_api/list';
+$route['income/get/(:num)']['POST'] = 'income_api/get/$1';
+$route['income/create']['POST'] = 'income_api/create';
+$route['income/update/(:num)']['POST'] = 'income_api/update/$1';
+$route['income/delete/(:num)']['POST'] = 'income_api/delete/$1';
+
+// Income Head API Routes
+$route['income-head/list']['POST'] = 'income_head_api/list';
+$route['income-head/get/(:num)']['POST'] = 'income_head_api/get/$1';
+$route['income-head/create']['POST'] = 'income_head_api/create';
+$route['income-head/update/(:num)']['POST'] = 'income_head_api/update/$1';
+$route['income-head/delete/(:num)']['POST'] = 'income_head_api/delete/$1';
